@@ -87,9 +87,9 @@ section_alignment = pe_optional_header.SectionAlignment.value
 # .text
 pe_section_table_text = IMAGE_SECTION_HEADER()
 pe_section_table_text.Name = byte_array_x8('.text')
-pe_section_table_text.VirtualSize    = len(_text)
+pe_section_table_text.VirtualSize    = len(_text)//2
 pe_section_table_text.VirtualAddress = 0x1000
-pe_section_table_text.SizeOfRawData  = align(len(_text), 0x100)
+pe_section_table_text.SizeOfRawData  = align(len(_text)//2, 0x100)
 pe_section_table_text.PointerToRawData = pe_optional_header.SizeOfHeaders.value # 0x300
 pe_section_table_text.Characteristics = Characteristics_Flags.IMAGE_SCN_MEM_EXECUTE | \
                                         Characteristics_Flags.IMAGE_SCN_MEM_READ | \
@@ -117,9 +117,9 @@ pe_optional_header.DataDirectory = dd
 # .data
 pe_section_table_data = IMAGE_SECTION_HEADER()
 pe_section_table_data.Name = byte_array_x8('.data')
-pe_section_table_data.VirtualSize    = len(_data)
+pe_section_table_data.VirtualSize    = len(_data)//2
 pe_section_table_data.VirtualAddress = align(pe_section_table_idata.VirtualAddress.value + pe_section_table_idata.SizeOfRawData.value, section_alignment) # 0x3000
-pe_section_table_data.SizeOfRawData  = align(len(_data), file_alignment)
+pe_section_table_data.SizeOfRawData  = align(len(_data)//2, file_alignment)
 pe_section_table_data.PointerToRawData = pe_section_table_idata.PointerToRawData.value + pe_section_table_idata.SizeOfRawData.value
 pe_section_table_data.Characteristics = Characteristics_Flags.IMAGE_SCN_MEM_WRITE | \
                                         Characteristics_Flags.IMAGE_SCN_MEM_READ  | \
@@ -177,8 +177,12 @@ _idata = descriptors.get_bytes() + \
 all_function_addresses = iat_tables_addresses
 address = [hex(int.from_bytes(int.to_bytes(v+pe_optional_header.ImageBase.value, byteorder='little', length=4), byteorder='big'))[2:].rjust(4*2, '0') for v in all_function_addresses]
 
-exit_process, message_box_a = address # final functions addresses
+print([hex(v) for v in int_tables_addresses])
+print([hex(v) for v in function_name_addresses])
+print([hex(v) for v in iat_tables_addresses])
+print([hex(v) for v in module_names_addresses])
 
+exit_process, message_box_a = address # final functions addresses
 # calculate final addresses for values in the data segment
 data_seg_base = pe_optional_header.ImageBase.value + pe_section_table_data.VirtualAddress.value
 def data_seg_address(x): 
@@ -199,6 +203,12 @@ _text = bytes.fromhex(''+\
   'FF1425' +  message_box_a +\
   'B9'     + '00000000' +\
   'FF1425' +  exit_process)
+
+print(address)
+print(simple_64b_pe_executable_address)
+print(hello_world_address)
+
+
 
 image_dos_signiture = IMAGE_DOS_SIGNITURE
 image_dos_stub = IMAGE_DOS_SUB

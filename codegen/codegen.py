@@ -81,8 +81,8 @@ def get_mod_rm(operand1, operand2=None, imm_reg_opcode=0):
       reg = get_reg(register)[0]
 
     elif isinstance(operand1, Address): # unary operation
-      reg = imm_reg_opcode
       address = operand1
+      reg = imm_reg_opcode
 
     base, index, disp = address.base, address.index, address.disp
     r_m = get_reg(base)[0] if base else 0
@@ -165,7 +165,6 @@ def write_instruction(opcode, operand1, operand2=None, mod_rm=b'', sib=b'', addr
     # immediate to memory 
     if isinstance(operand1, Address) and isinstance(operand2, bytes): 
       address, constant = operand1, operand2 
-      reg = 0
       bitness_to = len(constant) * 8
     # Address to Register or Register to Address e.g. mov eax, [rbp+0x100]
     elif (isinstance(operand1, Register) and isinstance(operand2, Address)) or (isinstance(operand2, Register) and isinstance(operand1, Address)):
@@ -413,8 +412,8 @@ imports = [
 
 builder = Builder(imports)
 
-builder.add_data('hello_world',   'Hello World!')
-builder.add_data('simple_pe_exe', 'A simple 64b pe exe')
+# builder.add_data('hello_world',   'Hello World!')
+# builder.add_data('simple_pe_exe', 'A simple 64b pe exe')
 
 builder.SUB(Register.RSP, 0x28)
 builder.MOV(Register.R9D, 0)
@@ -451,16 +450,16 @@ import_function_addresses = { 'ExitProcess' : 0x3000, 'MessageBoxA' : 0x3010 }
 # INST(Address(Register.RAX, disp=0x100, index=Register.RAX, scale=1), to_bytes(0x70, l=1))
 # INST(Address(Register.R15, disp=0x100, index=Register.R9), to_bytes(0x70, l=4))
 
-# builder.ADD(Register.EAX, Register.ECX)
-# builder.SUB(Register.EAX, Register.ECX)
-# builder.OR(Register.EAX, Register.ECX)
-# builder.CMP(Register.EAX, Register.ECX)
-# builder.AND(Register.EAX, Register.ECX)
-# builder.MOV(Register.EAX, 0x100)
-# builder.NOT(Address(Register.RAX, index=Register.RCX, disp=0x10), address_size=1)
-# builder.XOR(Register.EAX, 0x100)
-# builder.XOR(Register.EAX, Register.EAX)
-# builder.NOT(Register.EAX)
+builder.ADD(Register.EAX, Register.ECX)
+builder.SUB(Register.EAX, Register.ECX)
+builder.OR(Register.EAX, Register.ECX)
+builder.CMP(Register.EAX, Register.ECX)
+builder.AND(Register.EAX, Register.ECX)
+builder.MOV(Register.EAX, 0x100)
+builder.NOT(Address(Register.RAX, index=Register.RCX, disp=0x10), address_size=1)
+builder.XOR(Register.EAX, 0x100)
+builder.XOR(Register.EAX, Register.EAX)
+builder.NOT(Register.EAX)
 
 # using iced_x86 decoder to make sure the machine code I output
 # is correct (for development only)
