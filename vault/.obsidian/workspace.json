@@ -1,0 +1,205 @@
+{
+  "main": {
+    "id": "08ba047db109c62d",
+    "type": "split",
+    "children": [
+      {
+        "id": "9902903866f37bfc",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "291fb9cfa1917286",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Zettelkasten/Links To Use.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "1e99af1709fe6ee0",
+    "type": "split",
+    "children": [
+      {
+        "id": "f9353811cfe03047",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "90bd536f910067f6",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "b84bf0a66d611e36",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "1466c441aad8a274",
+            "type": "leaf",
+            "state": {
+              "type": "starred",
+              "state": {}
+            }
+          },
+          {
+            "id": "3ab1df871cd0da94",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "f552a65eaec68f9a",
+    "type": "split",
+    "children": [
+      {
+        "id": "c8d47d82aa0ebe9f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "581852f8e7093bd0",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "0e159b550d74c300",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Zettelkasten/Links To Use.md"
+              }
+            }
+          },
+          {
+            "id": "5318d13803c17003",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Zettelkasten/Links To Use.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "2b7e901982225254",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Zettelkasten/Links To Use.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "291fb9cfa1917286",
+  "lastOpenFiles": [
+    "Zettelkasten/something.md",
+    "Zettelkasten/Links To Use.md",
+    "Zettelkasten/Code-Reuse.md",
+    "Templates/Template.md",
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/Investment.md",
+    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/Programming Value.md",
+    "Zettelkasten/Complexity.md",
+    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/().md",
+    "Zettelkasten/Structure.md",
+    "Zettelkasten/aaaa.md",
+    "Zettelkasten/over optimize.md",
+    "Zettelkasten/[.md",
+    "Zettelkasten/Comple.md",
+    "Untitled.canvas",
+    "Zettelkasten/2023-08-25.md",
+    "Zettelkasten/Untitled.md",
+    "Zettelkasten/Cell.md",
+    "Zettelkasten/Programming Insights.md",
+    "Posts",
+    "Zettelkasten/this is some new note.md",
+    "Zettelkasten/some other hting.md",
+    "Zettelkasten/This is a new note.md",
+    "Files/covalent bonds.png",
+    "Reference notes",
+    "Templates",
+    "Zettelkasten",
+    "Files",
+    "Images",
+    "Pasted image 20230412121215.png",
+    "somethingsomething",
+    "Untitled 7.canvas",
+    "Untitled 6.canvas",
+    "Untitled 5.canvas",
+    "Untitled 4.canvas",
+    "Untitled 3.canvas",
+    "Untitled 1.canvas",
+    "Untitled 2.canvas",
+    "covalent-bonds.png"
+  ]
+}
