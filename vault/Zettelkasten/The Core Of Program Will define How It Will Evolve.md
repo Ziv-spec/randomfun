@@ -4,6 +4,9 @@ Tags:
 
 # The Core Of Program Will define How It Will Evolve
 
+IMPORTANT(ziv): This ties nicely into a bigger concept of Understanding The Problem
+
+
 This is more of an observation than anything else. The simple observation that it seems like if you design a good core for a program, the end result of it will look significantly better. 
 
 Let's take tinygrad as an example[^1]. Tinygrad took micrograds api with pytorch's and created a clean and lean high level api that was iterated many times. This formed the core of the library to which, once tinygrad gained more traction, additional contributors make additions. 
@@ -37,7 +40,7 @@ It is also interesting that to a complex system, anytime you want to trace a bug
 
 
 One example is UI and how you have a renderer system to render pixels, but on top of it you have your UI system which uses the renderer. The rendering system is robust and will not change much when compare to the things you might want to render (aka a combination of the rendering calls). 
-
+https://macroresilience.substack.com/p/redundancy-degeneracy-and-resilience
 You can break this even more like Ryan Fleury did... by understanding the fundamental problem better.
 
 
@@ -45,5 +48,5 @@ You can break this even more like Ryan Fleury did... by understanding the fundam
 # References
 
 [^1]: https://www.github.com/tinygrad/tinygrad
-[^2]: https://macroresilience.substack.com/p/redundancy-degeneracy-and-resilience#footnote-9-36284306
+[^2]: https://macroresilience.substack.com/p/redundancy-degeneracy-and-resilience
 [^3]: https://macroresilience.substack.com/p/complex-systems-need-combination

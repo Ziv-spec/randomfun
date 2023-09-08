@@ -13,5 +13,3 @@ Forget market timing just invest http://www.stanbenson.com/ItsTimeNotTiming.html
 # References
 
 
-
-

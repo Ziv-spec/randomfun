@@ -23,6 +23,16 @@ NOTE(Ziv): Great example to showcase complexity is the braid problem of bread. W
 Another term which is useful to think about when talking about complexity is "tangle". Since when two things are tangled you have to think not only about them as a sperate entity but also how each and every one of them responds, and their how their interactions make way for a good/bad emergent behavior.
 
 
+How do we handle the complexity of the programs that we create? 
+    - Refactoring
+    - Rewriting
+    - Abstraction 
+
+Refactoring is essentially taking the code and modifying it to solve the problem we face better. 
+Rewriting the code is completely abandoning the effort made since we recognize that refactoring the existing code will take more effort than rewriting it with the new insights we gained. 
+Abstraction is a tool for handling complexity where we hide some of the details of how something works, to not consantly have to worry about these details for when we want to use a basic block of our program. 
+
+Each and every of these ways we handle complexity is of-course used in different times and for different reasons or usecases. 
 
 
 ---
