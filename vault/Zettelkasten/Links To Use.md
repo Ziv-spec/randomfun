@@ -1,6 +1,5 @@
 # Links To Use
 
-
 Things to explore in programming: 
 - Theoretical vs Practical in programming
 	Theoretical - Helps find limits and ideals to achieve in practice
