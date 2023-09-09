@@ -28,7 +28,6 @@ For example Bryan Jonson's blueprint for many might be a great example where his
 
 [^2]: Critic of Bryan Jonson's Blueprint https://www.youtube.com/watch?v=TQ56SYnKObc
 
-
 Great post with many examples of Goodhart's law
 https://sohl-dickstein.github.io/2022/11/06/strong-Goodhart.html
 

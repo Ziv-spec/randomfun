@@ -13,13 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Understanding The Problem.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "dcf0a6b14658ed3b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -104,7 +117,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Links To Use.md"
+                "file": "Zettelkasten/Kraft-McMillan inequality.md"
               }
             }
           },
@@ -114,7 +127,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -131,7 +144,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -155,21 +168,23 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "291fb9cfa1917286",
+  "active": "90bd536f910067f6",
   "lastOpenFiles": [
-    "Zettelkasten/something.md",
+    "Zettelkasten/Understanding The Problem.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
     "Zettelkasten/Links To Use.md",
-    "Zettelkasten/Code-Reuse.md",
-    "Templates/Template.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/Complexity.md",
     "Zettelkasten/Human over-optimization and Goodhart's law.md",
     "Zettelkasten/Investment.md",
-    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
-    "Zettelkasten/Memory Management Trade-Offs.md",
-    "Zettelkasten/Abstraction.md",
-    "Zettelkasten/Programming Value.md",
-    "Zettelkasten/Complexity.md",
-    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
     "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Code-Reuse.md",
+    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/something.md",
+    "Templates/Template.md",
+    "Zettelkasten/Programming Value.md",
     "Zettelkasten/().md",
     "Zettelkasten/Structure.md",
     "Zettelkasten/aaaa.md",
@@ -183,8 +198,6 @@
     "Zettelkasten/Programming Insights.md",
     "Posts",
     "Zettelkasten/this is some new note.md",
-    "Zettelkasten/some other hting.md",
-    "Zettelkasten/This is a new note.md",
     "Files/covalent bonds.png",
     "Reference notes",
     "Templates",

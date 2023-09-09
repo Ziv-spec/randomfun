@@ -14,7 +14,9 @@ Things to explore in programming:
 - SAT solvers? - this is something I have to deeply research about at some point 
 - Large software companies produce code with the same structure of the development team, seem to obay price's law. 
     Efficiancy seems to not be a concern when "velocity" is a term commonly used so everything must be fast. 
-
+- The problem of weak problem solving of people - 
+	https://youtu.be/4B00hV3wmMY?si=Dv52NDtSFRXfsfzw&t=1153 - Weak Problem Solving
+	https://www.gingerbill.org/article/2021/02/01/the-essence-of-programming/#teaching
 
 #### Links - Blogs
 
