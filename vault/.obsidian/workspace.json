@@ -8,19 +8,31 @@
         "type": "tabs",
         "children": [
           {
-            "id": "291fb9cfa1917286",
+            "id": "dcf0a6b14658ed3b",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Understanding The Problem.md",
+                "file": "Zettelkasten/Cutting Weed.md",
                 "mode": "source",
                 "source": false
               }
             }
           },
           {
-            "id": "dcf0a6b14658ed3b",
+            "id": "23b0ec20d1da26a4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "08044aeeccf78b49",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -61,7 +73,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:#story",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -117,7 +129,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Kraft-McMillan inequality.md"
+                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md"
               }
             }
           },
@@ -127,7 +139,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -144,14 +156,23 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
             }
+          },
+          {
+            "id": "4865bd7982df5316",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency"
+              }
+            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -168,20 +189,25 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "90bd536f910067f6",
+  "active": "23b0ec20d1da26a4",
   "lastOpenFiles": [
-    "Zettelkasten/Understanding The Problem.md",
-    "Zettelkasten/Kraft-McMillan inequality.md",
-    "Zettelkasten/Links To Use.md",
-    "Zettelkasten/Abstraction.md",
-    "Zettelkasten/Complexity.md",
-    "Zettelkasten/Human over-optimization and Goodhart's law.md",
-    "Zettelkasten/Investment.md",
+    "Zettelkasten/Programming As Space Search.md",
     "Zettelkasten/Avoiding Unnecessary Complexity.md",
-    "Zettelkasten/Code-Reuse.md",
-    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Complexity.md",
+    "Zettelkasten/Cutting Weed.md",
+    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/Information Theory.md",
     "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/Understanding The Problem.md",
     "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
+    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Links To Use.md",
+    "Untitled.canvas",
+    "Zettelkasten/Investment.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/Code-Reuse.md",
     "Zettelkasten/something.md",
     "Templates/Template.md",
     "Zettelkasten/Programming Value.md",
@@ -191,13 +217,8 @@
     "Zettelkasten/over optimize.md",
     "Zettelkasten/[.md",
     "Zettelkasten/Comple.md",
-    "Untitled.canvas",
     "Zettelkasten/2023-08-25.md",
-    "Zettelkasten/Untitled.md",
-    "Zettelkasten/Cell.md",
-    "Zettelkasten/Programming Insights.md",
     "Posts",
-    "Zettelkasten/this is some new note.md",
     "Files/covalent bonds.png",
     "Reference notes",
     "Templates",

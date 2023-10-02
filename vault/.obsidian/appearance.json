@@ -4,5 +4,6 @@
   "cssTheme": "Typewriter",
   "showViewHeader": true,
   "translucency": false,
-  "nativeMenus": false
+  "nativeMenus": false,
+  "baseFontSize": 13
 }

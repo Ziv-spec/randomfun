@@ -16,7 +16,7 @@ This is the general pattern that I came up with.
 
 
 ```c
-// new x64.c
+// old x64.c
 
 struct  Instruction_Desc { 
 	u8 op;  // opcode
@@ -39,22 +39,21 @@ static Instruction_Desc inst_table[] = {
 };
 
 static void 
-inst_unary(Builder *b, Inst_Kind op, Operand a) {
+inst_unary(Builder *b, Instruction_Desc *inst, Operand a) {
 	//...
 }
 
 static void 
-inst_binary(Builder *b, Inst_Kind op, Operand a, Operand b) {
-	Instruction_Desc *inst = &inst_table[op];
+inst_binary(Builder *b,Instruction_Desc *inst, Operand a, Operand b) {
 	//...
 	Data_Type dt = a.dt;	
 	//...
 }
 
 static void 
-inst_add(Builder *b, Inst_Kind op, Operand a, Operand b) {
+inst_add(Builder *b, Instruction_Desc *inst, Operand a, Operand b) {
 	//...
-	inst_binary(b, op, a, b); 
+	inst_binary(b, inst, a, b); 
 	//...
 }
 
