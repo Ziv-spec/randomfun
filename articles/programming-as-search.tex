@@ -52,6 +52,7 @@ sculpture, which is of-course an analogy.
 
 
 
+\subsection{Space}
 A search over the set of problems that you need to solve and a set of solutions to said problems. 
 To reiterate: we search over a set of problems because usually the types of problems programmers 
 face are dynamic as requirements change, so are the solutions that are required to solve said problems.
@@ -77,6 +78,18 @@ the solution space further.
 The reason for why I propose to look at programming as a search problem is because it is. 
 Programming is concerned with searching for tools to help solve the problem, certain 
 structures, and other ways of dealing with complexity that arises or creating it when needed. 
+
+\subsection{Constraints on the space}
+There are 3 general program properties constraints that I came up with. Where constraints, 
+How constraints, What constraints. These describe the properties that a program is going 
+to exhibit and that you will want to constrain. The "where" constraint limits where your 
+program is going to run. On which architecture, machine, os, GUI or CUI. The "what" constraint
+limits what the program is capable of doing like limiting input type and range, and output
+type and range. The "how" constraints limit time complexity upperbound, memory complexity 
+upperbound, what types of tools you can use. These 3 constraint types will put anything you 
+might want to create into a rectangular space. The simplest program is one that has the 
+requirement of needing run on nothing, do nothing, and do so in anyway you might want.
+
 
 Hard constraints - these are the specific constraints
 Relaxed constraints - these are the general constraints that work in a relaxed manner

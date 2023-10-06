@@ -25,7 +25,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "mode": "source",
                 "source": false
               }
@@ -129,7 +129,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md"
+                "file": "Zettelkasten/Kraft-McMillan inequality.md"
               }
             }
           },
@@ -139,7 +139,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -156,7 +156,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Avoiding Unnecessary Complexity.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -191,8 +191,8 @@
   },
   "active": "23b0ec20d1da26a4",
   "lastOpenFiles": [
-    "Zettelkasten/Programming As Space Search.md",
     "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Programming As Space Search.md",
     "Zettelkasten/Complexity.md",
     "Zettelkasten/Cutting Weed.md",
     "Zettelkasten/GZAR Reflections.md",
