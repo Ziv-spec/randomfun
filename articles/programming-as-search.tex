@@ -17,6 +17,18 @@
 	\import{./figures/}{#1.pdf_tex}
 }
 
+
+% figure support
+\usepackage{import}
+\usepackage{xifthen}
+\pdfminorversion=7
+\usepackage{pdfpages}
+\usepackage{transparent}
+\newcommand{\incfig}[1]{%
+	\def\svgwidth{\columnwidth}
+	\import{./figures/}{#1.pdf_tex}
+}
+
 \lstset{frame=tb,
   language=c++,
   aboveskip=5mm,
@@ -39,6 +51,8 @@
 
 \begin{document}
 
+
+\section{Introduction}
 
 \section{Introduction}
 Programming is a process where one applies particular computations to achieve a result.
@@ -124,18 +138,71 @@ a general shape, which a programmer refines over time.
 
 I want to make my self clear here (Insert explanation).  
 
-For the time being let us ignore temporal aspect of programming concerning it's evolution.
-Instead for the time being, I will focus on how to solve a single problem, by searching for 
-the appropriate solution. I will do this by first showcasing how a solution is made out 
-of abstract parts that form a general shape, which a programmer refines into a detailed 
-sculpture, which is of-course an analogy.
+\subsection{A simple Calculator}
+
+I want to focus on how we solve a single problem by searching for a appropriate solution, 
+given a well defined problem. Suppose you want to create a terminal calculator. You want 
+your calculator to compute addition, subtraction, multiplication and division between two 
+numbers. You know that you don't want to handle all cases, so you limit the input size 
+which has implications on output size. If $x$ is our input and $f(x)$ is the corresponding 
+output, the ranges we want to handle are as so. 
+\begin{align*}
+    x \in \{0 \dots 2^{32}-1\} \\
+    f(x) \in \{0 \dots 2^{64}-1\}
+\end{align*}
+This removes all need for floating point arithmetic, or for handling arbitrary sized integers.
+We don't care about error messages for the sake of smaller code that fits the screen, but we 
+want our calculator to be accurate. Also the format for accepting input is (numbers on the 
+left are to show line count).
+\begin{enumerate}
+    \item 123
+    \item +
+    \item 827
+\end{enumerate} 
+I also note that this will run on a x86-64 machine on windows, allowing us to use the 
+existing 32bit math operations native to the CPU along side 64bit registers when the 
+result of multiplication spills. The output should just be printed below the values given.
+All of these requirements make the program extremely simple. So simple I will give it to you.
+\pagebreak
+\begin{lstlisting}
+#include <stdio.h>
+
+int main() { 
+    int a, b;
+    char op; 
+    long long out; // on x64 bit machines this will become 64 bit signed integer
+
+    scanf("%d", &a);
+    scanf("%c", &op);
+    scanf("%d", &b);
+    
+    switch (op) {
+        case '+': {out = a + b} break;
+        case '-': {out = a - b} break;
+        case '*': {out = a * b} break;
+        case '/': {out = a / b} break;
+    }
+
+    printf("%lld", out);
+    return 0;
+}
+\end{lstlisting}
+From this simple solution we can see a couple of things. First of all we need to accept input
+then, perform the operation on the input, then print the result to the user. 
+
+If you noticed, I made sure to have requirements that make many assumptions to drastically 
+reduce the scope of the calculator program, and allow for a use of many existing components. 
+Limiting the machine choice, input size, and type of arithmetic operations allows us to use
+existing CPU operations drastically reducing the program's scope and complexity. Had I not 
+done so, and said "I want a terminal calculator", when trying to come up with a program that 
+answers these requirements, a solution might be what I proposed above, or maybe not, it leaves
+room for a more general calculator. It might work on bigger numbers, maybe floating-point,
+maybe on older machines, maybe the output size can be lower or precision is of no concern.
 
 
+I will do this by first showcasing how a solution is made out of abstract parts that form 
+a general shape, which a programmer refines over time.
 
-\subsection{Space}
-A search over the set of problems that you need to solve and a set of solutions to said problems. 
-To reiterate: we search over a set of problems because usually the types of problems programmers 
-face are dynamic as requirements change, so are the solutions that are required to solve said problems.
 \textbf{NOTE: To reiterate: we search over a set of problems because usually the types of problems programmers face are dynamic as requirements change, so are the solutions that are required to solve said problems.}
 
 If you like, you can think of constraints like removing clay from a clay blob. The more 
