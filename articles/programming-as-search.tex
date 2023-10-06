@@ -1,11 +1,21 @@
 \documentclass[a4paper]{article}
-\usepackage{amsmath} 
-\usepackage{amssymb}
-
+\usepackage{amsmath, amssymb}
 \usepackage[colorlinks=true, urlcolor=blue, linkcolor=red]{hyperref}
-\usepackage[]{mdframed}
+\usepackage[]{mdframed} % currently not used
 \usepackage{listings}
 \usepackage{xcolor}
+
+
+% figure support
+\usepackage{import}
+\usepackage{xifthen}
+\pdfminorversion=7
+\usepackage{pdfpages}
+\usepackage{transparent}
+\newcommand{\incfig}[1]{%
+	\def\svgwidth{\columnwidth}
+	\import{./figures/}{#1.pdf_tex}
+}
 
 \lstset{frame=tb,
   language=c++,
@@ -29,39 +39,95 @@
 
 \begin{document}
 
-\begin{quotation}
+
+\section{Introduction}
 Programming is a process where one applies particular computations to achieve a result.
 Since computation has become cheep, the problems programmers solve adapted to become 
 increasingly dynamic. This dynamic environment which allows for fast iteration times 
 (sometimes live) has resulted in the ability to change both the problems we try solve, 
 and their solutions quickly. Solving a single problem is not of concern, instead, we 
 look for solutions to evolve alongside our problems.
-\end{quotation}
+
+Looking at programming as a search problem, allows us to think about how to create 
+programs that more efficiency conform to searchability. Allowing us to reuse tools 
+such as components, algorithms, data structures, certain generator schemes, language
+and meta-programming tools, AI-generators (as learning components "Software 2.0") 
+and more. 
+
+What do I mean by programming as a search problem? I want to make my self clear here 
+(Insert explanation).  
+
+\subsection{A simple Calculator}
+
+I want to focus on how we solve a single problem by searching for a appropriate solution, 
+given a well defined problem. Suppose you want to create a terminal calculator. You want 
+your calculator to compute addition, subtraction, multiplication and division between two 
+numbers. You know that you don't want to handle all cases, so you limit the input size 
+which has implications on output size. If $x$ is our input and $f(x)$ is the corresponding 
+output, the ranges we want to handle are as so. 
+\begin{align*}
+    x \in \{0 \dots 2^{32}-1\} \\
+    f(x) \in \{0 \dots 2^{64}-1\}
+\end{align*}
+This removes all need for floating point arithmetic, or for handling arbitrary sized integers.
+We don't care about error messages for the sake of smaller code that fits the screen, but we 
+want our calculator to be accurate. Also the format for accepting input is (numbers on the 
+left are to show line count).
+\begin{enumerate}
+    \item 123
+    \item +
+    \item 827
+\end{enumerate} 
+I also note that this will run on a x86-64 machine on windows, allowing us to use the 
+existing 32bit math operations native to the CPU along side 64bit registers when the 
+result of multiplication spills. The output should just be printed below the values given.
+All of these requirements make the program extremely simple. So simple I will give it to you.
+\pagebreak
+\begin{lstlisting}
+#include <stdio.h>
+
+int main() { 
+    int a, b;
+    char op; 
+    long long out; // on x64 bit machines this will become 64 bit signed integer
+
+    scanf("%d", &a);
+    scanf("%c", &op);
+    scanf("%d", &b);
+    
+    switch (op) {
+        case '+': {out = a + b} break;
+        case '-': {out = a - b} break;
+        case '*': {out = a * b} break;
+        case '/': {out = a / b} break;
+    }
+
+    printf("%lld", out);
+    return 0;
+}
+\end{lstlisting}
+From this simple solution we can see a couple of things. First of all we need to accept input
+then, perform the operation on the input, then print the result to the user. 
+
+If you noticed, I made sure to have requirements that make many assumptions to drastically 
+reduce the scope of the calculator program, and allow for a use of many existing components. 
+Limiting the machine choice, input size, and type of arithmetic operations allows us to use
+existing CPU operations drastically reducing the program's scope and complexity. Had I not 
+done so, and said "I want a terminal calculator", when trying to come up with a program that 
+answers these requirements, a solution might be what I proposed above, or maybe not, it leaves
+room for a more general calculator. It might work on bigger numbers, maybe floating-point,
+maybe on older machines, maybe the output size can be lower or precision is of no concern.
 
 
-\section{Introduction}
-What do I mean by programming as a search problem? 
+I will do this by first showcasing how a solution is made out of abstract parts that form 
+a general shape, which a programmer refines over time.
 
-I want to make my self clear here (Insert explanation).  
-
-For the time being let us ignore temporal aspect of programming concerning it's evolution.
-Instead for the time being, I will focus on how to solve a single problem, by searching for 
-the appropriate solution. I will do this by first showcasing how a solution is made out 
-of abstract parts that form a general shape, which a programmer refines into a detailed 
-sculpture, which is of-course an analogy.
-
-
-
-A search over the set of problems that you need to solve and a set of solutions to said problems. 
-To reiterate: we search over a set of problems because usually the types of problems programmers 
-face are dynamic as requirements change, so are the solutions that are required to solve said problems.
+\textbf{NOTE: To reiterate: we search over a set of problems because usually the types of problems programmers face are dynamic as requirements change, so are the solutions that are required to solve said problems.}
 
 If you like, you can think of constraints like removing clay from a clay blob. The more 
 you remove, the more detail the shape will have, eventually turning into a sculpture. If 
 you do not remove enough, the sculpture will lack uniqueness to separate itself from just 
 another clay blob.
-
-This is a perfect analogy
 
 capturing problem well and solving it and only it. Less specific 
 constraints make a amorphic shape that captures more of the space by being less detailed.
@@ -116,7 +182,7 @@ We can learn much from how machine learning algorithms have been benefiting from
 \section{General things to consider}
 To solve problems in the domain of computation we use transformations on data. The simple 
 transformations your computer can execute are called instructions. The model most people 
-have of a computer is that of a Von Neuman machine. Essentially a CPU - Central Processing 
+have of a computer is that of a Von Neumann machine. Essentially a CPU - Central Processing 
 Unit that executes instructions, and a memory unit usually RAM - Random Access Memory 
 that stores the result. For the time being the exact nuances in the implementation of 
 modern hardware will not get discussed. 
@@ -179,8 +245,4 @@ void compare(int *a, int len_a, int *b, int len_b) {
 
 This is a rewrite of the first example. Both achieve the same but the second at least to me is significantly easier to see what is happening. The validity conditions are visually close to their handling, logic is then completely separated and put below. In this case we can see that the visual jumps you would have to do to understand it is lower and so the code is read in a more linear fashion than a none-linear one. This allows assumptions from above to propagate below, so constraints written above are assumed for code below and we no longer care for it's handling, shifting the focus to just the logic allowing us to understand it better by seeing it clearly as it is not between other not related code. 
 
-
-
-
 \end{document}
- 
