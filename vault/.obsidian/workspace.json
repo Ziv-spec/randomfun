@@ -8,6 +8,33 @@
         "type": "tabs",
         "children": [
           {
+<<<<<<< HEAD
+=======
+            "id": "dcf0a6b14658ed3b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Zettelkasten/Cutting Weed.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "23b0ec20d1da26a4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
             "id": "08044aeeccf78b49",
             "type": "leaf",
             "state": {
@@ -104,7 +131,11 @@
             "state": {
               "type": "outline",
               "state": {
+<<<<<<< HEAD
                 "file": "Zettelkasten/Links To Use.md"
+=======
+                "file": "Zettelkasten/Kraft-McMillan inequality.md"
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
               }
             }
           },
@@ -114,7 +145,11 @@
             "state": {
               "type": "backlink",
               "state": {
+<<<<<<< HEAD
                 "file": "Zettelkasten/Links To Use.md",
+=======
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -131,7 +166,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+<<<<<<< HEAD
                 "file": "Zettelkasten/Links To Use.md",
+=======
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -166,6 +205,17 @@
   },
   "active": "08044aeeccf78b49",
   "lastOpenFiles": [
+<<<<<<< HEAD
+=======
+    "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Programming As Space Search.md",
+    "Zettelkasten/Complexity.md",
+    "Zettelkasten/Cutting Weed.md",
+    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/Information Theory.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
     "Zettelkasten/Understanding The Problem.md",
     "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
     "Zettelkasten/Memory Management Trade-Offs.md",
