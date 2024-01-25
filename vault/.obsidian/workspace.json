@@ -8,6 +8,8 @@
         "type": "tabs",
         "children": [
           {
+<<<<<<< HEAD
+=======
             "id": "dcf0a6b14658ed3b",
             "type": "leaf",
             "state": {
@@ -56,19 +58,19 @@
             }
           },
           {
+>>>>>>> 00365505cef6a96221e4b5e7a5588ceb060eafea
             "id": "08044aeeccf78b49",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Kraft-McMillan inequality.md",
+                "file": "Zettelkasten/Links To Use.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -153,7 +155,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Links To Use.md"
+                "file": "Zettelkasten/Kraft-McMillan inequality.md"
               }
             }
           },
@@ -163,7 +165,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -180,7 +182,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Kraft-McMillan inequality.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -215,11 +217,8 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "0340f0f7515d5360",
+  "active": "23b0ec20d1da26a4",
   "lastOpenFiles": [
-    "Zettelkasten/Memory Management Trade-Offs.md",
-    "Zettelkasten/Kraft-McMillan inequality.md",
-    "Zettelkasten/Links To Use.md",
     "Zettelkasten/Avoiding Unnecessary Complexity.md",
     "Zettelkasten/Programming As Space Search.md",
     "Zettelkasten/Complexity.md",
@@ -227,13 +226,12 @@
     "Zettelkasten/GZAR Reflections.md",
     "Zettelkasten/Human over-optimization and Goodhart's law.md",
     "Zettelkasten/Information Theory.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
     "Zettelkasten/Understanding The Problem.md",
     "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
     "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
     "Untitled.canvas",
-    "Zettelkasten/Investment.md",
-    "Zettelkasten/Abstraction.md",
-    "Zettelkasten/Code-Reuse.md",
     "Zettelkasten/something.md",
     "Templates/Template.md",
     "Zettelkasten/Programming Value.md",
@@ -241,9 +239,6 @@
     "Zettelkasten/Structure.md",
     "Zettelkasten/aaaa.md",
     "Zettelkasten/over optimize.md",
-    "Zettelkasten/[.md",
-    "Zettelkasten/Comple.md",
-    "Zettelkasten/2023-08-25.md",
     "Posts",
     "Files/covalent bonds.png",
     "Reference notes",
