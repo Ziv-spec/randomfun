@@ -1,0 +1,702 @@
+\documentclass{article}
+
+% \usepackage[utf8]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage{textcomp}
+% \usepackage[right=1.5cm, left=1.5cm, top=1.5cm, bottom=1.5cm]{geometry} 
+% \usepackage[]{geometry} 
+
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black]{hyperref}
+\usepackage{amsmath, amssymb}
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}
+\newtheorem{proof}{Proof}
+\newtheorem{remark}{Remark}
+\usepackage[]{mdframed} 
+
+% figure support
+\usepackage{import}
+\usepackage{xifthen}
+\pdfminorversion=7
+\usepackage{pdfpages}
+\usepackage{transparent}
+\newcommand{\incfig}[2]{
+    \def\svgwidth{#2\columnwidth}
+    \import{./figures/}{#1.pdf_tex}
+}
+
+\pdfsuppresswarningpagegroup=1
+
+\newcommand{\R}{ \mathbb{R} }
+\newcommand{\Q}{ \mathbb{Q} }
+\newcommand{\Z}{ \mathbb{Z} }
+\newcommand{\N}{ \mathbb{N} }
+
+\begin{document}
+
+\begin{center}
+\Huge Entropy And The Mind 
+\end{center}
+
+\tableofcontents
+
+\section{Probability Primer}
+\subsection{Measure theory} 
+Measure theory tells us what is measurable and what is not measurable. The 
+need for such theory is non-obvious. For why do we need to know what is 
+measurable and what is not. An example hopefully should show the reason. 
+
+Let's take a ball and cut it into a infinite but countable number of pieces. 
+Using translation and rotation we can arrange the pieces in a way which will
+create two balls identical to the first ball. This can be done using the most
+minimal assumptions. Now we can say two things about this case as to assume 
+why it is false. First we can say that the assumptions we had were wrong or 
+second, we can say that the pieces that we cut up are non-measurable. 
+The first options is unlikely since we choose the most minimal set of assumptions
+yet the second seems a likely option. This Banach-Tarski Paradox is a example
+for things that we might define as non-measurable. To define what is measurable 
+and what is non-measurable we have to first take a look into $\sigma$-algebra. 
+
+\subsubsection{Sigma-Algebra}
+
+\begin{definition}
+    \label{def:power-set}
+    Given a set $\Omega$, a \underline{power set} on $\Omega$ is the set that 
+    contains the empty set, the set itself, and every combination on the set. 
+\end{definition}
+For example we can look into the set $\Omega \in \{0, 1\}$.
+\[
+    \Omega \in \{0, 1\} \implies 2^{\Omega} = \{\emptyset,  \{0\},  \{1\},  \{0, 1\}\}
+.\] 
+
+\begin{definition}
+    \label{def:sigma-algebra}
+    Given a set $\Omega$, a \underline{$\sigma$-algebra} on $\Omega$ is a collection $A \subset 2^{\Omega}$ s.t. $A$ is non-empty and $A$ is:
+    \begin{enumerate}
+        \item Closed under complements \footnote{A complement of $E$ is made out of all elements which are missing in $E$ but are still in the universe($\Omega$) of $E$. e.g. $A = \Omega = \{1, 2, 3, 4\}$, $B \subset A = \{ 1, 2\} \implies B^c = \{ 3, 4\}$} 
+            $\left( E \in A \implies E^c \in A \right) $
+        \item Closed under countable unions $(E_1, E_2, \dots \in A \implies \bigcup_{i=0}^{\infty} E_i \in A )$
+    \end{enumerate}
+\end{definition}
+
+\begin{remark}
+    .
+\begin{enumerate}
+    \item $\Omega \in A$ since $E \in A \implies E^c \in A \implies E \cup E^c \in A \implies \Omega \in A$
+    \item $\emptyset \in A$ since $\Omega \in A \implies \Omega^c \in A \implies \emptyset \in A$
+    \item $A$ is close under countable intersections. Suppose $E_1, E_2, \dots \in A$. \\
+        $\cap_{i=0}^{\infty}E_i = \cap (E_i^c)^c = (\cup E_i^c)^c \in A$
+\end{enumerate}
+\end{remark}
+
+\begin{definition}
+    \label{def:sigma-algebra-generated-c}
+    Given $C \subset 2^\Omega$, the  \underline{$\sigma$-algebra generated $C$}, written $\sigma(C)$, is the "smallest" $\sigma$-algebra containing  $C$.
+\end{definition}
+\[
+    \text{That is, } A \text{ is a } \sigma-\text{algebra, } \sigma\left( C \right) = \bigcup_{A \supset C} A 
+.\] 
+
+\begin{remark}
+    $\sigma(c)$ always exists because: 
+     \begin{enumerate}
+         \item $2^\Omega$  is a $\sigma$-algebra
+         \item any intersection of  $\sigma$-algebras is a  $\sigma$-algebra
+     \end{enumerate}
+    
+\end{remark}
+  
+\subsubsection{Measure}
+To define what is a probability measure we first have to define what is a measure.
+\begin{definition}
+    \label{def:measure}
+    A \underline{measure} $\mu$ on $\Omega$ with $\sigma$-algebra  $A$ is a function  $\mu : A \to [0, \infty]$ s.t.
+    \begin{enumerate}
+    \item $\mu( \emptyset ) = 0$
+    \item $\mu ( \bigcup_{i=1}^{\infty} E_i) = \sum_{i=1}^{\infty} \mu(E_i)$ for any 
+        $E_1, E_2, \dots \in A$ pairwise disjoint sets\footnote{Pairwise disjoint sets are sets which don't have an intersection. $A = \{1, 2, 3, 4, 5\}$, $B \subset A = \{ 1, 2\}$, $ C \subset A = \{ 4 \} $ . In this case, set $B$ and set $C$ are pairwise disjoint, they don't have any common elements meaning $B \cap C = \emptyset$. }
+        In other words, "countable additivity"
+        
+    \end{enumerate}
+\end{definition}
+Kolmogorov's axioms are a way of formalizing probability theory. They help define what 
+is a probability measure and some of it's properties. 
+\begin{definition}
+    \label{def:probability-measure}
+    A \underline{probability measure} is a measure $P$ s.t.  $P(\Omega) = 1$.
+\end{definition}
+Now that we know what is a measure, let's take a look into examples of measures.
+\begin{enumerate}
+    \item (Finite set) $\Omega = \{ 1, 2, \dots, n\}$, $A = 2^\Omega$, 
+        $P(\{k\}) = P(k) = \frac{1}{n}$, $\forall k \in A \ge 0$. (Uniform Distribution)
+        $P(\{ 1, 2, 4\}) = P(\{1\} \cup \{2\} \cup \{ 4\}) = P(1) + P(2) + P(4)$
+    \item (Countably infinite) $\Omega = \{1, \dots, n\}$, $P(k) = $ 
+        probability that a coin flip will be heads after $k$ coin flips. 
+        $P(k) = \alpha (1-\alpha)^{k-1}$. For a fair coin 
+        $\alpha = \frac{1}{2}$, $P(k) = \frac{1}{2}(1-\frac{1}{2})^{k-1} = (\frac{1}{2})^k$,
+        $\forall k \ge 1$. We can show $P$ is a probability measure because 
+        $\Omega = \{P(1), P(2), \dots, P(n) \} \implies
+        \Omega = \{ \frac{1}{2}, \frac{1}{4}, \frac{1}{8}, \dots \} \implies 
+        \text{geometric series} \implies 
+        P(\Omega) = \sum \Omega = \frac{a}{1-q} = \frac{0.5}{1-0.5} = 1$. 
+        (Geometric Distribution) 
+    \item (Uncountable) $\Omega [0, \infty)$, 
+        $A = B([0, \infty))$, $P([0, x)) = 1-e^x$  $\forall x > 0$ 
+        (Exponential distribution). Note:  $P(\{x\}) = 0$
+\end{enumerate}
+
+\begin{theorem}
+    (Basic properties of measures). Let ($\Omega$, $A$, $\mu$ ) be a measure space.
+    \begin{enumerate}
+        \item \underline{Monotinicity}: If $E,F \in A$ and $E \subset F$ then $\mu(E) \le \mu(F)$.
+        \item \underline{Subadditivity}: If $E_1, E_2, \dots \in A$ then $\mu(\bigcup_{i=1}^{\infty} E_i) \le \sum_{i=1}^{\infty} \mu{E_i}$
+    \end{enumerate}
+\end{theorem}
+
+
+\subsection{Probability}
+Terminology: event = measureable set = set in $A$. 
+             sample space = $\Omega$.
+
+\subsubsection{Conditional Probability} 
+\begin{definition}
+    \label{def:conditional-probability}
+    if $P(B) > 0$ then  $P(A | B) = \frac{P(A \cap B)}{P(B)}$.
+\end{definition}
+This defines a conditional probability. Which essentially says, the probability
+of $A$ given $B$ is the probability of getting a $A$ inside of the space formed 
+by $B$ (as we know that $B$ has occurred).
+
+\subsubsection{Independence}
+\begin{definition}
+    \label{def:independence-probability}
+    Event $A, B$ are independent if  $P(A \cap B) = P(A)P(B)$
+\end{definition}
+
+\begin{definition}
+    \label{def:mutual-independence-probability}
+$A_1, A_2, \dots, A_n$  are \underline{mutually independent} if any $S \subset \{1, \dots, n\}$
+\[
+    P(\bigcap_{i \in S} A_i) = \prod_{i \in S} P(A_i)  
+.\] 
+\end{definition}
+It is important to note that \underline{mutual independence} $\implies$ 
+\underline{pairwise independence} but the opposite is untrue. 
+\begin{definition}
+    \label{def:conditional-independent-probability}
+    $A, B$ are \underline{conditionally independent} given  $C$ if 
+    \[
+        P(A \cap B | C) = P(A | C) P(B | C) \text{ if } P(C) > 0
+    .\] 
+\end{definition}
+Now having defined 3 independence types, let us look into the following proposition:
+Suppose $P(B) > 0$. Then  $A, B$ are independent  $\iff P(A|B) = P(A)$.\\
+Proof: $P(A \cap B) = P(A)P(B) \implies P(A|B) = \frac{P(A \cap B)}{P(B)} = \frac{P(A)P(B)}{P(B)} = P(A)$.
+
+
+\subsubsection{Bayes equation}
+Bayes equation tells us how to update our expectations given new information.
+The known formula hides within the intuition behind it. For that reason aside 
+from the main formula a more thorough look is required.
+\begin{theorem}
+\label{thm:bayes-equation}
+Bayes' rule
+\[
+    P(A | B) = \frac{P(B | A) \cdot P(A)}{P(B)} \text{, if $P(B) \neq  0$}
+.\] 
+\end{theorem}
+To gain the intuition I will first derive it, and then explain further the 
+intuition behind these equations. 
+\begin{align*}
+    P(A | B) &= \frac{P(A \cap B)}{P(B)} \text{, if $P(B) \neq  0$} \\
+    P(B | A) &= \frac{P(A \cap B)}{P(A)} \text{, if $P(A) \neq  0$}
+\end{align*}
+From these if we substitute in both cases $P(A \cap B)$ we get the Bay's theorem.
+\[
+    P(A | B) = \frac{P(B | A) \cdot P(A)}{P(B)} \text{, if $P(B) \neq  0$}
+.\]
+From this equation it is hard to see why this is the case. For the intuition
+behind the formula we would have to turn to a more basic look for what is 
+happening. Let's take for example two water fountains in two colors red and blue.
+The red fountain is on the right separated from the blue fountain on the left by 
+a barrier. The water from the fountains then flows down, with some water meeting 
+at the end and some going to the side. 80\% of the water is blue and 20\% is red.
+The probability of the red water to go to the side is 20\%, the probability of the 
+blue water to go to the side is 60\%. The question is then, out of the purple water
+what is the probability of red to to into the purple. Stated differently: 
+\[P(\text{red} | \text{purple} = 1) = ? \]
+To answer let us look at the prior odds. The prior odds are 20\% red, 80\% blue. 
+Then we get to know that 20\% of all the red water is going to the side so, 80\% 
+from the red water is going down. We also know that 60\% of the blue water is 
+going to the side and so 40\% of the blue water reaches down. 
+\begin{align}
+    &P(\text{red}) = 0.2,  P(\text{down} | \text{red}=1) = 0.8 \\
+    &P(\text{blue}) = 0.8,  P(\text{down} | \text{blue}=1) = 0.4 \\
+    &P(\text{down} | \text{red}) = \frac{P(\text{down} \cap \text{red})}{P(\text{down})}, P(\text{down}) \neq 0 \\
+    &P(\text{down}) = P(\text{red} \cap \text{down}) + P(\text{blue} \cap \text{down}) \\
+    &P(\text{down} | \text{red}) = \frac{P(\text{red}) * P(\text{down} | \text{red}=1)}{P(\text{red}) * P(\text{down} | \text{red}=1) + P(\text{blue}) * P(\text{down} | \text{blue}=1)}
+\end{align}
+The answer above is the hard way of answering this problem. It relies solely on 
+the equations that make up the problem without intuition. Now I will show the 
+intuition behind the equations. To do so, we will have to think in terms of odds
+instead of probabilities. 
+
+With out first example, the ratio or odds between the red and blue water at the 
+beginning was $\frac{20\%}{80\%}$ =  $\frac{1}{4}$ or $1 : 4$. The ratio between
+the red water that goes down and blue water the goes down is 
+$\frac{80\%}{40\%} = \frac{2}{1}$ or $2 : 1$. If we then multiply these odds we 
+get $1 : 4 \cdot 2 : 1 = 1 : 2$. This means that the ratio of red water to blue 
+water down at the end is $1 : 2$.  From this we can easily calculate the probabilities
+we wanted. The probability of the water to be red if it is taken from the purple 
+water is  $\frac{1}{1 + 2} = \frac{1}{3}$. A more formal description of what has happened: 
+The function $P$ returns the probability of a given event happening. It should 
+be noted that $P(event) \in \R $,  $0 \le P(event) \le  1$. Given hypothesis $H$ and 
+event $e$, Baye tells us that: 
+\[
+    \frac{P(H_x | e_y)}{P(\neg H_x | e_y)} = \frac{P(H_x)}{P(H_y)} \cdot \frac{P(e_y | H_x)}{P(e_y | \neg H_x)} 
+\]
+The hypothesis $H$ is in-fact the state you hypothesis is the case before a event. 
+Event $e$ is the event which tells us new information we use to update our previous
+beliefs on the hypothesis. Essentially what we are seeing is the following: 
+\[
+    \text{posterior odds} = \text{prior odds} \cdot \text{likelihood ratio}
+\] 
+The prior odds in which we say what we currently think about the hypothesis. The 
+likelihood ratio which tells us the strength of the evidence to allow for updating 
+of our belief. And the posterior odds, which tells us what are the resulting odds 
+after we have updated our belief given the event. 
+
+\begin{mdframed} The resources used: \\
+https://arbital.com/p/bays\_rule\_guide \\ 
+\end{mdframed}
+
+\subsubsection{Chain Rule}
+\begin{theorem}
+if $A_1, \dots, A_n$  and $P(A_1 \cap \dots \cap A_{n-1}) > 0$, \\
+$(*)$ $P(A_1 \cap \dots \cap A_{n}) = P(A_1)P(A_2 | A_1)P(A_3 | A_1 \cap A_2) \dots P(A_n \cap \dots \cap A_{n-1})$  \\
+\end{theorem}
+\begin{proof}
+    By induction. If $n=2$, then $(*){_n}$  holds.  Suppose $(*)_{n-1}$.
+    Let $B = A_1 \cap \dots \cap A_{n-1}.$ $P(B) = P(A_1)P(A_2 | A_1) \dots P(A_{n-1} | A_1 \cap \dots \cap A_{n-1})$ \\
+    $P(B \cap A_n) =  P(A_n | B)P(B) = $ (the above) $P(A_n | A_1 \cap \dots \cap A_{n-1}) $
+\end{proof}
+
+\subsubsection{Partition}
+\begin{definition}
+    \label{def:partition}
+    A \underline{partition} of $\Omega$ is a finite or countable collection  $\{ B_i \} \subset 2^{\Omega}$ s.t. 
+    \begin{enumerate}
+        \item $\bigcup_i B_i = \Omega$
+        \item $B_i \cup B_j = \emptyset $ $(i \neq j)$
+    \end{enumerate}
+\end{definition}
+
+\begin{figure}[ht]
+    \center
+    \incfig{partition}{0.2}
+    \caption{partition}
+\end{figure}
+
+\begin{theorem}
+    \label{thm:partition-rule}
+    Partition rule: $P(A) = \sum_{i=0} P(A \cap B_i)$ for any partition $\{ B_i\} $ of $\Omega$.
+\end{theorem}
+
+\begin{proof}
+    \label{pf:partition-rule}    
+\begin{align*}
+    &A = A \cap \Omega = A \cap (\cup_i (B_i)) = \cup_i(A \cap B_i). \\
+    &P(A) = P(\cup_i (A \cap B_i)) = \sum_{i} P(A \cap B_i)
+.\end{align*}
+\end{proof}
+
+
+\subsection{Random Variables}
+\begin{definition}
+    \label{def:random-variable}
+    Given $(\Omega, A, P)$  a random variable is a function $X : \Omega \to \R$ s.t. 
+    $\{ \omega \in \Omega : X (\omega) \le  x\} \in A $, $\forall x \in \R$. 
+\end{definition}
+A random variable is a function for quantifying the outcome of a random process. 
+e.g. let us take a fair coin and flip it. We want to measure the amount of times
+the coin was heads. The random variable in this case maps the set of heads and 
+tails of the coins into a sum of the amount of heads in that set $X : \Omega \to \R$.
+The benefit here is that random variables allow us to work on measurable sets.
+
+There is also notation that is common to find yet is confusing if not known.
+Some of the notation is that $X, Y$ are random variables while 
+$x, y$ are the values they take on. Some short hands that people use are:
+$\{ X \le x\} $ = $\{ \omega \in \Omega : X(\omega) \le x \}$ and also 
+$P(X \le x) = P(\{X \le x\})$.
+
+\subsubsection{PDF and CDF}
+\begin{figure}[ht]
+    \label{fig:pdf_cdf}
+    \center
+    \incfig{cdf_pdf_functions}{.4}
+\end{figure}
+The function in the figure is $f(x) = \frac{1}{b-a}$ essentially a uniform distribution.
+This function represents the "Probability Distribution Function" and in this case is a 
+uniform distribution. The are under the PDF is essentially the CDF. In other words, 
+the CDF of $f(x)$ is 
+\[
+    \text{CDF} = \int_{a}^{x} f(x) dx = H \cdot B = \frac{1}{b-a}(x-a) = \frac{x-a}{b-a}
+.\] 
+
+\begin{definition}
+    The \underline{CDF of a random variable $X$} is the function \\
+    $F : \R \to [0, 1]$ s.t. $F(x) = P(X \le x)$
+\end{definition}
+This definition says the following: $CDF = P(X \le x)$. e.g. lets take the CDF 
+of \ref{fig:pdf_cdf} which we know to be $\frac{x-a}{b-a}$. The definition says that 
+the CDF $F(x)$ can be rewritten as $P(X \le x)$ which in our example is the same as  $\frac{x-a}{b-a}$.
+
+\begin{definition}
+    The distribution of X is the probability measure $P^X$ on $\R$ s.t.
+    $P^X(A) = P(X \in A)$. $\forall A \in B(\R)$.
+\end{definition}
+The two definitions above have a connection between them.
+$P^X$ is the probability measure induced $F$ (CDF of $X$).
+Proof to the claim: $Q((-\infty, x]) = F(x) = P(X \le x) = P(X \in (-\infty, x]) = P^X((-\infty, x]) \implies Q=P^X$
+
+
+\subsubsection{Discrete and continues Random Variables}
+The types of random variables people usually encounter are discrete random variables 
+and continues random variables. These are the two main types of random variables.
+
+\begin{definition}
+    A random variable $X$ is \underline{discrete} if $X(\Omega)$ is countable.
+\end{definition}
+In this case $X(\Omega) = \{X(\omega) : \omega \in \Omega\} $. And the fact that it is 
+countable just means $X(\Omega)) = \{ x_1, x_2, \ldots \} $
+
+\begin{definition}
+    A random variable \underline{$X$ has a density $f$}  if 
+    $F(x) = \int_{-\infty}^{x} f(a) du$ $\forall x \in \R$. 
+    for some integrable $f : \R \to  [0, \infty]$.
+\end{definition}
+
+\begin{definition}
+   Let $Q = P^X$ and let $J = \{ x \in  \R : Q(x) > 0\}$. 
+   \begin{align*}
+       \begin{array}{l}
+           Q_d(A) = Q(A \cup J) \cr
+           Q_c(A) = Q(A) - Q(A \cup J)
+       \end{array}
+       \Bigr\} \implies Q = Q_d + Q_c
+   \end{align*}
+\end{definition}
+Here we have a definition of CDF made up of \underline{Discrete} and \underline{Continues} 
+parts. Where, $Q_d$ is the discrete part and  $Q_c$ is the continues part.
+
+\subsubsection{Discrete random variable} 
+\begin{definition}
+    The PMF (probability mass function) of a discrete random variable $X$ is the function 
+    $p(x) : \R \to [0,1]$ s.t. $p(x) = P(X=x)$.
+\end{definition}
+In essence the PMF tells us the probability of some value of a random variable event 
+occurring. I will now provide some examples of distributions and their PMF's.
+\begin{enumerate}
+    \item $X \sim $ Bernaulli($\alpha$), $\alpha \in [0,1]$ $p(1) = \alpha$,  $p(0) = 1-\alpha$.
+    \item $X \sim $ Binomial($\alpha$), $\alpha \in [0,1]$ $p(k) = (n, k)\alpha^k(1-\alpha)^{n-k}$ \\
+        where $k \in  \{ 0, 1, \dots, n\} $. (n, k) = $\frac{n!}{k!(n-k)!}$
+    \item $X \sim $ Geometric($\alpha$), $\alpha \in [0,1]$ $p(k) = \alpha(1-\alpha)^{k-1}$
+        where $k \in \{ 1, 2, 3, \dots \} $
+    \item $X \sim $ Poisson($\lambda$), $\lambda \ge 0$. $p(k) = e^{-\lambda}\frac{\lambda^k}{k!}$ 
+        where $k \in  \{ 0, 1, 2, \dots\} $
+
+\end{enumerate}
+Notation: some notes about the notation. \\
+$X \sim p$ this means that $X$ is distributed according to the PMD $p$.  $(\Omega, A, P)$ \\
+$X \sim F$ if F is a CDF this means that X has the CDF F  \\
+$X \sim Q$ when $Q$ is the distribution of $X$  written as $P^X$. X has that distribution. 
+
+\subsubsection{Random variables with densities}
+A random variable with a density is a random variable $X$ that satisfies the following: 
+$F(X) = P(X \le x) = \int_{-\infty}^{x} f(x)dx$. \\
+Some more useful notation: 
+\begin{enumerate}
+    \item we call $f$ the probability density function (PDF) of $x$, and write 
+        $X \sim f$.
+    \item "indicator function of $A$" $I_A(x) = \begin{cases} 0 & \text{if } x \in A \\ 1 & \text{otherwise} \end{cases}$
+\end{enumerate}
+Examples of discrete random variable densities: 
+\begin{enumerate}
+    \item $X \sim $ Uniform($a, b$),  $a < b : f(x) = \frac{1}{b-a}$ $x \in [a, b]$ and 
+        $f(x) = 0$ otherwise. It looks like \ref{fig:pdf_cdf}
+    \item $X \sim $ Exponential($\lambda$), $\lambda > 0 : f(x) = \lambda e^{-\lambda x}$, 
+         $x \ge 0$. This distribution has the property that it is "memoryless".
+    \item $X \sim $ Beta($\alpha, \beta$),  $\alpha > 0, \beta > 0 : f(x) = \frac{x^{\alpha-1}(1-x)^{\beta-1}}{B(\alpha, \beta)}$ , $X \in  [0,1]$
+    \item $X \sim $ Normal($\mu, \sigma^2$), $\mu \in \R$,  $\sigma^2 > 0$: 
+        $f(x) = \frac{1}{\sqrt{2\pi\sigma^2}}e^{\frac{-(x-\mu)^2}{2\sigma^2}}$, $x \in \R$.
+        this is also called the "Gaussian" distribution.
+\end{enumerate}
+
+
+\subsubsection{Expectation}
+
+\begin{definition}
+    The expectation of a discrete random variable $X$ with PMF $p$ is 
+    \begin{align*}
+        E(X) = \sum_{x \in X(\Omega)} x \cdot p(x) \text{ when this sum is "well-defined".}\\
+        \text{ Otherwise, expectation does not exist}
+    .\end{align*}
+\end{definition}
+e.g. $X \sim $ Bernauli($\alpha$), $X(\Omega) = \{ 0, 1\}$. $E(X) = 0p(0) + 1p(1)=\alpha$
+
+
+\begin{definition}
+    The \underline{expectation} of random variable $X$ with density $f$ is 
+   \[
+       E(X) = \int_{-\infty}^{\infty} x(fx) \text{ } dx 
+   .\] 
+   when this integral is "well defined". Otherwise, the expectation does not exist.
+\end{definition}
+e.g. $X \sim $ Uniform($a, b$) has a $p(x) = \frac{1}{b-a}$. 
+\begin{align*}
+    E(X) &= \int_{a}^{b} x \cdot  p(x) dx = \frac{1}{b-a} \int_{a}^{b} x \text{ } dx \\
+         &= \frac{1}{b-a} \frac{x^2}{2} = \frac{x^2}{2(b-a)} \implies \frac{b^2-a^2}{2(b-a)}  \\
+         &= \frac{b+a}{2}
+.\end{align*}
+Here we can see that the average value to expect in a uniform distribution is the 
+simple average over the range of values the function takes. The general intuition 
+behind the general formula is that it gives the average value you can expect from the
+function in a more general formal way that can be defined for more complex functions. 
+
+If we back trace a bit and remind ourselves the definition of the \underline{expectation},
+We might notice that it is unclear what is the meaning of a "well-defined" integral. 
+To clarify, a integral is well defined if either $a$ or $b$ is finite. 
+\[
+    a = \int_{-\infty}^{0} xf(x) \text{ } dx, b =\int_{0}^{\infty} xf(x) \text{ } dx 
+.\] 
+
+The problem of a "well-defined" integral makes it so that $E(X)$ might exists and be 
+$\infty$ or $E(X)$ might not exist. An example for when it does not exist is 
+$X \sim $ Cauchy
+
+\underline{Expectation rule} \\
+$g(x)$ is a random variable if $X$ is a random variable and $g : \R \to \R$ is (measurable) function. 
+
+\begin{theorem}
+    If $X$ is a random variable and $g : \R \to  \R$ is a (measurable) function, then: 
+\begin{enumerate}
+    \item $Eg(X) = \sum_{x \in X(\Omega)} g(x)p(x)$ if $X$ is discrete with PMF $p$, $x \in  X$
+    \item $Eg(X) \int_{-\infty}^{\infty} g(x)p(x) dx$ if $X$ has density $f$, when these quantities are well-defined.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+    Let $Y = g(X)$
+    
+\end{proof}
+
+\subsection{Solomonoff induction}
+
+Solomonoff induction is a method for predicting underlying patters in information. 
+When there are multiple choices for a underlying pattern and they fit the data 
+equally, the choice you take should be using Ocam's razor principle. 
+Solomonoff induction is in-fact a formalization around this principle. 
+The principle recommends, when findings explanations to observations, they should 
+be done using the smallest amount of underlying elements (aka less assumptions 
+and the simplest explanation is the best).
+The name razor is derived from the shaving of unecessary assumptions.
+The formalization of this induction is something that I might look into later.
+
+
+\section{Information Theory}
+https://www.inference.org.uk/mackay/itprnn/book.html \\ \\
+Information theory concerns itself with the transmission of information from source to 
+destination. For transmission we want as few bytes of information to pass as possible. 
+Sometimes the transmission may go through a noisy channel that naturally modifies 
+the source. In such cases we are interested in not only transmitting the data but also 
+recovering lost information which will usually add some information used later to recover
+in case needed. The natural scheme describing such model is: \\
+
+Source $\to$ Encoder $\to$ (noisy)channel $\to$ Decoder $\to$ Destination \\ \\
+As seen from the arrows we assume one direction, meaning, messages can not be resent.
+The form above is in-fact not the most common form. Most commonly the encoder and 
+decoder are separated into source encoder, channel encoder and source decoder, 
+channel decoder. This decoupling of responsibilities as proven by Shannon can be done 
+without loss of efficiency. Because a decoupled system is easier to create and can be done
+efficiency, when there is a noisy channel it is used. The name of Shannon's revolutionary 
+theorem is the Source-Channel separation theorem.
+
+
+\subsection{Source-Channel separation theorem}
+
+def: C is uniquely decodable if $C^*$ is 1-1
+(i.e if $x_1 \dots x_n \ne y_1 \dots y_m$ then $C^*(x_1 \dots x_n) \ne C^*(y_1 \dots y_m))$
+
+\subsection{Kraft-McMillan inequality}
+
+A B-ary code is a code $ C : X \to A^* \text{ s.t } |A| = B \ge 1$
+$ \text{e.g. } A = \{0, 1\} \: B = 2, \text{ 2-ary}; A = \{ 1, 2, 3 \} \: B = 3, \text{ 3-ary}$
+
+Theorem:
+(a) McMillan: For any uniquely decodable B-ary code C,
+$\sum_{x\in X} \frac{1}{B^{l(x)}} \le 1 \text{ where } l(x) = |C(x)|$
+(b) Kraft: If $ l: X \to \{1, 2, 3, 4, ...\}$ satisfies $\sum_{x \in X} \frac{1}{B^{l(x)}} \le 1$
+There exists a B-ary prefix code C s.t. $ |C(x)| = l(x)$   $ \forall x \in X$
+
+
+Practice: 
+
+\begin{tabular}{| c | c | c | c |}
+    \hline 
+    x   & p(x) & C(x) & l(x) \\ \hline
+    a   & 0.5  & 0    & 1    \\ \hline
+    b   & 0.25 & 10   & 2    \\ \hline
+    c   & 0.125& 110  & 3    \\ \hline
+    d   & 0.125& 111  & 3    \\ \hline
+\end{tabular}
+
+
+Proof
+
+
+
+
+\subsection{Shannon's entropy equation:}
+
+\[
+    H(x) = -\sum_{i=0}^{N-1} p_i\log_2{p_i}
+\]
+
+$\log_2{n} = \frac{\log_b{n}}{\log_b{2}}$
+
+numBits = $[H(x)]$
+
+
+The average minimum number of bites needed to represent a symbol is 
+
+$H(x) = -[0.4\log_2{0.5} + 0.2\log_2{0.2}+ (0.1\log_2{0.1}) * 3]$
+
+$H(x) = -[-0.5 + (-0.46438) + (-0.9965)]$
+
+$H(x) = -[-1.9]$
+
+$H(x) = 1.9$
+
+
+\section{Machine learning} 
+In machine learning we build general tunable systems. When scaled enough, these systems,
+as showcased by recent advances, have emergent behaviour unexplained by their design. 
+They seem "creative", intelligent, and with character. Properties you can not define on
+paper concretely. What does it mean to be creative? How would a intelligent machine look
+like? How do you define the character of a program or human?
+
+\subsection{Defining the problem}
+It is unlikely that you have a answer ready in your head for these questions. Questions like
+these and others like them are hard to answer because it is hard to define exactly the 
+concepts they use. They are too abstract and elusive. To combat this problem, machine 
+learning proposes another way of looking at the problem. Instead of trying to define the 
+problem and create a solution based on the problem, why not use computation to understand 
+the problem using data, and solve the problem using this understanding.
+
+This still might be a bit abstract to fully appreciate. And so a more illustrative example 
+might be of better use. Think of two humans. The first one dances and another ties to copy 
+his behaviour. The one copying has all the information of how the first human dances and so 
+he tries to copy his movement. After a couple tries he succeeds and dances exactly like the 
+first human. Now he is asked to copy another dance of the first human. The second time it 
+took him less time since he noticed some regularities in his dances. The third time he 
+uncovered even more patterns. And at some point he was able to copy the first human so well 
+other people have began saying they both have the same dance style. 
+
+In this example I try to showcase the presence of regularities and patterns in the dances. 
+Or more generally in data. If all data is unique no information can be compressed and so 
+no style can be formed. It would be so unique it might be called random. For a machine 
+to learn how to form character of speech, or creativity all it has to do it find the 
+patterns that make us think it has character or creativity and make predictions that 
+never go out of the borders of these patterns. These patterns are almost always hidden in
+plain sight but we are incapable of understanding them because of our limited ability.
+
+This is why, if we can approximate a function to find these patterns in data automatically 
+and generate the appropriate response, we can create a intelligent agent to solve general 
+problems we are not able to define well.
+
+\subsection{Learning?}
+
+So far as we know the intelligence of a model is linked to it's ability to compress data 
+or, in other words, extract this "hidden" knowledge. Machine Learning shows us a way to 
+extract these features utilizing the vast compute available to us thanks to moors law. 
+
+\subsection{Deep Learning}
+Deep learning is a popular technique for creating these general models. Deep learning 
+approximates the original function that "generated" the data through a combination of linear
+functions. e.g. $f(x) = x^2$ if we sample 10 point of data from said function, the point of 
+a machine learning model, is to predict this underlying using the points. The initial model
+or the general function, must contain tunable parameters, through which we can approximate
+this specific function. $f(\vec{w}, x) = w_0 + w_1x + w_2x^2$ where $w$, is tunable. 
+If we train a model on $f$ we should expect to see $w$ of the form $\vec{w}$ = $(0, 0, 1)$
+
+\begin{align*}
+\text{MSE}(y, \hat{y}) =& \frac{1}{n}\sum_{i=0}^n{ (\hat{y} - y)^2 }\\ 
+    \hat{y} =& wx+b \\
+    \text{loss}(y, x) =& (y - wx+b)^2 \\
+    \frac{\partial l(y, \hat{y})}{\partial w} =& \frac{\partial l(y, \hat{y}) }{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial w} = \frac{1}{n}\sum_{i=0}^n{ 2(\hat{y}_i-y_i)x_i } = \frac{2}{n}\sum_{i=0}^n{ x_i(\hat{y}_i-y_i) } \\
+    \frac{\partial l(y, \hat{y})}{\partial b} =& \frac{\partial l(y, \hat{y}) }{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial b} = \frac{1}{n}\sum_{i=0}^n{  2(\hat{y}_i - y_i)}  = \frac{2}{n}\sum_{i=0}^n{  (\hat{y}_i - y_i) }
+\end{align*}
+
+\newpage
+\section{Excercises}
+Excercise for Probability Primer measure theory: \\
+\underline{Facts} Let ($\Omega$, $A$, $P$) be a probability measure space. $E, F, E_i \in A$
+\begin{enumerate}
+    \item $P(E \cup F) = P(E) + P(F)$ if $E \cup F = \emptyset$
+    \item $P(E \cup F) = P(E) + P(F) - P(E \cap F)$ 
+    \item $P(E) = 1-P(E^c)$
+    \item $P(E \cap F^c) = P(E) - P(E \cap F)$
+    \item $P(\bigcup_{i=1}^{n} E_i) = \sum_{i=1}^{n} P(E_i) - \sum_{i < j} P(E_i \cap E_j) + \sum_{i < j < k} P(E_i \cap E_j \cap E_k) - \dots + (-1)^{n+1} P(E_1 \cap E_2 \cap \dots E_n)$
+\item $P(\bigcup_{i=1} E_i) \le \sum_{n=1} P(E_i)$ and $P(\bigcup_{i=1}^{\infty} E_i) \le \sum_{n=1}^{\infty} P(E_i)$ 
+\end{enumerate}
+Proof 1: 
+\[
+    \text{Based on the measure's property of "countable additivity", definition \ref{def:measure} }
+.\] 
+Proof 2: 
+\begin{align*}
+    & P(E \cup F) = P(E) + P(F) \text{ if } E \cup F = \emptyset \implies P(E \cup F) - P(E \cap F) \text{ if } E \cap F \neq \emptyset \\
+    & \implies  P(E \cap F) = P(E) + P(F) + P(E \cup F)
+\end{align*}
+Proof 3: 
+\begin{align*}
+    & P(\Omega) = P(E) + P(E^c) \\
+    & P(E) = P(\Omega) - P(E^c) \\ 
+    & P(E) = 1 - P(E^c)
+.\end{align*}
+Proof 4: 
+\begin{align*}
+    &\text{if } E \cap F =\emptyset \implies E \cap F^c = E \implies P(E \cap F^c) = P(E) \\
+    &\text{if } E \cap F \neq \emptyset \implies E \cap F^c = E \cap F \implies P(E \cap F^c) = P(E \cap F) \\
+    & P(E \cap F^c) = P(E) - P(E \cap F)
+.\end{align*}
+
+
+\newpage 
+
+\begin{theorem}
+    Chain rule:
+\[
+    \frac{\partial f(g(x))}{\partial x} = \frac{\partial f(g(x))}{\partial g(x)} \frac{\partial g(x)}{\partial x} 
+.\] 
+\end{theorem}
+
+\begin{proof}
+    \label{pf:chain-rule}
+\begin{align*}
+    \frac{\partial f(g(x))}{\partial g(x)} &= \frac{f(g(x+h)) - f(g(x))}{g(x+h) - g(x)}, \frac{\partial g(x)}{\partial x} = \frac{g(x+h) - g(x)}{x+h-x} \\ \\
+    \frac{\partial f(g(x))}{\partial x} &= \frac{f(g(x+h)) - f(g(x))}{x+h-x}  \\
+        &=\frac{f(g(x+h)) - f(g(x))}{g(x+h) - g(x)} \frac{g(x+h) - g(x)}{x + h - x} \\
+        &= \frac{\partial f(g(x))}{\partial g(x)} \frac{\partial g(x)}{\partial x} 
+.\end{align*}
+\end{proof}
+
+
+
+\begin{figure}
+    \center
+    \incfig{union}{.4}
+    \caption{union}
+\end{figure}
+
+\end{document}

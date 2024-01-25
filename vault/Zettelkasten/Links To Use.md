@@ -81,7 +81,7 @@ https://www.youtube.com/watch?v=Dl-BdxNRUqs - Scary video which describes how la
 
 
 
-
+Latex setup - https://castel.dev/post/lecture-notes-1/
 
 
 
@@ -98,3 +98,9 @@ Actually interesting but totally unrelated link http://www.stanbenson.com/Econom
 This just shows that there is a ton of interesting good information and you may find it in the most absurd of ways when searching. 
 
 
+
+
+The aspect oriented programming is a interesting paradigm that I think is worth to search further about.  
+https://www.cs.ubc.ca/~gregor/papers/kiczales-ECOOP1997-AOP.pdf
+
+Kruger's Reusable components and Software robustness have in them a similar section in which they advocate for the automatic search of different components that confirm to constraints.
