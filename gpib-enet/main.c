@@ -40,23 +40,23 @@
 // If on the other hand, GPIB-ENET has not recieved it's IP, re-run this utility
 //
 
+typedef unsigned char   u_char;
+typedef unsigned short  u_short;
+typedef unsigned int    u_int;
+typedef unsigned long   u_long;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <raylib.h>
+#define HAVE_REMOTE
+#include <pcap.h>
+
 #if _MSC_VER >= 1900
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "wpcap.lib")
 #pragma comment(lib, "raylib.lib")
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <raylib.h>
-
-typedef unsigned char   u_char;
-typedef unsigned short  u_short;
-typedef unsigned int    u_int;
-typedef unsigned long   u_long;
-
-#define HAVE_REMOTE
-#include <pcap.h>
 
 ////////////////////////////////
 
@@ -185,9 +185,9 @@ typedef enum Widget_Type{
 	WT_COUNT,
 } Widget_Type;
 
-int main(int argc, char *argv[]) {
+int main() {
 	int screen_width = 580;
-    int screen_height = 450;
+	int screen_height = 450;
 	
 	int font_size = 20, pad = 10;
 	Rectangle mac_inputbox = { 50, screen_height - 100, 350 + pad*2, font_size + pad*2 }; 
@@ -203,8 +203,7 @@ int main(int argc, char *argv[]) {
 	int inputbox_text_length[] = { sizeof(mac_address_string)-3, sizeof(ip_address_string)-4 };
 	
 	
-	
-    int frames_counter = 0;
+	int frames_counter = 0;
 	int active_widget = -1, hovered_widget = -1;
 	
 	InitWindow(screen_width, screen_height, "GPIB-ENET Assign IP Address");

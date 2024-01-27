@@ -19,23 +19,16 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
 )
 
 if "%1" equ "debug" (
-  set CL=/MTd /FC /EHa /DDEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
-  set LINK= /DEBUG 
+  set CL=/MTd /EHa /D_DEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
+  set LINK= /DEBUG /subsystem:console
 ) else (
-  set CL=/O2 /FC
-  set LINK=%LINK% /OPT:REF /OPT:ICF 
+  set CL=/GL /O1 /GS-
+  set LINK=%LINK% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
 ) 
-
-set WarningOptions=/W4 -wd4706 -wd4201
-
 
 IF NOT EXIST build mkdir build 
 pushd build
  
-REM rc.exe ../bigdickenergy.rc /nologo
-cl ../main.c user32.lib /nologo %CL% %WarningOptions% bigdickenergy.res /link /INCREMENTAL:NO /OUT:ui.exe %LINK% /subsystem:console 
-
+rc.exe /nologo ../enet.rc
+cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL% /nologo /link  /INCREMENTAL:NO %LINK% /FIXED /merge:_RDATA=.rdata
 popd
-
-
-
