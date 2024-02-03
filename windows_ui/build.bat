@@ -21,14 +21,19 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
 if "%1" equ "debug" (
   set CL=/MTd /EHa /D_DEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
   set LINK= /DEBUG /subsystem:console
+  set FXC=/O0
 ) else (
   set CL=/GL /O1 /GS-
   set LINK=%LINK% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
+  set FXC=/O3
 ) 
 
 IF NOT EXIST build mkdir build 
 pushd build
  
+fxc /nologo /T vs_5_0 /E main /Fo d3d11_vshader.cso /WX %FXC% ../shaders/vshader.hlsl
+fxc /nologo /T ps_5_0 /E main /Fo d3d11_pshader.cso /WX %FXC% ../shaders/pshader.hlsl
+
 rc.exe /nologo ../enet.rc
 cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL% /nologo /link  /INCREMENTAL:NO %LINK% /FIXED /merge:_RDATA=.rdata
 popd
