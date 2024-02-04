@@ -380,7 +380,7 @@ int WinMainCRTStartup()
 		// Vertex Shader
 		ID3D11DeviceContext_VSSetShader(context, vshader, NULL, 0); 
 		ID3D11DeviceContext_VSSetConstantBuffers(context, 0, 1, &ubuffer);
-		//ID3D11Buffer_Release(ubuffer);
+		ID3D11Buffer_Release(ubuffer);
 		
 		// Rasterizer Stage
 		ID3D11DeviceContext_RSSetViewports(context, 1, &viewport);
@@ -394,9 +394,9 @@ int WinMainCRTStartup()
 		// draw verticies
 		ID3D11DeviceContext_Draw(context, ArrayLength(data), 0);
 		
-        // change to FALSE to disable vsync
-        BOOL vsync = TRUE;
-		hr = IDXGISwapChain1_Present(swap_chain, 1, 0);
+		// change to FALSE to disable vsync
+		BOOL vsync = TRUE;
+		hr = IDXGISwapChain1_Present(swap_chain, vsync ? 1 : 0, 0);
 		if (hr == DXGI_STATUS_OCCLUDED)
         {
             // window is minimized, cannot vsync - instead sleep a bit
