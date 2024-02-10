@@ -229,22 +229,36 @@ int WinMainCRTStartup()
 	}
 	
 	
+	
+	ID3D11DepthStencilState *depth_stencil; 
+	{
+		
+		D3D11_DEPTH_STENCIL_DESC desc = {
+			.DepthEnable = TRUE, 
+			.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL, 
+			.DepthFunc = D3D11_COMPARISON_LESS, 
+		};
+		
+		
+		ID3D11Device_CreateDepthStencilState(device, &desc, &depth_stencil);
+	}
+	
+	
 	struct Vertex {
 		float pos[3];
-		unsigned char color[4]; // rgba
 	};
 	
 	struct Vertex data[] =
 	{
-		{ { -1, -1, -1 }, { 255, 255, 0, 0 } },
-		{ {  1, -1, -1 }, { 0, 255, 0, 0 } },
-		{ { -1,  1, -1 }, { 0, 0, 255, 0 } },
-		{ {  1,  1, -1 }, { 0, 255, 0, 0 } },
+		 { -1, -1, -1 },
+		 {  1, -1, -1 },
+		 { -1,  1, -1 },
+		 {  1,  1, -1 },
 		
-		{ { -1, -1,  1 }, { 255, 255, 0, 0 } },
-		{ {  1, -1,  1 }, { 0, 255, 0, 0 } },
-		{ { -1,  1,  1 }, { 0, 0, 255, 0 } },
-		{ {  1,  1,  1 }, { 0, 255, 0, 0 } },
+		 { -1, -1,  1 },
+		 {  1, -1,  1 },
+		 { -1,  1,  1 },
+		 {  1,  1,  1 },
 	};
 	
 	const unsigned short indicies[] = {
@@ -299,8 +313,7 @@ int WinMainCRTStartup()
 		
 		// Vertex Shader Fromat Descriptor
 		const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
-			{ "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "Color", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, offsetof(struct Vertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 		
 		ID3D11Device_CreateInputLayout(device,
@@ -488,6 +501,32 @@ int WinMainCRTStartup()
 			ID3D11Device_CreateBuffer(device, &desc, &srd, &ubuffer); 
 		}
 		
+		ID3D11Buffer *color_buffer; 
+		{
+			
+			float face_colors[6][4] = {
+				{ 0, 0, 1, 1}, 
+				{ 0, 1, 0, 1}, 
+				{ 1, 0, 1, 1}, 
+				
+				{ 1, 1, 0, 1}, 
+				{ 0, 1, 1, 1},
+				{ 1, 1, 1, 1}
+			};
+			
+			D3D11_BUFFER_DESC desc = {
+				// I need space for 4x4 float matrix
+				.ByteWidth = sizeof(face_colors), 
+				.Usage = D3D11_USAGE_DYNAMIC, 
+				.BindFlags = D3D11_BIND_CONSTANT_BUFFER, 
+				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE
+			};
+			
+			D3D11_SUBRESOURCE_DATA color_resource_data = { .pSysMem = &face_colors };
+			
+			ID3D11Device_CreateBuffer(device, &desc, &color_resource_data, &color_buffer);
+		}
+		
 		
 		// Clear screen
 		float r = .8f, g = .8f, b = .8f;
@@ -512,9 +551,13 @@ int WinMainCRTStartup()
 		
 		// Pixel Shader
 		ID3D11DeviceContext_PSSetShader(context, pshader, NULL, 0); 
+		ID3D11DeviceContext_PSSetConstantBuffers(context, 0, 1, &color_buffer);
+		ID3D11Buffer_Release(color_buffer);
+		
 		
 		// Output Merger
 		ID3D11DeviceContext_OMSetRenderTargets(context, 1, &target_view, NULL);
+		ID3D11DeviceContext_OMSetDepthStencilState(context, depth_stencil, 0);
 		
 		// draw verticies
 		// ID3D11DeviceContext_Draw(context, ArrayLength(data), 0);
@@ -544,6 +587,7 @@ int WinMainCRTStartup()
 	ID3D11DeviceContext_Release(context); 
 	IDXGISwapChain_Release(swap_chain);
 	ID3D11RenderTargetView_Release(target_view);
+	ID3D11DepthStencilState_Release(depth_stencil);
 	
 	ID3D11Buffer_Release(vbuffer);
 	ID3D11Buffer_Release(ibuffer);
