@@ -2,3 +2,9 @@
 
 *.exe
 *.obj
+*.res
+*.cso
+*.lib
+*.exp
+*.raddbg
+*.pdb

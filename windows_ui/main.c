@@ -37,9 +37,10 @@ static HWND g_groupbox2;
 static HWND g_button;
 
 typedef struct { float m[4][4]; } matrix;
-
 matrix matrix_dot(matrix m1, matrix m2);
 matrix matrix_transpose(matrix m);
+
+//~
 
 static void FatalError(const char* message)
 {
@@ -111,16 +112,11 @@ int WinMainCRTStartup()
 							   NULL, NULL, window_class.hInstance, NULL);
     Assert(g_window && "Failed to create window");
 	
-	
-	
-	
 	/* 
 		g_groupbox1 = CreateWindowEx(0, WC_BUTTON, L"GroupBox 1", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 10, 10, 305, 460, g_window, NULL, NULL, NULL);
 		g_groupbox2 = CreateWindowEx(0, WC_BUTTON, L"", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 325, 10, 305, 460, g_window, NULL, NULL, NULL);
 		g_button    = CreateWindowEx(0, WC_BUTTON, L"Click Me", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,30, 30, 100, 20, g_window, NULL, NULL, NULL);
 		 */
-	
-	
 	
     HRESULT hr;
     ID3D11Device* device;         // represents the adapter and used to create resources
