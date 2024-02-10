@@ -1,10 +1,22 @@
 
 cbuffer CBuf {
-	row_major matrix transform;
+	matrix transform;
 };
 
-float4 main(float2 pos : Position) : SV_Position
+struct VS_INPUT {
+	float3 pos : Position;
+	float3 color : Color;
+};
+
+struct PS_INPUT { 
+	float4 pos : SV_Position;
+	float3 color : Color;
+}; 
+
+PS_INPUT main(VS_INPUT input)
 {
-	return mul(float4(pos, 0, 1), transform);
-	//return float4(pos, 0, 1);
+	PS_INPUT psi;
+	psi.pos = mul(float4(input.pos, 1), transform); // float4(input.pos, 0, 1);
+	psi.color = input.color;
+	return psi;
 }
