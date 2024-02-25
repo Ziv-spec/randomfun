@@ -1,6 +1,7 @@
-#define UNICODE
+// A showcase of how to use d3d in a game like setting
+
+//#define UNICODE
 #define COBJMACROS
-#define _CRT_SECURE_NO_DEPRECATE
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <d3d11.h>
@@ -9,8 +10,8 @@
 #include <dxgidebug.h>
 
 //#include <CommCtrl.h>
+#define _CRT_SECURE_NO_DEPRECATE
 #include <stdio.h>
-
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -36,9 +37,23 @@ static HWND g_groupbox1;
 static HWND g_groupbox2;
 static HWND g_button;
 
+// Some matrix math helpers
 typedef struct { float m[4][4]; } matrix;
 matrix matrix_dot(matrix m1, matrix m2);
 matrix matrix_transpose(matrix m);
+inline matrix get_rotation_x(float pitch);
+inline matrix get_rotation_y(float yaw);
+inline matrix get_rotation_z(float roll);
+inline matrix get_scale(float sx, float sy, float sz);
+inline matrix get_translation(float tx, float ty, float tz);
+inline matrix get_projection(float w, // width (aspect ratio) 
+							 float h, // height
+							 float n, // near plane
+							 float f  // far plane
+							 );
+
+
+
 
 //~
 
@@ -56,10 +71,10 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 		} break;
 		
 		
+		// TODO(ziv): Correctly handle redrawing when size changes
 		case WM_SIZE:
 		case WM_PAINT:
 		{
-			// TODO(ziv): Redraw all of the scene for every size change instead of clearing the screen
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(window, &ps);
 			// All painting occurs here, between BeginPaint and EndPaint.
@@ -67,7 +82,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			EndPaint(window, &ps);
 			return 0;
 		}
-		
+
 		/*
 case WM_COMMAND: {
    
@@ -91,6 +106,10 @@ int main()
 int WinMainCRTStartup()
 #endif
 {
+	
+	//
+	// Win32 Window Creation
+	//
 	
 	WNDCLASSEXW window_class = { 
 		.cbSize = sizeof(window_class),
@@ -117,6 +136,12 @@ int WinMainCRTStartup()
 		g_groupbox2 = CreateWindowEx(0, WC_BUTTON, L"", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 325, 10, 305, 460, g_window, NULL, NULL, NULL);
 		g_button    = CreateWindowEx(0, WC_BUTTON, L"Click Me", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,30, 30, 100, 20, g_window, NULL, NULL, NULL);
 		 */
+	
+	
+	
+	// 
+	// D3D11 Setup
+	//
 	
     HRESULT hr;
     ID3D11Device* device;         // represents the adapter and used to create resources
@@ -187,7 +212,6 @@ int WinMainCRTStartup()
 		AssertHR(hr);
 	}
 	
-	
 #if _DEBUG
 	// for debug builds enable VERY USEFUL debug break on API errors
     {
@@ -214,27 +238,37 @@ int WinMainCRTStartup()
 #endif
 	
 	
+	
+	D3D11_VIEWPORT viewport = {
+		.TopLeftX = 0,
+		.TopLeftY = 0,
+		.Width = (FLOAT)window_width,
+		.Height = (FLOAT)window_height,
+		.MinDepth = 0,
+		.MaxDepth = 1,
+	};
+	
 	// get the target view
 	ID3D11RenderTargetView *target_view = NULL;
 	{
 		// gain access to texture subresource in swap chain (back buffer) 
 		ID3D11Resource *backbuffer = NULL; 
-		IDXGISwapChain_GetBuffer(swap_chain, 0, &IID_ID3D11Resource, &backbuffer);
+		IDXGISwapChain1_GetBuffer(swap_chain, 0, &IID_ID3D11Resource, &backbuffer);
 		ID3D11Device_CreateRenderTargetView(device, backbuffer, NULL, &target_view);
 		ID3D11Resource_Release(backbuffer);
 	}
 	
-	
-	
+	// create a depth stencile for zbuffer
 	ID3D11DepthStencilState *depth_stencil; 
 	{
-		
+		// A stencil is used to mask objects. 
+		// In this case a Z-Buffer will use a depth stencil to 
+		// mask off pixels with further depth than closer objects
 		D3D11_DEPTH_STENCIL_DESC desc = {
 			.DepthEnable = TRUE, 
 			.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL, 
 			.DepthFunc = D3D11_COMPARISON_LESS, 
 		};
-		
 		
 		ID3D11Device_CreateDepthStencilState(device, &desc, &depth_stencil);
 	}
@@ -257,7 +291,8 @@ int WinMainCRTStartup()
 		 {  1,  1,  1 },
 	};
 	
-	const unsigned short indicies[] = {
+	const unsigned short indicies[] = 
+	{
 		0,2,1,  2,3,1,
 		1,3,5,  3,7,5,
 		2,6,3,  3,6,7,
@@ -268,7 +303,6 @@ int WinMainCRTStartup()
 	
 	ID3D11Buffer *ibuffer;
 	ID3D11Buffer *vbuffer;
-	
 	// Construct Vertex and Index buffers
 	{
 	D3D11_BUFFER_DESC vdesc = {
@@ -331,30 +365,69 @@ int WinMainCRTStartup()
 	}
 	
 	
+	// Create a transformation matrix buffer (to transform verticies)
+	ID3D11Buffer *ubuffer;
+	{
+	D3D11_BUFFER_DESC desc = {
+		// I need space for 4x4 float matrix
+		.ByteWidth = sizeof(matrix), 
+		.Usage = D3D11_USAGE_DYNAMIC, 
+		.BindFlags = D3D11_BIND_CONSTANT_BUFFER, 
+		.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE
+	};
+	ID3D11Device_CreateBuffer(device, &desc, NULL, &ubuffer); 
+	}
 	
-	// setup parameters
-	float angle = 0; 
 	
-	LARGE_INTEGER freq, start, end;
+	
+	float face_colors[6][4] = {
+		{ 0, 0, 1, 1}, 
+		{ 0, 1, 0, 1}, 
+		{ 1, 0, 1, 1}, 
+		
+		{ 1, 1, 0, 1}, 
+		{ 0, 1, 1, 1},
+		{ 1, 1, 1, 1}
+	};
+	
+	// Give each face color (chosen at the pixel shader stage)
+	ID3D11Buffer *color_buffer;
+	{
+	D3D11_BUFFER_DESC color_desc = {
+		// I need space for 4x4 float matrix
+		.ByteWidth = sizeof(face_colors), 
+		.Usage = D3D11_USAGE_DYNAMIC, 
+		.BindFlags = D3D11_BIND_CONSTANT_BUFFER, 
+		.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE
+	};
+	
+	D3D11_SUBRESOURCE_DATA color_resource_data = { .pSysMem = &face_colors };
+	ID3D11Device_CreateBuffer(device, &color_desc , &color_resource_data, &color_buffer);
+	}
+	
+	
+	ShowWindow(g_window, SW_SHOW);
+	
+	
+	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&start); 
+	
+	float pitch = 0; // x rotation (up-down)
+	float yaw   = 0; // y rotation (side-to-side)
+	float roll  = 0; // z rotation (circular motion towards camera)
+	
+	float sx = 1.f, sy = 1.f, sz = 1.f; // scale
+	float tx = 0.f, ty = 0.f, tz = 6.f; // translate
+	
+	float n = 1.0f; // near plane
+	float f = 9.0f; // far plane
+	
+	
+	
+	
 	
 	LONG current_width = 0;
 	LONG current_height = 0;
-	
-	float pitch = (float)0;  // x rotation (up-down)
-	float yaw   = 0;  // y rotation (side-to-side)
-	float roll  = 0;  // z rotation (circular motion towards camera)
-	
-	float sx = 1.f; 
-	float sy = 1.f; 
-	float sz = 1.f; 
-	
-	float tx = 0.f;
-	float ty = 0.f;
-	float tz = 6.f;
-	
-	ShowWindow(g_window, SW_SHOW);
 	
 	for (;;)
 	{
@@ -370,12 +443,15 @@ int WinMainCRTStartup()
 			}
 		
 		
+		//
+		// Handling resize of window
+		//
+		
 		RECT rect;
         GetClientRect(g_window, &rect);
         LONG width = rect.right - rect.left;
         LONG height = rect.bottom - rect.top;
 		
-		// Handling resize of window
 		if (width != current_width || height != current_height) {
 			if (target_view)
             {
@@ -389,7 +465,7 @@ int WinMainCRTStartup()
             // resize to new size for non-zero size
             if (width != 0 && height != 0)
             {
-                hr = IDXGISwapChain_ResizeBuffers(swap_chain, 0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+                hr = IDXGISwapChain1_ResizeBuffers(swap_chain, 0, width, height, DXGI_FORMAT_UNKNOWN, 0);
                 if (FAILED(hr))
                 {
                     FatalError("Failed to resize swap chain!");
@@ -397,150 +473,68 @@ int WinMainCRTStartup()
 				
                 // create RenderTarget view for new backbuffer texture
                 ID3D11Resource* backbuffer;
-                IDXGISwapChain_GetBuffer(swap_chain, 0, &IID_ID3D11Resource, (void**)&backbuffer);
-                ID3D11Device_CreateRenderTargetView(device, (ID3D11Resource*)backbuffer, NULL, &target_view);
+                IDXGISwapChain1_GetBuffer(swap_chain, 0, &IID_ID3D11Resource, (void**)&backbuffer);
+                ID3D11Device_CreateRenderTargetView(device, backbuffer, NULL, &target_view);
                 ID3D11Resource_Release(backbuffer);
             }
+			
+			viewport.Width = (FLOAT)width; 
+			viewport.Height = (FLOAT)height;
+			
 			current_width = width; 
 			current_height = height;
 		}
 		
 		
 		
+		//
+		// Handling drawing
+		//
 		
-		D3D11_VIEWPORT viewport = {
-			.TopLeftX = 0,
-			.TopLeftY = 0,
-			.Width = (FLOAT)width,
-			.Height = (FLOAT)height,
-			.MinDepth = 0,
-			.MaxDepth = 1,
-		};
 		
-		QueryPerformanceCounter(&end); 
-		float delta = (float)((double)(end.QuadPart - start.QuadPart) / freq.QuadPart);
-		start = end; 
-		
-		pitch += 0.01f;
-		yaw += 0.01f; 
-		
-		ID3D11Buffer *ubuffer; 
+		 // Transformation Matrix
 		{
 			
-			matrix rotateX = {
-				1, 0, 0, 0, 
-				0, cosf(pitch), -sinf(pitch), 0, 
-				0, sinf(pitch), cosf(pitch), 0,
-				0,0, 0, 1 
-			};
-			
-			matrix rotateY = { 
-				cosf(yaw), 0, sinf(yaw), 0, 
-				0, 1, 0, 0, 
-				-sinf(yaw), 0, cosf(yaw), 0, 
-				0, 0, 0, 1 
-			};
-			
-			matrix rotateZ = { 
-				cosf(roll), -sinf(roll), 0, 0, 
-				sinf(roll), cosf(roll), 0, 0, 
-				0, 0, 1, 0, 
-				0, 0, 0, 1 
-			};
-			
-			//sx = viewport.Width / viewport.Height; // normalize to screen aspect ratio
-			
-			matrix scale = { 
-				sx, 0, 0, 0, 
-				0, sy, 0, 0, 
-				0, 0, sz, 0, 
-				0, 0, 0, 1 
-			};
-			
-			matrix translate = { 
-				1, 0, 0, 0, 
-				0, 1, 0, 0,
-				0, 0, 1, 0, 
-				tx, ty, tz, 1
-			};
+			pitch += 0.01f;
+			yaw += 0.01f; 
 			
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
 			float h = 1.0f;                             // height
-			float n = 1.0f;                             // near
-			float f = 9.0f;                             // far
 			
-			matrix project = {
-				2 * n / w, 0, 0, 
-				0, 0, 2 * n / h, 0, 
-				0, 0, 0, f / (f - n), 
-				1, 0, 0, n * f / (n - f), 0 
-			};
+			matrix tm = get_rotation_x(pitch);
+			tm = matrix_dot(tm, get_rotation_y(yaw));
+			tm = matrix_dot(tm, get_rotation_z(roll)); 
+			tm = matrix_dot(tm, get_translation(tx, ty, tz)); 
+			tm = matrix_dot(tm, get_scale(sx, sy, sz)); 
+			tm = matrix_dot(tm, get_projection(w, h, n, f)); 
+			tm = matrix_transpose(tm);
 			
-			matrix translation = matrix_dot(rotateX, rotateY);
-			translation = matrix_dot(translation, rotateZ); 
-			translation = matrix_dot(translation, translate); 
-			translation = matrix_dot(translation, scale); 
-			translation = matrix_dot(translation, project); 
-			translation = matrix_transpose(translation);
+			// send the transformation matrix to the GPU
+			D3D11_MAPPED_SUBRESOURCE mapped_resource;
+			ID3D11DeviceContext_Map(context, (ID3D11Resource *)ubuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource); 
+			memcpy(mapped_resource.pData, &tm, sizeof(tm));
+			ID3D11DeviceContext_Unmap(context, (ID3D11Resource *)ubuffer, 0);
 			
-			
-			D3D11_BUFFER_DESC desc = {
-				// I need space for 4x4 float matrix
-				.ByteWidth = sizeof(matrix), 
-				.Usage = D3D11_USAGE_DYNAMIC, 
-				.BindFlags = D3D11_BIND_CONSTANT_BUFFER, 
-				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE
-			};
-			
-			D3D11_SUBRESOURCE_DATA srd = { .pSysMem = &translation };
-			
-			ID3D11Device_CreateBuffer(device, &desc, &srd, &ubuffer); 
 		}
 		
-		ID3D11Buffer *color_buffer; 
-		{
-			
-			float face_colors[6][4] = {
-				{ 0, 0, 1, 1}, 
-				{ 0, 1, 0, 1}, 
-				{ 1, 0, 1, 1}, 
-				
-				{ 1, 1, 0, 1}, 
-				{ 0, 1, 1, 1},
-				{ 1, 1, 1, 1}
-			};
-			
-			D3D11_BUFFER_DESC desc = {
-				// I need space for 4x4 float matrix
-				.ByteWidth = sizeof(face_colors), 
-				.Usage = D3D11_USAGE_DYNAMIC, 
-				.BindFlags = D3D11_BIND_CONSTANT_BUFFER, 
-				.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE
-			};
-			
-			D3D11_SUBRESOURCE_DATA color_resource_data = { .pSysMem = &face_colors };
-			
-			ID3D11Device_CreateBuffer(device, &desc, &color_resource_data, &color_buffer);
-		}
-		
+
+		if (target_view) {
 		
 		// Clear screen
-		float r = .8f, g = .8f, b = .8f;
-		float color[] = { r, g, b, 1.f};
+		float color[4] = { 0.25f, 0.25f, 0.25f, 1.0f };
 		ID3D11DeviceContext_ClearRenderTargetView(context, target_view, color); 
 		
 		// Input Assembler
-		ID3D11DeviceContext_IASetInputLayout(context, layout);
 		ID3D11DeviceContext_IASetPrimitiveTopology(context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		const UINT stride = sizeof(struct Vertex);
 		const UINT offset = 0;
 		ID3D11DeviceContext_IASetVertexBuffers(context, 0, 1, &vbuffer, &stride, &offset);
+		ID3D11DeviceContext_IASetInputLayout(context, layout);
 		ID3D11DeviceContext_IASetIndexBuffer(context, ibuffer, DXGI_FORMAT_R16_UINT, 0);
 		
 		// Vertex Shader
 		ID3D11DeviceContext_VSSetShader(context, vshader, NULL, 0); 
 		ID3D11DeviceContext_VSSetConstantBuffers(context, 0, 1, &ubuffer);
-		ID3D11Buffer_Release(ubuffer);
 		
 		// Rasterizer Stage
 		ID3D11DeviceContext_RSSetViewports(context, 1, &viewport);
@@ -548,12 +542,10 @@ int WinMainCRTStartup()
 		// Pixel Shader
 		ID3D11DeviceContext_PSSetShader(context, pshader, NULL, 0); 
 		ID3D11DeviceContext_PSSetConstantBuffers(context, 0, 1, &color_buffer);
-		ID3D11Buffer_Release(color_buffer);
-		
 		
 		// Output Merger
 		ID3D11DeviceContext_OMSetRenderTargets(context, 1, &target_view, NULL);
-		ID3D11DeviceContext_OMSetDepthStencilState(context, depth_stencil, 0);
+		ID3D11DeviceContext_OMSetDepthStencilState(context, depth_stencil, 1);
 		
 		// draw verticies
 		// ID3D11DeviceContext_Draw(context, ArrayLength(data), 0);
@@ -561,7 +553,7 @@ int WinMainCRTStartup()
 		
 		// change to FALSE to disable vsync
 		BOOL vsync = TRUE;
-		hr = IDXGISwapChain_Present(swap_chain, vsync ? 1 : 0, 0);
+		hr = IDXGISwapChain1_Present(swap_chain, vsync ? 1 : 0, 0);
 		if (hr == DXGI_STATUS_OCCLUDED)
         {
             // window is minimized, cannot vsync - instead sleep a bit
@@ -574,6 +566,7 @@ int WinMainCRTStartup()
         {
             FatalError("Failed to present swap chain! Device lost?");
         }
+		}
 		
 	}
 	
@@ -581,12 +574,14 @@ int WinMainCRTStartup()
 	// release all allocated resources 
 	ID3D11Device_Release(device);
 	ID3D11DeviceContext_Release(context); 
-	IDXGISwapChain_Release(swap_chain);
+	IDXGISwapChain1_Release(swap_chain);
 	ID3D11RenderTargetView_Release(target_view);
 	ID3D11DepthStencilState_Release(depth_stencil);
 	
 	ID3D11Buffer_Release(vbuffer);
 	ID3D11Buffer_Release(ibuffer);
+	ID3D11Buffer_Release(ubuffer);
+	ID3D11Buffer_Release(color_buffer);
 	
 	ID3D11VertexShader_Release(vshader); 
 	ID3D11PixelShader_Release(pshader); 
@@ -594,6 +589,11 @@ int WinMainCRTStartup()
 	
 	return 0;
 }
+
+
+//~
+// Matrix Math
+//
 
 matrix matrix_dot(matrix m1, matrix m2) {
 	return (matrix){
@@ -624,3 +624,59 @@ matrix matrix_transpose(matrix m) {
 		m.m[0][3], m.m[1][3], m.m[2][3], m.m[3][3],
 	};
 }
+
+inline matrix get_rotation_x(float pitch) {
+	return (matrix){
+		1, 0, 0, 0, 
+		0.f, cosf(pitch), -sinf(pitch), 0.f, 
+		0.f, sinf(pitch), cosf(pitch), 0.f,
+		0.f,0.f, 0.f, 1.f
+	};
+}
+
+inline matrix get_rotation_y(float yaw) {
+	return (matrix){
+		cosf(yaw), 0, sinf(yaw), 0, 
+		0, 1, 0, 0, 
+		-sinf(yaw), 0, cosf(yaw), 0, 
+		0, 0, 0, 1
+	};
+}
+
+inline matrix get_rotation_z(float roll) {
+	return (matrix){
+		cosf(roll), -sinf(roll), 0, 0, 
+		sinf(roll), cosf(roll), 0, 0, 
+		0, 0, 1, 0, 
+		0, 0, 0, 1 
+	};
+}
+
+inline matrix get_scale(float sx, float sy, float sz) {
+	return (matrix){ 
+		sx, 0, 0, 0, 
+		0, sy, 0, 0, 
+		0, 0, sz, 0, 
+		0, 0, 0, 1 
+	};
+}
+
+inline matrix get_translation(float tx, float ty, float tz) {
+	return (matrix){ 
+		1, 0, 0, 0, 
+		0, 1, 0, 0,
+		0, 0, 1, 0, 
+		tx, ty, tz, 1
+	};
+}
+
+inline matrix get_projection(float w, float h, float n, float f) {
+	return (matrix){
+		2 * n / w, 0, 0, 
+		0, 0, 2 * n / h, 0, 
+		0, 0, 0, f / (f - n), 
+		1, 0, 0, n * f / (n - f), 0 
+	};
+}
+
+
