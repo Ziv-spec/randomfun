@@ -62,6 +62,7 @@ static void FatalError(const char* message)
     MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
     ExitProcess(0);
 }
+
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	switch (message)
     {
@@ -85,7 +86,6 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 
 		/*
 case WM_COMMAND: {
-   
    if (HIWORD(wparam) == BN_CLICKED && (HWND)lparam == g_button) { 
 	   MessageBoxA(0, "Hello", "HI", 0);
    }
@@ -436,6 +436,7 @@ int WinMainCRTStartup()
         {
             if (msg.message == WM_QUIT) {
 				goto free_resources;
+				return 0;
             }
             
 			TranslateMessage(&msg);

@@ -19,21 +19,24 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
 )
 
 if "%1" equ "debug" (
-  set CL=/MTd /EHa /D_DEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
-  set LINK= /DEBUG /subsystem:console
+  set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
+  set LINK_FLAGS= /DEBUG /subsystem:console
   set FXC=/O0
 ) else (
-  set CL=/GL /O1 /GS-
-  set LINK=%LINK% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
+  set CL_FLAGS=/GL /O1 /GS-
+  set LINK_FLAGS=%LINK_FLAGS% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
   set FXC=/O3
 ) 
 
 IF NOT EXIST build mkdir build 
 pushd build
  
-fxc /nologo /T vs_5_0 /E main /Fo d3d11_vshader.cso /WX %FXC% ../shaders/vshader.hlsl
-fxc /nologo /T ps_5_0 /E main /Fo d3d11_pshader.cso /WX %FXC% ../shaders/pshader.hlsl
+REM fxc /nologo /T vs_5_0 /E main /Fo d3d11_vshader.cso /WX %FXC% ../shaders/vshader.hlsl
+REM fxc /nologo /T ps_5_0 /E main /Fo d3d11_pshader.cso /WX %FXC% ../shaders/pshader.hlsl
 
-rc.exe /nologo ../enet.rc
-cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL% /nologo /link  /INCREMENTAL:NO %LINK% /FIXED /merge:_RDATA=.rdata
+REM rc.exe /nologo ../enet.rc
+REM cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL_FLAGS% /nologo /link  /INCREMENTAL:NO %LINK_FLAGS% /FIXED /merge:_RDATA=.rdata
+
+cl ../d3d11_example.cpp /std:c++20 /nologo /FC /W3 /MTd /EHa /Od /Zi /D_DEBUG=1 /fsanitize=address /link /INCREMENTAL:NO /DEBUG /subsystem:windows
+
 popd

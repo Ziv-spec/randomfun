@@ -65,7 +65,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     IDXGIFactory2* dxgiFactory;
 
     dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), reinterpret_cast<void**>(&dxgiFactory));
-
+ 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
