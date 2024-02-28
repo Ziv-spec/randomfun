@@ -25,11 +25,16 @@ PS_INPUT vs_main(VS_INPUT v) {
 	output.pos = mul(transform, float4(v.pos, 1.f)); 
 	output.uv = v.uv;
 
+	float3 tpos = float3(output.pos.x, output.pos.y, output.pos.z);
+	float3 tlightvector = mul(transform, float4(lightvector, 1.f)).xyz;
+	
 
 	float ambient = 0.1f;
-	float3 light_direction = normalize(lightvector - float3(output.pos.x, output.pos.y, output.pos.z));
-	float diffuse = max(dot(normalize(v.norm),light_direction), 0);
-	output.color = (diffuse+ambient)*float4(1, 1, 1, 1);
+	float3 light_direction = normalize(tlightvector - float3(0, 0, 4) - tpos);
+	float diffuse = max(dot(v.norm,light_direction), 0);
+	
+	float3 color = (diffuse+ambient)*float3(1, 1, 1);
+	output.color = float4(color, 1.f);
 
 	return output;
 }

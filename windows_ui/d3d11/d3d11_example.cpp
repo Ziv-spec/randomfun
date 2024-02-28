@@ -261,7 +261,9 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 					memcpy(&vdest->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
 					memcpy(&vdest->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
 					vdest++;
-					*idest++ = idx++; // TODO(ziv): index matching verticies
+					
+					
+*idest++ = idx++; // TODO(ziv): index matching verticies
 				}
 				s--;
 				
