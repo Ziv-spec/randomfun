@@ -449,8 +449,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     // show the window
     ShowWindow(window, SW_SHOWDEFAULT);
 
-    LARGE_INTEGER freq, c1;
-    QueryPerformanceFrequency(&freq);
+    LARGE_INTEGER freq, c1;QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&c1);
 
     float angle = 0;
@@ -458,7 +457,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     DWORD currentHeight = 0;
 
     for (;;)
-    {
+	{
         // process all incoming Windows messages
         MSG msg;
         if (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))

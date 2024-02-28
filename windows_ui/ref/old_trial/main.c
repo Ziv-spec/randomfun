@@ -24,7 +24,7 @@
 
 #define APP_TITLE L"GRAPHIC"
 
-#define Assert(expr) do { if (!expr) __debugbreak(); } while (0)
+#define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
 #define ArrayLength(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -51,8 +51,6 @@ inline matrix get_projection(float w, // width (aspect ratio)
 							 float n, // near plane
 							 float f  // far plane
 							 );
-
-
 
 
 //~
@@ -194,7 +192,7 @@ int WinMainCRTStartup()
 			// for Windows 8 compatibility use DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL
 			// for Windows 7 compatibility use DXGI_SWAP_EFFECT_DISCARD
 			.SwapEffect = DXGI_SWAP_EFFECT_DISCARD,
-			
+			 
 			.Flags = 0
 		};
 		
@@ -679,5 +677,3 @@ inline matrix get_projection(float w, float h, float n, float f) {
 		1, 0, 0, n * f / (n - f), 0 
 	};
 }
-
-
