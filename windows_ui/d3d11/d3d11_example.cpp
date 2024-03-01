@@ -301,25 +301,6 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd) {
 
-	char model_path[] = "../resources/cube.obj";
-
-	size_t verticies_count, indicies_count; 
-	bool success = parse_obj(model_path,NULL, &verticies_count, NULL, &indicies_count); 
-	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
-	
-	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
-	unsigned short *_indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = parse_obj(model_path,
-							 verticies, &verticies_count, 
-							 _indicies, &indicies_count); 
-	Assert(success && "Failed extracting model data");
-	
-	
-	
-	
-	
-	
-	
 	// 
 	// Typical WIN32 Window creation
 	//
@@ -457,6 +438,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Model Data
 	//
 	
+	char model_path[] = "../resources/cube.obj";
+	
+	size_t verticies_count, indicies_count; 
+	bool success = parse_obj(model_path,NULL, &verticies_count, NULL, &indicies_count); 
+	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
+	
+	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
+	unsigned short *_indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
+	success = parse_obj(model_path,
+						verticies, &verticies_count, 
+						_indicies, &indicies_count); 
+	Assert(success && "Failed extracting model data");
+	
 	Vertex *data = verticies; 
 	unsigned short *indicies = _indicies; 
 
@@ -525,11 +519,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		pblob->Release();
 	}
 	
+	struct VSConstantBuffer { 
+		matrix transform; 
+		matrix projection; 
+		float3 lightvector;
+	};
+	
 	// Constant Buffer
 		ID3D11Buffer *cbuffer; 
 	{
 		D3D11_BUFFER_DESC cbuffer_descriptor = {};
-		cbuffer_descriptor.ByteWidth = (sizeof(matrix) + sizeof(float)*3 + 0xf) & 0xffffff0;
+		cbuffer_descriptor.ByteWidth = (sizeof(VSConstantBuffer) + 0xf) & 0xffffff0;
 		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
 		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -717,7 +717,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	// light
-	float3 lightvector = {  2, 0.5f, -2 };
+	float3 lightvector = {  0, -4, 4 };
 	
 	for (;;) {
 		
@@ -780,13 +780,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		float w = viewport.Width / viewport.Height; // width (aspect ratio)
 		matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
-		matrix transform = rx * ry * rz * scale * translate * projection;
+		matrix transform = rx * ry * rz * scale * translate;
+		
+		VSConstantBuffer vs_cbuf; 
+		vs_cbuf.transform = transform; 
+		vs_cbuf.projection = projection; 
+		vs_cbuf.lightvector = lightvector;
 		
 		// Send new transformation matrix to the GPU
 		D3D11_MAPPED_SUBRESOURCE mapped;
 		context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, (const void *)&transform, sizeof(transform));
-		memcpy((char *)mapped.pData + sizeof(transform), &lightvector, sizeof(lightvector));
+		memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
 		context->Unmap((ID3D11Resource *)cbuffer, 0);
 		
         model_rotation.x += 0.005f;

@@ -1,6 +1,7 @@
 
 cbuffer constant_buffer : register(b0) {
 	float4x4 transform;
+	float4x4 projection;
 	float3 lightvector;
 };
 
@@ -11,6 +12,8 @@ struct PS_INPUT {
 	float4 pos : SV_Position;
 	float2 uv : Texture;
 	float4 color : COL;
+	float3 light_direction : LIGHT_DIR; 
+	float3 normal : Normal;
 };
 
 struct VS_INPUT {
@@ -22,23 +25,22 @@ struct VS_INPUT {
 PS_INPUT vs_main(VS_INPUT v) {
 	PS_INPUT output; 
 	
-	output.pos = mul(transform, float4(v.pos, 1.f)); 
-	output.uv = v.uv;
-
-	float3 tpos = float3(output.pos.x, output.pos.y, output.pos.z);
-	float3 tlightvector = mul(transform, float4(lightvector, 1.f)).xyz;
-	
-
 	float ambient = 0.1f;
-	float3 light_direction = normalize(tlightvector - float3(0, 0, 4) - tpos);
-	float diffuse = max(dot(v.norm,light_direction), 0);
+	float3 transformed_pos = mul(transform, float4(v.pos, 1)).xyz;
+	float3 light_direction = normalize(lightvector - transformed_pos);
+	float3 transformed_normal =  normalize(mul(transform, float4(v.norm, 0)).xyz);
 	
-	float3 color = (diffuse+ambient)*float3(1, 1, 1);
-	output.color = float4(color, 1.f);
-
+	output.pos = mul(mul(projection, transform), float4(v.pos, 1));
+	output.light_direction = light_direction; 
+	output.normal = transformed_normal;
+	output.uv = v.uv;
+	output.color = float4(1, 1, 1, 1);
 	return output;
 }
 
 float4 ps_main(PS_INPUT p) : SV_Target {
-	return texture0.Sample(sampler0, p.uv) * p.color;
+	float ambient = 0.1f; 
+	float diffuse = max(dot(p.light_direction, p.normal), 0);
+	
+	return texture0.Sample(sampler0, p.uv) * (diffuse + ambient);
 }
