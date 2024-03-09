@@ -57,6 +57,32 @@ matrix operator*(const matrix& m1, const matrix& m2)
     };
 }
 
+matrix matrix_inverse_transpose(matrix A) {
+	matrix r;
+	
+	float determinant = 
+		 +A.m[0][0]*(A.m[1][1]*A.m[2][2] - A.m[2][1]*A.m[1][2])
+		-A.m[0][1]*(A.m[1][0]*A.m[2][2] - A.m[1][2]*A.m[2][0])
+		+A.m[0][2]*(A.m[1][0]*A.m[2][1] - A.m[1][1]*A.m[2][0]);
+		
+	float invdet = 1/determinant;
+	r.m[0][0] =  (A.m[1][1]*A.m[2][2] - A.m[2][1]*A.m[1][2])*invdet;
+	r.m[1][0] = -(A.m[0][1]*A.m[2][2] - A.m[0][2]*A.m[2][1])*invdet;
+	r.m[2][0] =  (A.m[0][1]*A.m[1][2] - A.m[0][2]*A.m[1][1])*invdet;
+	r.m[0][1] = -(A.m[1][0]*A.m[2][2] - A.m[1][2]*A.m[2][0])*invdet;
+	r.m[1][1] =  (A.m[0][0]*A.m[2][2] - A.m[0][2]*A.m[2][0])*invdet;
+	r.m[2][1] = -(A.m[0][0]*A.m[1][2] - A.m[1][0]*A.m[0][2])*invdet;
+	r.m[0][2] =  (A.m[1][0]*A.m[2][1] - A.m[2][0]*A.m[1][1])*invdet;
+	r.m[1][2] = -(A.m[0][0]*A.m[2][1] - A.m[2][0]*A.m[0][1])*invdet;
+	r.m[2][2] =  (A.m[0][0]*A.m[1][1] - A.m[1][0]*A.m[0][1])*invdet;
+	
+	return r;
+}
+
+
+//
+// Font Atlas 
+//
 #define CHARACTER_COUNT   95
 
 #define ATLAS_WIDTH      475
@@ -252,16 +278,17 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 		}
 			else if (*s == 'f') {
 				s++;
+				
 				unsigned int vi, vt, vn;
 				for (int i = 0; i < 3; i++) {
 					vi = parse_uint(s, &len); s+=len+1;
 					vt = parse_uint(s, &len); s+=len+1;
 					vn = parse_uint(s, &len); s+=len+1;
+					
 					memcpy(&vdest->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
 					memcpy(&vdest->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
 					memcpy(&vdest->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
 					vdest++;
-					
 					
 *idest++ = idx++; // TODO(ziv): index matching verticies
 				}
@@ -286,6 +313,13 @@ static void FatalError(const char* message)
     ExitProcess(0);
 }
 
+// TODO(ziv): make actual key input 
+
+static bool key_w; // up 
+static bool key_s; // down
+static bool key_a; // right
+static bool key_d; // left
+
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	
 	switch (message)
@@ -294,14 +328,29 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			PostQuitMessage(0);
 			return 0;
 		} break;
+		
+		case WM_KEYDOWN: 
+		{
+			if ((char)wparam == 'W') { key_w = true; }
+			if ((char)wparam == 'S') { key_s = true; }
+			if ((char)wparam == 'A') { key_a = true; }
+			if ((char)wparam == 'D') { key_d = true; }
+		} break; 
+		
+		case WM_KEYUP: 
+		{
+			key_w = (char)wparam == 'W' ? false : key_w;
+			key_s = (char)wparam == 'S' ? false : key_s;
+			key_a = (char)wparam == 'A' ? false : key_a;
+			key_d = (char)wparam == 'D' ? false : key_d;
+		} break;
 	}
-	
 	return DefWindowProcA(window, message, wparam, lparam);
 }
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd) {
 
-	// 
+	//~
 	// Typical WIN32 Window creation
 	//
 	
@@ -327,7 +376,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 								  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
 	
-	//
+	//~
 	// D3D11 Initialization
 	//
 	
@@ -522,7 +571,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	struct VSConstantBuffer { 
 		matrix transform; 
 		matrix projection; 
-		float3 lightvector;
+		matrix normal_transform;
+		float3 lightposition;
 	};
 	
 	// Constant Buffer
@@ -717,7 +767,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	// light
-	float3 lightvector = {  0, -4, 4 };
+	float3 lightposition = {  0, 0, 2 };
+	
+	// camera 
+	float3 camera = { 0, 0, 0 };
 	
 	for (;;) {
 		
@@ -785,7 +838,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		VSConstantBuffer vs_cbuf; 
 		vs_cbuf.transform = transform; 
 		vs_cbuf.projection = projection; 
-		vs_cbuf.lightvector = lightvector;
+		vs_cbuf.lightposition = lightposition;
+		vs_cbuf.normal_transform = matrix_inverse_transpose(transform);
 		
 		// Send new transformation matrix to the GPU
 		D3D11_MAPPED_SUBRESOURCE mapped;
@@ -793,9 +847,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
 		context->Unmap((ID3D11Resource *)cbuffer, 0);
 		
-        model_rotation.x += 0.005f;
-        model_rotation.y += 0.009f;
-        model_rotation.z += 0.001f;
+		
+		if (key_w)  model_rotation.x -= 0.03f;
+		if (key_s)  model_rotation.x += 0.03f;
+		
+		if (key_a)  model_rotation.y -= 0.03f;
+		if (key_d)  model_rotation.y += 0.03f;
 		
 		// Don't render when minimized
 		if (width == 0 && height == 0) {

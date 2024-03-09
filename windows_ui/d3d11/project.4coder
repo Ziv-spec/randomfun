@@ -10,7 +10,7 @@ patterns = {
     "*.sh",
     "*.4coder",
     "*.jai",
-};1
+};
 blacklist_patterns = {
     ".*",
 };
@@ -22,23 +22,23 @@ load_paths = {
 };
 
 commands = {
-	.build = {
+	.build_debug = {
 		.win = "build.bat debug",
         .out = "*compilation*",
         .footer_panel = true,
 		.save_dirty_files = true,
 		.cursor_at_end = false,
 	},
-    .test = {
-        .win = "%cd%/test.bat",
-        .out = "*test*",
-        .footer_panel = false,
-		.save_dirty_files = false,
+	.build_release = {
+		.win = "build.bat",
+        .out = "*compilation*",
+        .footer_panel = true,
+		.save_dirty_files = true,
 		.cursor_at_end = false,
-    }
+	}
 };
 
 fkey_command = {
-	.F1 = "build",
-    .F3 = "test",
+	.F1 = "build_debug",
+    .F2 = "build_release",
 };

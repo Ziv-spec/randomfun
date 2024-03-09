@@ -1,5 +1,5 @@
 @echo off
-REM The portion that calls the vswhere.exe and so on... is basically copied from our lord and savior martin's github
+REM The portion that calls the vswhere.exe and so on... I copied from our lord and savior martin's github
 
 setlocal enabledelayedexpansion
 
@@ -19,8 +19,8 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
 )
 
 if "%1" equ "debug" (
-  set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi /Fdui.pdb /fsanitize=address
-  set LINK_FLAGS= /DEBUG /subsystem:console
+  set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi /fsanitize=address
+  set LINK_FLAGS= /DEBUG /subsystem:windows
   set FXC=/O0
 ) else (
   set CL_FLAGS=/GL /O1 /GS-
@@ -30,14 +30,12 @@ if "%1" equ "debug" (
 
 IF NOT EXIST build mkdir build 
 pushd build
- 
-REM fxc /nologo /T vs_5_0 /E main /Fo d3d11_vshader.cso /WX %FXC% ../shaders/vshader.hlsl
-REM fxc /nologo /T ps_5_0 /E main /Fo d3d11_pshader.cso /WX %FXC% ../shaders/pshader.hlsl
-REM rc.exe /nologo ../enet.rc
+
+rc.exe /nologo /fo enet.res ../resources/enet.rc 
+
+
 REM cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL_FLAGS% /nologo /link  /INCREMENTAL:NO %LINK_FLAGS% /FIXED /merge:_RDATA=.rdata
 
-
-
-cl ../d3d11_example.cpp /std:c++20 /nologo /FC /W3 /MTd /EHa /Od /Zi /D_DEBUG=1 /fsanitize=address /link /INCREMENTAL:NO /DEBUG /subsystem:windows
+cl ../d3d11_example.cpp enet.res /std:c++20 /nologo /FC /W3 /WX %CL_FLAGS% /link /INCREMENTAL:NO %LINK_FLAGS%
 
 popd
