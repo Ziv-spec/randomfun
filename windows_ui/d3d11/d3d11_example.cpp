@@ -249,6 +249,8 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 	int pos_idx = 0, uv_idx = 0, norm_idx = 0;
 	unsigned short idx = 0;
 	
+	Vertex *v = vdest; 
+	
 	// parse obj file
 	{
 		size_t len = 0;
@@ -285,12 +287,24 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 					vt = parse_uint(s, &len); s+=len+1;
 					vn = parse_uint(s, &len); s+=len+1;
 					
-					memcpy(&vdest->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
-					memcpy(&vdest->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
-					memcpy(&vdest->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
-					vdest++;
+					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
+					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
+					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
 					
-*idest++ = idx++; // TODO(ziv): index matching verticies
+					
+					// Search for existing vertex for it's index
+					unsigned short match_index = -1;
+					if (idx > 0) { 
+					for (int j = 0; j < idx; j++) {
+						if (memcmp(&vdest[j], v, sizeof(Vertex)) == 0) {
+							match_index = j;
+							break;
+						}
+					}
+					}
+					
+					if (match_index == (unsigned short)-1) { v++; *idest++ = idx++; }
+					else { *idest++ = match_index; }
 				}
 				s--;
 				
@@ -300,6 +314,10 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 		}
 		
 	}
+	
+	
+	// update new vertex count
+	*v_cnt = idx;
 	
 	return true;
 }
@@ -507,14 +525,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	ID3D11Buffer *vertex_buffer, *index_buffer;
 	{
 		D3D11_BUFFER_DESC vertex_descriptor = {}; 
-		vertex_descriptor.ByteWidth = (UINT)verticies_count*sizeof(Vertex); //  sizeof(data);
+		vertex_descriptor.ByteWidth = (UINT)verticies_count*sizeof(Vertex);
 		vertex_descriptor.Usage = D3D11_USAGE_DEFAULT;
 		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		D3D11_SUBRESOURCE_DATA vertex_data  = { data };
 		device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
 		
 		D3D11_BUFFER_DESC index_descriptor = {};
-		index_descriptor.ByteWidth = (UINT)indicies_count*sizeof(unsigned short); // sizeof(indicies);
+		index_descriptor.ByteWidth = (UINT)indicies_count*sizeof(unsigned short); 
 		index_descriptor.StructureByteStride = sizeof(unsigned short); // TODO(ziv): check whether I will need to move to 32 bit
 		index_descriptor.Usage = D3D11_USAGE_DEFAULT;
 		index_descriptor.BindFlags = D3D11_BIND_INDEX_BUFFER;
