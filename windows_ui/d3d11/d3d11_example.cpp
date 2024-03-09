@@ -22,19 +22,26 @@
 
 #define APP_TITLE "Testing In Progress..."
 
+// default starting width and height for the window
+static int window_width = 800;
+static int window_height = 600;
+
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
 #define ArrayLength(arr) (sizeof(arr) / sizeof(arr[0]))
 
-// default starting width and height for the window
-static int window_width = 800;
-static int window_height = 600;
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+static inline float float_clamp(float val, float min, float max) {
+	return MAX(MIN(val, max), min);
+}
 
 // some math helpers which I will need to move out of this file
 struct float3 { float x, y, z; };
 struct matrix { float m[4][4]; };
 
-matrix operator*(const matrix& m1, const matrix& m2)
+static matrix operator*(const matrix& m1, const matrix& m2)
 {
     return
     {
@@ -57,8 +64,8 @@ matrix operator*(const matrix& m1, const matrix& m2)
     };
 }
 
-matrix matrix_inverse_transpose(matrix A) {
-	matrix r;
+static matrix matrix_inverse_transpose(matrix A) {
+	matrix r = {0};
 	
 	float determinant = 
 		 +A.m[0][0]*(A.m[1][1]*A.m[2][2] - A.m[2][1]*A.m[1][2])
@@ -78,7 +85,6 @@ matrix matrix_inverse_transpose(matrix A) {
 	
 	return r;
 }
-
 
 //
 // Font Atlas 
@@ -331,12 +337,22 @@ static void FatalError(const char* message)
     ExitProcess(0);
 }
 
-// TODO(ziv): make actual key input 
-
 static bool key_w; // up 
 static bool key_s; // down
 static bool key_a; // right
 static bool key_d; // left
+
+static bool key_space; 
+static bool key_ctrl; 
+
+static bool key_up; 
+static bool key_down;
+static bool key_right;
+static bool key_left;
+
+static int mouse_pos[2];
+
+// TODO(ziv): make actual key input 
 
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	
@@ -353,15 +369,42 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if ((char)wparam == 'S') { key_s = true; }
 			if ((char)wparam == 'A') { key_a = true; }
 			if ((char)wparam == 'D') { key_d = true; }
+			
+			if ((char)wparam == VK_UP) { key_up = true; }
+			if ((char)wparam == VK_DOWN) { key_down = true; }
+			if ((char)wparam == VK_RIGHT) { key_right = true; }
+			if ((char)wparam == VK_LEFT) { key_left = true; }
+			
+			if ((char)wparam == VK_SPACE) { key_space = true; }
+			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
+			
+			
+			
 		} break; 
-		
+		 
 		case WM_KEYUP: 
 		{
 			key_w = (char)wparam == 'W' ? false : key_w;
 			key_s = (char)wparam == 'S' ? false : key_s;
 			key_a = (char)wparam == 'A' ? false : key_a;
 			key_d = (char)wparam == 'D' ? false : key_d;
+			
+			key_up    = (char)wparam == VK_UP ? false : key_up;
+			key_down  = (char)wparam == VK_DOWN ? false : key_down;
+			key_right = (char)wparam == VK_RIGHT ? false : key_right;
+			key_left  = (char)wparam == VK_LEFT ? false : key_left;
+			
+			key_space  = (char)wparam == VK_SPACE ? false : key_space;
+			key_ctrl  = (char)wparam == VK_CONTROL? false : key_ctrl;
 		} break;
+		
+		
+		case WM_MOUSEMOVE: {
+			POINTS p = MAKEPOINTS(lparam);
+			mouse_pos[0] = p.x; mouse_pos[1] = p.y;
+		} break;
+		 
+		
 	}
 	return DefWindowProcA(window, message, wparam, lparam);
 }
@@ -593,8 +636,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 lightposition;
 	};
 	
-	// Constant Buffer
-		ID3D11Buffer *cbuffer; 
+	// Vertex shader constant buffer 
+	ID3D11Buffer *cbuffer; 
 	{
 		D3D11_BUFFER_DESC cbuffer_descriptor = {};
 		cbuffer_descriptor.ByteWidth = (sizeof(VSConstantBuffer) + 0xf) & 0xffffff0;
@@ -602,6 +645,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer); 
+	}
+	
+	struct PSConstantBuffer { 
+		float3 point_light_position;
+		float3 sun_light_direction;
+	};
+	
+	// Pixel shader constant buffer 
+	ID3D11Buffer *ps_constant_buffer; 
+	{
+		D3D11_BUFFER_DESC cbuffer_descriptor = {};
+		cbuffer_descriptor.ByteWidth = (sizeof(PSConstantBuffer) + 0xf) & 0xffffff0;
+		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
+		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		device->CreateBuffer(&cbuffer_descriptor, NULL, &ps_constant_buffer); 
 	}
 	
 	// Create Sampler State
@@ -780,15 +839,25 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
     float f = 9.0f;                             // far
 	
     float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
-    float3 model_scale       = { 1.0f, 1.0f, 1.0f };
+    float3 model_scale       = { 1.5f, 1.5f, 1.5f };
     float3 model_translation = { 0.0f, 0.0f, 4.0f };
 	
-	
-	// light
+	// point light
 	float3 lightposition = {  0, 0, 2 };
+	// global directional light
+	float3 sun_direction = { 0, -1, 0 }; 
 	
 	// camera 
 	float3 camera = { 0, 0, 0 };
+	
+	
+	LARGE_INTEGER freq, start_frame, end_frame;
+	QueryPerformanceFrequency(&freq); 
+	QueryPerformanceCounter(&start_frame); 
+	int last_mouse_pos[2] = {0};
+	
+	float camera_pitch = 1;
+	float camera_yaw = 1; 
 	
 	for (;;) {
 		
@@ -842,35 +911,81 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Handle Game Update State
 		//
 		
-		// transformation matricies
-        matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
-        matrix ry = { cosf(model_rotation.y), 0, sinf(model_rotation.y), 0, 0, 1, 0, 0, -sinf(model_rotation.y), 0, cosf(model_rotation.y), 0, 0, 0, 0, 1 };
-        matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-        matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
-        matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
+		QueryPerformanceCounter(&end_frame);
+		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
 		
-		float w = viewport.Width / viewport.Height; // width (aspect ratio)
-		matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
-		matrix transform = rx * ry * rz * scale * translate;
+
+		float speed = 5;
+				if (key_w)  camera.z += dt*speed;
+		if (key_s)  camera.z -= dt*speed;
+		if (key_d)  camera.x += dt*speed;
+		if (key_a)  camera.x -= dt*speed;
+		if (key_space && !key_ctrl) camera.y += dt*speed; 
+		if (key_space && key_ctrl)  camera.y -= dt*speed; 
+
+/* 
+		camera_yaw   = fmodf(camera_yaw + -(float)(mouse_pos[0] - last_mouse_pos[0])/(float)window_width , (float)(2*M_PI));
+		camera_pitch = float_clamp(camera_pitch + -(float)(mouse_pos[1] - last_mouse_pos[1])/(float)window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
+		 */
+
+		if (key_down) camera_pitch  -= 0.1f; 
+		if (key_up) camera_pitch    += 0.1f; 
 		
-		VSConstantBuffer vs_cbuf; 
-		vs_cbuf.transform = transform; 
-		vs_cbuf.projection = projection; 
-		vs_cbuf.lightposition = lightposition;
-		vs_cbuf.normal_transform = matrix_inverse_transpose(transform);
-		
-		// Send new transformation matrix to the GPU
-		D3D11_MAPPED_SUBRESOURCE mapped;
-		context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
-		context->Unmap((ID3D11Resource *)cbuffer, 0);
+		if (key_left) camera_yaw   -= 0.1f; 
+		if (key_right) camera_yaw  += 0.1f; 
 		
 		
-		if (key_w)  model_rotation.x -= 0.03f;
-		if (key_s)  model_rotation.x += 0.03f;
 		
-		if (key_a)  model_rotation.y -= 0.03f;
-		if (key_d)  model_rotation.y += 0.03f;
+		/* 		
+				if (key_w)  model_rotation.x -= 0.03f;
+				if (key_s)  model_rotation.x += 0.03f;
+				if (key_a)  model_rotation.y -= 0.03f;
+				if (key_d)  model_rotation.y += 0.03f;
+				 */
+		
+		{
+			// Create  Model-View, Camera, Projection matricies
+			matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
+			matrix ry = { cosf(model_rotation.y), 0, sinf(model_rotation.y), 0, 0, 1, 0, 0, -sinf(model_rotation.y), 0, cosf(model_rotation.y), 0, 0, 0, 0, 1 };
+			matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
+			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
+			
+			matrix camera_translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera.x, -camera.y, -camera.z, 1 };
+			
+			matrix camera_rx = { 1, 0, 0, 0, 0, cosf(camera_pitch), -sinf(camera_pitch), 0, 0, sinf(camera_pitch), cosf(camera_pitch), 0, 0, 0, 0, 1 };
+			matrix camera_ry = { cosf(camera_yaw), 0, sinf(camera_yaw), 0, 0, 1, 0, 0, -sinf(camera_yaw), 0, cosf(camera_yaw), 0, 0, 0, 0, 1 };
+			matrix camera_matrix = camera_rx * camera_ry * camera_translate;
+			
+			matrix model_view_matrix = rx * ry * rz * scale * translate * camera_matrix;
+			
+			
+			float w = viewport.Width / viewport.Height; // width (aspect ratio)
+			matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
+			
+			
+			// Send new constant data to the GPU
+			VSConstantBuffer vs_cbuf; 
+			vs_cbuf.transform        = model_view_matrix; 
+			vs_cbuf.projection       = projection; 
+			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
+			
+			D3D11_MAPPED_SUBRESOURCE mapped;
+			context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+			memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
+			context->Unmap((ID3D11Resource *)cbuffer, 0);
+			
+			PSConstantBuffer ps_cbuf; 
+			ps_cbuf.point_light_position = lightposition;
+			ps_cbuf.sun_light_direction = sun_direction;
+			
+			D3D11_MAPPED_SUBRESOURCE ps_mapped;
+			context->Map((ID3D11Resource *)ps_constant_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ps_mapped);
+			memcpy(ps_mapped.pData, &ps_cbuf, sizeof(ps_cbuf)); 
+			context->Unmap((ID3D11Resource *)ps_constant_buffer, 0);
+		}
+		
+		
 		
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
@@ -902,6 +1017,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Pixel Shader
         context->PSSetShader(pshader, NULL, 0);
+		context->PSSetConstantBuffers(0, 1, &ps_constant_buffer); 
         context->PSSetShaderResources(0, 1, &texture_view);
         context->PSSetSamplers(0, 1, &sampler_state);
 		
@@ -948,7 +1064,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		context->DrawInstanced(4, sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 		
 		swap_chain->Present(1, 0);
-	}
+		
+		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1]; 
+		start_frame = end_frame; // update time for dt calc
+		}
 	
 	
 	release_d3d_resources:
@@ -956,6 +1075,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	index_buffer->Release();
 	vertex_buffer->Release();
 	cbuffer->Release();
+	ps_constant_buffer->Release();
 	texture_view->Release();
 	sampler_state->Release();
 	layout->Release();
