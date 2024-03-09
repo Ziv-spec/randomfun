@@ -57,7 +57,7 @@ float4 ps_main(PS_INPUT p) : SV_Target {
 
 		float ambient = 0.1f;
 		float diffuse = max(dot(light_direction, p.normal), 0);
-		float specular_factor = max(0., dot(reflect(-light_direction, p.normal), view_direction));
+		float specular_factor = max(0., dot(normalize(light_direction + view_direction), normalize(p.normal)));
 		float specular = 0.9 * pow(specular_factor, alpha);
 	
 		// attenuation constants
