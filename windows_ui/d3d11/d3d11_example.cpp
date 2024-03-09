@@ -10,7 +10,6 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -36,6 +35,17 @@ static int window_height = 600;
 static inline float float_clamp(float val, float min, float max) {
 	return MAX(MIN(val, max), min);
 }
+
+// Links to look at:
+// https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
+// https://ameye.dev/notes/rendering-outlines/                       - 5 ways to draw an outline
+// https://ameye.dev/notes/stylized-water-shader/                    - stylized water shader
+// https://learnopengl.com/Getting-started/Camera                    - opengl camera
+// https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
+// https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras
+// https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
+// https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
+
 
 // some math helpers which I will need to move out of this file
 struct float3 { float x, y, z; };
