@@ -10,7 +10,8 @@ patterns = {
     "*.sh",
     "*.4coder",
     "*.jai",
-};1
+    "*.hlsl",
+};
 blacklist_patterns = {
     ".*",
 };
