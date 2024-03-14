@@ -42,7 +42,7 @@ static inline float float_clamp(float val, float min, float max) {
 // https://ameye.dev/notes/stylized-water-shader/                    - stylized water shader
 // https://learnopengl.com/Getting-started/Camera                    - opengl camera
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
-// https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras
+ // https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
 
@@ -94,6 +94,35 @@ static matrix matrix_inverse_transpose(matrix A) {
 	r.m[2][2] =  (A.m[0][0]*A.m[1][1] - A.m[1][0]*A.m[0][1])*invdet;
 	
 	return r;
+}
+
+static matrix matrix_transpose(matrix A) {
+	matrix r = {
+		A.m[0][0], A.m[1][0], A.m[2][0], A.m[3][0], 
+		A.m[0][1], A.m[1][1], A.m[2][1], A.m[3][1], 
+		A.m[0][2], A.m[1][2], A.m[2][2], A.m[3][2], 
+		A.m[0][3], A.m[1][3], A.m[2][3], A.m[3][3], 
+	};
+	return r; 
+}
+
+
+static float3 v3normalize(float3 v) {
+	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
+	float inv_len = 1/len; 
+	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
+}
+
+static float3 v3cross(float3 a, float3 b) {
+	return float3{
+		a.y*b.z - a.z*b.y, 
+		a.z*b.x - a.x*b.z, 
+		a.x*b.y - a.y*b.x
+	};
+}
+
+static float v3dot(float3 a, float3 b) {
+	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
 //
@@ -380,15 +409,13 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if ((char)wparam == 'A') { key_a = true; }
 			if ((char)wparam == 'D') { key_d = true; }
 			
-			if ((char)wparam == VK_UP) { key_up = true; }
-			if ((char)wparam == VK_DOWN) { key_down = true; }
+			if ((char)wparam == VK_UP)    { key_up = true; }
+			if ((char)wparam == VK_DOWN)  { key_down = true; }
 			if ((char)wparam == VK_RIGHT) { key_right = true; }
-			if ((char)wparam == VK_LEFT) { key_left = true; }
+			if ((char)wparam == VK_LEFT)  { key_left = true; }
 			
-			if ((char)wparam == VK_SPACE) { key_space = true; }
+			if ((char)wparam == VK_SPACE)   { key_space = true; }
 			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
-			
-			
 			
 		} break; 
 		 
@@ -405,7 +432,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			key_left  = (char)wparam == VK_LEFT ? false : key_left;
 			
 			key_space  = (char)wparam == VK_SPACE ? false : key_space;
-			key_ctrl  = (char)wparam == VK_CONTROL? false : key_ctrl;
+			key_ctrl  = (char)wparam == VK_CONTROL ? false : key_ctrl;
 		} break;
 		
 		
@@ -419,8 +446,13 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 	return DefWindowProcA(window, message, wparam, lparam);
 }
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd) {
-
+#ifdef _DEBUG
+int main()
+#else
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
+#endif
+{
+	
 	//~
 	// Typical WIN32 Window creation
 	//
@@ -835,27 +867,28 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Main Game Loop
 	//
 	
-	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 	LONG curr_width = window_width, curr_height = window_height;
-	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width; 
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
 	
+	
+	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
+	
     float w = viewport.Width / viewport.Height; // width (aspect ratio)
     float h = 1.0f;                             // height
     float n = 1.0f;                             // near
-    float f = 9.0f;                             // far
+    float f = 90.0f;                             // far
 	
     float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
     float3 model_scale       = { 1.5f, 1.5f, 1.5f };
     float3 model_translation = { 0.0f, 0.0f, 4.0f };
 	
-	// point light
-	float3 lightposition = {  0, 0, 2 };
 	// global directional light
 	float3 sun_direction = { 0, -1, 0 }; 
+	// point light
+	float3 lightposition = {  0, 0, 2 };
 	
 	// camera 
 	float3 camera = { 0, 0, 0 };
@@ -864,7 +897,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	LARGE_INTEGER freq, start_frame, end_frame;
 	QueryPerformanceFrequency(&freq); 
 	QueryPerformanceCounter(&start_frame); 
-	int last_mouse_pos[2] = {0};
+	int last_mouse_pos[2] = {-window_width/2, -window_height/2};
 	
 	float camera_pitch = 1;
 	float camera_yaw = 1; 
@@ -933,16 +966,55 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (key_space && !key_ctrl) camera.y += dt*speed; 
 		if (key_space && key_ctrl)  camera.y -= dt*speed; 
 
-/* 
-		camera_yaw   = fmodf(camera_yaw + -(float)(mouse_pos[0] - last_mouse_pos[0])/(float)window_width , (float)(2*M_PI));
-		camera_pitch = float_clamp(camera_pitch + -(float)(mouse_pos[1] - last_mouse_pos[1])/(float)window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
-		 */
-
-		if (key_down) camera_pitch  -= 0.1f; 
-		if (key_up) camera_pitch    += 0.1f; 
+		if (key_down) camera_pitch -= 0.1f; 
+		if (key_up)   camera_pitch += 0.1f; 
+		if (key_left)  camera_yaw -= 0.1f; 
+		if (key_right) camera_yaw += 0.1f; 
 		
-		if (key_left) camera_yaw   -= 0.1f; 
-		if (key_right) camera_yaw  += 0.1f; 
+		model_rotation.x -= 0.03f;
+		model_rotation.y -= 0.03f;
+		
+		
+		
+		camera_yaw   = fmodf(camera_yaw + (float)(mouse_pos[0] - last_mouse_pos[0])/(float)window_width*3.14f, (float)(2*M_PI));
+		camera_pitch = float_clamp(camera_pitch + -(float)(mouse_pos[1] - last_mouse_pos[1])/(float)window_height*3.14f, -(float)M_PI/2.f, (float)M_PI/2.f); 
+		printf("%f %f\n", camera_pitch, camera_yaw);
+		
+		// TODO(ziv): find out if the math is correct!!!!!!!!
+		// forward vector
+		float3 to = { 0, 0, 4 };
+		
+		float3 camera_dir = float3{ to.x-camera.x, to.y - camera.y, to.z - camera.z }; 
+		printf("%f, %f, %f\n", camera_dir.x, camera_dir.y, camera_dir.z);
+		
+		//float3 camera_dir = float3{ 1, 0, 0 }; // test vector. 
+		
+		
+		float3 forward_vector = v3normalize(camera_dir); 
+		
+		// some vector which is included in the up vector plain
+		float3 some_up_vector = { 0, 1, 0 }; 
+		
+		// calculate the right vector using a cross product
+		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
+		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
+		
+		float3 translate_vector = {  
+			v3dot(camera, right_vector),
+			v3dot(camera, up_vector),
+			v3dot(camera, forward_vector)
+		};
+		
+		matrix camera_matrix = {
+			right_vector.x, right_vector.y, right_vector.z, -translate_vector.x, 
+			up_vector.x,    up_vector.y,    up_vector.z,    -translate_vector.y, 
+			camera_dir.x,   camera_dir.y,   camera_dir.z,   -translate_vector.z, 
+			0, 0, 0, 1
+		}; 
+		
+		// inverse the camera matrix to create the inverse transform
+		camera_matrix = matrix_transpose(camera_matrix);
+		
 		
 		
 		
@@ -960,12 +1032,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
 			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
-			
-			matrix camera_translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -camera.x, -camera.y, -camera.z, 1 };
-			
-			matrix camera_rx = { 1, 0, 0, 0, 0, cosf(camera_pitch), -sinf(camera_pitch), 0, 0, sinf(camera_pitch), cosf(camera_pitch), 0, 0, 0, 0, 1 };
-			matrix camera_ry = { cosf(camera_yaw), 0, sinf(camera_yaw), 0, 0, 1, 0, 0, -sinf(camera_yaw), 0, cosf(camera_yaw), 0, 0, 0, 0, 1 };
-			matrix camera_matrix = camera_rx * camera_ry * camera_translate;
 			
 			matrix model_view_matrix = rx * ry * rz * scale * translate * camera_matrix;
 			

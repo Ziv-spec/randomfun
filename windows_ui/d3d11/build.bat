@@ -20,7 +20,7 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
 
 if "%1" equ "debug" (
   set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi /fsanitize=address
-  set LINK_FLAGS= /DEBUG /subsystem:windows
+  set LINK_FLAGS= /DEBUG /subsystem:console
   set FXC=/O0
 ) else (
   set CL_FLAGS=/GL /O1 /GS-
