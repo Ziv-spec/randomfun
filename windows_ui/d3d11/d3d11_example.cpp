@@ -48,7 +48,6 @@ static inline float float_clamp(float val, float min, float max) {
 
 
 // some math helpers which I will need to move out of this file
-struct float3 { float x, y, z; };
 struct matrix { float m[4][4]; };
 
 static matrix operator*(const matrix& m1, const matrix& m2)
@@ -106,6 +105,24 @@ static matrix matrix_transpose(matrix A) {
 	return r; 
 }
 
+ 
+struct float3 { float x, y, z; };
+
+static float3 operator+(const float3& v1, const float3& v2) {
+	return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z };
+}
+
+static float3 operator-(const float3& v1, const float3& v2) {
+	return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z };
+}
+
+static float3 operator*(const float3& v1, const float3& v2) {
+	return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z };
+}
+
+static float3 operator*(const float3& v, const float c) {
+	return float3{ v.x*c, v.y*c, v.z*c };
+}
 
 static float3 v3normalize(float3 v) {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
@@ -113,7 +130,7 @@ static float3 v3normalize(float3 v) {
 	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
 }
 
-static float3 v3cross(float3 a, float3 b) {
+static float3 v3cross(const float3& a, const float3& b) {
 	return float3{
 		a.y*b.z - a.z*b.y, 
 		a.z*b.x - a.x*b.z, 
@@ -121,9 +138,11 @@ static float3 v3cross(float3 a, float3 b) {
 	};
 }
 
-static float v3dot(float3 a, float3 b) {
+static float v3dot(const float3& a, const float3& b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
+
+
 
 //
 // Font Atlas 
@@ -859,8 +878,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
     Sprite* sprite_batch = (Sprite*)(HeapAlloc(GetProcessHeap(), 0, MAX_SPRITES * sizeof(Sprite)));
 	
-	
-	
 	ShowWindow(window, SW_SHOW);
 	
 	//~
@@ -876,31 +893,32 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 	
+	// projection matrix variables
     float w = viewport.Width / viewport.Height; // width (aspect ratio)
     float h = 1.0f;                             // height
     float n = 1.0f;                             // near
-    float f = 90.0f;                             // far
+    float f = 90.0f;                            // far
 	
     float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
     float3 model_scale       = { 1.5f, 1.5f, 1.5f };
     float3 model_translation = { 0.0f, 0.0f, 4.0f };
 	
 	// global directional light
-	float3 sun_direction = { 0, -1, 0 }; 
+	float3 sun_direction = { 0, 0, 1 }; 
 	// point light
 	float3 lightposition = {  0, 0, 2 };
 	
 	// camera 
 	float3 camera = { 0, 0, 0 };
+	float camera_pitch = 0;
+	float camera_yaw = 3.14f/2; 
 	
 	
+	// more things that I need I guess...
 	LARGE_INTEGER freq, start_frame, end_frame;
 	QueryPerformanceFrequency(&freq); 
 	QueryPerformanceCounter(&start_frame); 
-	int last_mouse_pos[2] = {-window_width/2, -window_height/2};
-	
-	float camera_pitch = 1;
-	float camera_yaw = 1; 
+	int last_mouse_pos[2] = {window_width/2, window_height/2};
 	
 	for (;;) {
 		
@@ -950,60 +968,66 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			viewport.Height = (FLOAT)height;
 		}
 		
-		//
+		//~
 		// Handle Game Update State
 		//
 		
 		QueryPerformanceCounter(&end_frame);
 		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
 		
+		// change camera direction
+		if (key_down) camera_pitch -= 0.1f; 
+		if (key_up)   camera_pitch += 0.1f; 
+		if (key_left)  camera_yaw -= 0.1f; 
+		if (key_right) camera_yaw += 0.1f; 
 
+/* 		
+		model_rotation.x -= 0.03f;
+		model_rotation.y -= 0.03f;
+		 */
+
+		
+		float dx = (float)(mouse_pos[0] - last_mouse_pos[0])/window_width;  // keep mouse x direction same
+		float dy = (float)(last_mouse_pos[1] - mouse_pos[1])/window_height; // flip mouse y direction for up means positive
+
+		camera_yaw   = fmodf(camera_yaw + dx*2*3.14f, (float)(2*M_PI));
+		camera_pitch = float_clamp(camera_pitch + dy, -(float)M_PI/2.f, (float)M_PI/2.f); 
+		
+		printf("%f %f\n", camera_pitch, camera_yaw);
+		
+		float3 camera_dir = {
+			-cosf(camera_yaw) * cosf(camera_pitch), 
+			sinf(camera_pitch), 
+			sinf(camera_yaw) * cosf(camera_pitch)
+		}; 
+		
+		float3 forward_vector = v3normalize(camera_dir); 
+		// some vector which is included in the up vector plain
+		float3 some_up_vector = { 0, 1, 0 }; 
+		// calculate the right vector using a cross product
+		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
+		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
+		
+		
 		float speed = 5;
-				if (key_w)  camera.z += dt*speed;
+
+		// change camera position according to regular space
+/* 		
+		if (key_w)  camera.z += dt*speed;
 		if (key_s)  camera.z -= dt*speed;
 		if (key_d)  camera.x += dt*speed;
 		if (key_a)  camera.x -= dt*speed;
 		if (key_space && !key_ctrl) camera.y += dt*speed; 
 		if (key_space && key_ctrl)  camera.y -= dt*speed; 
-
-		if (key_down) camera_pitch -= 0.1f; 
-		if (key_up)   camera_pitch += 0.1f; 
-		if (key_left)  camera_yaw -= 0.1f; 
-		if (key_right) camera_yaw += 0.1f; 
+		 */
 		
-		model_rotation.x -= 0.03f;
-		model_rotation.y -= 0.03f;
+		// change camera position according to the camera look at angle
+		if (key_w) camera = camera+forward_vector*(dt*speed);
+		if (key_s) camera = camera-forward_vector*(dt*speed);
+		if (key_d) camera = camera+right_vector*(dt*speed);
+		if (key_a) camera = camera-right_vector*(dt*speed);
 		
-		
-		
-		camera_yaw   = fmodf(camera_yaw + (float)(mouse_pos[0] - last_mouse_pos[0])/(float)window_width*3.14f, (float)(2*M_PI));
-		camera_pitch = float_clamp(camera_pitch + -(float)(mouse_pos[1] - last_mouse_pos[1])/(float)window_height*3.14f, -(float)M_PI/2.f, (float)M_PI/2.f); 
-		printf("%f %f\n", camera_pitch, camera_yaw);
-		
-		// TODO(ziv): find out if the math is correct!!!!!!!!
-		// forward vector
-		float3 to = { 0, 0, 4 };
-		
-		float3 camera_dir = float3{ to.x-camera.x, to.y - camera.y, to.z - camera.z }; 
-		printf("%f, %f, %f\n", camera_dir.x, camera_dir.y, camera_dir.z);
-		
-		//float3 camera_dir = float3{ 1, 0, 0 }; // test vector. 
-		
-		
-		float3 forward_vector = v3normalize(camera_dir); 
-		
-		// some vector which is included in the up vector plain
-		float3 some_up_vector = { 0, 1, 0 }; 
-		
-		// calculate the right vector using a cross product
-		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
-		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
-		
-		float3 translate_vector = {  
-			v3dot(camera, right_vector),
-			v3dot(camera, up_vector),
-			v3dot(camera, forward_vector)
-		};
+		float3 translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
 		
 		matrix camera_matrix = {
 			right_vector.x, right_vector.y, right_vector.z, -translate_vector.x, 
@@ -1015,15 +1039,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// inverse the camera matrix to create the inverse transform
 		camera_matrix = matrix_transpose(camera_matrix);
 		
+		lightposition = lightposition - translate_vector; 
 		
-		
-		
-		/* 		
-				if (key_w)  model_rotation.x -= 0.03f;
-				if (key_s)  model_rotation.x += 0.03f;
-				if (key_a)  model_rotation.y -= 0.03f;
-				if (key_d)  model_rotation.y += 0.03f;
-				 */
 		
 		{
 			// Create  Model-View, Camera, Projection matricies
