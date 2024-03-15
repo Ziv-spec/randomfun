@@ -48,10 +48,13 @@ static int window_height = 600;
 * [x] Obj dynamic transformation
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
-* [x] camera
-* [ ] Face Culling
+	* [ ] Camera
+			*   [x] Normal Camera
+			*   [ ] Free Camera 
+* [x] Face Culling
 * [ ] z-buffer
 * [ ] Shadow Mapping
+* [ ] Normal Mapping
 * [ ] Keyboard Input
 * [ ] Obj Outlines
 * [ ] Mouse screen to world projection
@@ -408,11 +411,14 @@ static bool key_d; // left
 
 static bool key_space; 
 static bool key_ctrl; 
+static bool key_tab; 
+static bool key_tab_pressed;  // this will escape into free camera mode
 
 static bool key_up; 
 static bool key_down;
 static bool key_right;
 static bool key_left;
+
 
 static int mouse_pos[2];
 
@@ -440,6 +446,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if ((char)wparam == VK_SPACE)   { key_space = true; }
 			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
 			
+			if (wparam == VK_TAB) { key_tab = true; }
 		} break; 
 		 
 		case WM_KEYUP: 
@@ -455,9 +462,12 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			key_left  = (char)wparam == VK_LEFT ? false : key_left;
 			
 			key_space  = (char)wparam == VK_SPACE ? false : key_space;
-			key_ctrl  = (char)wparam == VK_CONTROL ? false : key_ctrl;
+			key_ctrl   = (char)wparam == VK_CONTROL ? false : key_ctrl;
+			key_tab    = (wparam == VK_TAB) ? false : key_tab;
+			
+			if (wparam == VK_TAB) key_tab_pressed = true;
+			
 		} break;
-		
 		
 		case WM_MOUSEMOVE: {
 			POINTS p = MAKEPOINTS(lparam);
@@ -501,6 +511,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
 								  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
+	
+	
+	bool show_free_camera = false; 
+	
+	// TODO(ziv): MOVE THIS CODE!!!
+	RECT rcClip;           // new area for ClipCursor
+	RECT rcOldClip;        // previous area for ClipCursor
+	
+	// Record the area in which the cursor can move. 
+	GetClipCursor(&rcOldClip); 
+	
+	// Get the dimensions of the application's window. 
+	GetWindowRect(window, &rcClip); 
+	
 	
 	//~
 	// D3D11 Initialization
@@ -606,6 +630,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
 		device->CreateRenderTargetView(frame_buffer, NULL, &frame_buffer_view);
 		frame_buffer->Release();
+	}
+	
+	// Create a Rasterizer
+		ID3D11RasterizerState1* rasterizer_cull_back;
+	{
+		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
+		rasterizer_desc.FillMode = D3D11_FILL_SOLID;
+		rasterizer_desc.CullMode = D3D11_CULL_BACK;
+		
+		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
+		
+		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
+		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
+		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
 	}
 	
 	
@@ -917,6 +955,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	float camera_pitch = 0;
 	float camera_yaw = 3.14f/2; 
 	
+	float dx = 0, dy = 0;
 	
 	// more things that I need I guess...
 	LARGE_INTEGER freq, start_frame, end_frame;
@@ -943,11 +982,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//
 		// Handle window resize
 		//
-
+		
 		RECT rect; 
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
-			LONG height = rect.bottom - rect.top;
+		LONG height = rect.bottom - rect.top;
 		
 		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
 			
@@ -972,6 +1011,46 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			viewport.Height = (FLOAT)height;
 		}
 		
+		
+
+/* 		
+		// TODO(ziv): Refactor this code please!!! (input must be better)
+		
+		// Enable/Disable Free Camera Mode
+		if (key_tab_pressed) {
+			show_free_camera = !show_free_camera; 
+			
+			if (show_free_camera) {
+				// Confine the cursor to the application's window. 
+				Assert(ClipCursor(&rcClip));
+				//bool success = ShowCursor(false);
+				//Assert(success); 
+			}
+			else {
+				// Restore the cursor to its previous area. 
+				ClipCursor(&rcOldClip);
+				ShowCursor(true);
+			}
+		}
+		
+		if (show_free_camera) {
+			
+			last_mouse_pos[0] = (int)(rcClip.left + width/2);
+			last_mouse_pos[1] = (int)(rcClip.bottom + height/2);
+			
+		}
+		
+		key_tab_pressed = false;
+		
+		if (key_ctrl) {
+			return 0;;
+		}
+			 */
+
+			
+			
+		
+		
 		//~
 		// Update Game State
 		//
@@ -984,6 +1063,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		model_rotation.y -= 0.03f;
 				 */
 		
+			
 		
 		// Update Camera
 		matrix inv_camera_matrix;
@@ -991,11 +1071,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		{
 			// https://learnopengl.com/Getting-started/Camera
 			
-		float dx = (float)(mouse_pos[0] - last_mouse_pos[0])/window_width;
-		float dy = (float)(last_mouse_pos[1] - mouse_pos[1])/window_height; // NOTE(ziv): flipped y axis so up is positive
-		
-		camera_yaw   = fmodf(camera_yaw - dx*2*3.14f, (float)(2*M_PI));
-		camera_pitch = float_clamp(camera_pitch + dy, -(float)M_PI/2.f, (float)M_PI/2.f); 
+			dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
+			dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+			
+			camera_yaw   = fmodf(camera_yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
+			camera_pitch = float_clamp(camera_pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
 			
 			// this camera is pointing in the inverse direction of it's target
 		float3 camera_dir = {
@@ -1098,6 +1178,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Rasterizer Stage
         context->RSSetViewports(1, &viewport);
+		context->RSSetState(rasterizer_cull_back);
         //context->RSSetState(rasterizerState);
 		
 		// Pixel Shader
@@ -1182,6 +1263,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	context->Release();
 	swap_chain->Release();
 	frame_buffer_view->Release();
+	rasterizer_cull_back->Release();
 	
 	return 0; 
 }
