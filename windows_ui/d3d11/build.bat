@@ -36,6 +36,6 @@ rc.exe /nologo /fo enet.res ../resources/enet.rc
 
 REM cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL_FLAGS% /nologo /link  /INCREMENTAL:NO %LINK_FLAGS% /FIXED /merge:_RDATA=.rdata
 
-cl ../d3d11_example.cpp enet.res /std:c++20 /nologo /FC /W3 /WX %CL_FLAGS% /link /INCREMENTAL:NO %LINK_FLAGS%
+cl ../d3d11_example.cpp enet.res  /nologo /FC /W3 /WX %CL_FLAGS% /link /INCREMENTAL:NO %LINK_FLAGS%
 
 popd

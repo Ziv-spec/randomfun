@@ -45,7 +45,6 @@ float4 ps_main(PS_INPUT p) : SV_Target {
 	// Understanding the phong model:
 	// attenuation * light * (k_d * cos(theta) + K_s * cos(phi)^alpha + k_am * ambient)
 
-
 	// directional light
 	float4 directional_light_color;
 	{
@@ -81,8 +80,6 @@ float4 ps_main(PS_INPUT p) : SV_Target {
 
 		point_light_color = (ambient + diffuse + specular)* attenuation;
 	}
-
-	
 
 	return texture0.Sample(sampler0, p.uv) * (point_light_color + directional_light_color);
 }

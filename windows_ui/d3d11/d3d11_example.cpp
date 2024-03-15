@@ -32,22 +32,43 @@ static int window_height = 600;
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-static inline float float_clamp(float val, float min, float max) {
-	return MAX(MIN(val, max), min);
-}
-
-// Links to look at:
+// Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
 // https://ameye.dev/notes/rendering-outlines/                       - 5 ways to draw an outline
 // https://ameye.dev/notes/stylized-water-shader/                    - stylized water shader
-// https://learnopengl.com/Getting-started/Camera                    - opengl camera
-// https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
- // https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
+// Advanced Camera (better than the lookat matrix I have implemented)
+// https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
+// https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
 
+/* 
+* TODO(ziv):
+* [x] Obj loading (with position, textures, normals)
+* [x] Obj dynamic transformation
+* [x] Obj dynamic lighting(global illumination + point light)
+* [x] Texture mapping
+* [x] camera
+* [ ] Face Culling
+* [ ] z-buffer
+* [ ] Shadow Mapping
+* [ ] Keyboard Input
+* [ ] Obj Outlines
+* [ ] Mouse screen to world projection
+* [ ] Font Rendering (Demo created but a better one should be done)
+* [ ] General UI (This has many steps which I will detail when I will begin working on it)
+* [ ] Update on Resize for fluid screen resize handling
+*/
 
-// some math helpers which I will need to move out of this file
+// 
+// Math
+//
+
+static inline float float_clamp(float val, float min, float max) {
+	float temp = MIN(val, max);
+	return MAX(temp, min);
+}
+
 struct matrix { float m[4][4]; };
 
 static matrix operator*(const matrix& m1, const matrix& m2)
@@ -105,24 +126,12 @@ static matrix matrix_transpose(matrix A) {
 	return r; 
 }
 
- 
 struct float3 { float x, y, z; };
 
-static float3 operator+(const float3& v1, const float3& v2) {
-	return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z };
-}
-
-static float3 operator-(const float3& v1, const float3& v2) {
-	return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z };
-}
-
-static float3 operator*(const float3& v1, const float3& v2) {
-	return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z };
-}
-
-static float3 operator*(const float3& v, const float c) {
-	return float3{ v.x*c, v.y*c, v.z*c };
-}
+static float3 operator+(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
+static float3 operator-(const float3& v1, const float3& v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
+static float3 operator*(const float3& v1, const float3& v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
+static float3 operator*(const float3& v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
 
 static float3 v3normalize(float3 v) {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
@@ -141,8 +150,6 @@ static float3 v3cross(const float3& a, const float3& b) {
 static float v3dot(const float3& a, const float3& b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
-
-
 
 //
 // Font Atlas 
@@ -379,7 +386,6 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 		
 	}
 	
-	
 	// update new vertex count
 	*v_cnt = idx;
 	
@@ -409,8 +415,6 @@ static bool key_right;
 static bool key_left;
 
 static int mouse_pos[2];
-
-// TODO(ziv): make actual key input 
 
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	
@@ -969,34 +973,33 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		//~
-		// Handle Game Update State
+		// Update Game State
 		//
 		
 		QueryPerformanceCounter(&end_frame);
 		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
 		
-		// change camera direction
-		if (key_down) camera_pitch -= 0.1f; 
-		if (key_up)   camera_pitch += 0.1f; 
-		if (key_left)  camera_yaw -= 0.1f; 
-		if (key_right) camera_yaw += 0.1f; 
-
 /* 		
 		model_rotation.x -= 0.03f;
 		model_rotation.y -= 0.03f;
-		 */
-
+				 */
 		
-		float dx = (float)(mouse_pos[0] - last_mouse_pos[0])/window_width;  // keep mouse x direction same
-		float dy = (float)(last_mouse_pos[1] - mouse_pos[1])/window_height; // flip mouse y direction for up means positive
-
-		camera_yaw   = fmodf(camera_yaw + dx*2*3.14f, (float)(2*M_PI));
+		
+		// Update Camera
+		matrix inv_camera_matrix;
+		float3 translate_vector; 
+		{
+			// https://learnopengl.com/Getting-started/Camera
+			
+		float dx = (float)(mouse_pos[0] - last_mouse_pos[0])/window_width;
+		float dy = (float)(last_mouse_pos[1] - mouse_pos[1])/window_height; // NOTE(ziv): flipped y axis so up is positive
+		
+		camera_yaw   = fmodf(camera_yaw - dx*2*3.14f, (float)(2*M_PI));
 		camera_pitch = float_clamp(camera_pitch + dy, -(float)M_PI/2.f, (float)M_PI/2.f); 
-		
-		printf("%f %f\n", camera_pitch, camera_yaw);
-		
+			
+			// this camera is pointing in the inverse direction of it's target
 		float3 camera_dir = {
-			-cosf(camera_yaw) * cosf(camera_pitch), 
+			cosf(camera_yaw) * cosf(camera_pitch), 
 			sinf(camera_pitch), 
 			sinf(camera_yaw) * cosf(camera_pitch)
 		}; 
@@ -1008,58 +1011,47 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
 		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
 		
-		
 		float speed = 5;
 
-		// change camera position according to regular space
-/* 		
-		if (key_w)  camera.z += dt*speed;
-		if (key_s)  camera.z -= dt*speed;
-		if (key_d)  camera.x += dt*speed;
-		if (key_a)  camera.x -= dt*speed;
-		if (key_space && !key_ctrl) camera.y += dt*speed; 
-		if (key_space && key_ctrl)  camera.y -= dt*speed; 
-		 */
-		
 		// change camera position according to the camera look at angle
 		if (key_w) camera = camera+forward_vector*(dt*speed);
 		if (key_s) camera = camera-forward_vector*(dt*speed);
 		if (key_d) camera = camera+right_vector*(dt*speed);
 		if (key_a) camera = camera-right_vector*(dt*speed);
 		
-		float3 translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
+		translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
 		
-		matrix camera_matrix = {
+			matrix camera_matrix = matrix{
 			right_vector.x, right_vector.y, right_vector.z, -translate_vector.x, 
 			up_vector.x,    up_vector.y,    up_vector.z,    -translate_vector.y, 
 			camera_dir.x,   camera_dir.y,   camera_dir.z,   -translate_vector.z, 
 			0, 0, 0, 1
-		}; 
+													}; 
 		
 		// inverse the camera matrix to create the inverse transform
-		camera_matrix = matrix_transpose(camera_matrix);
+		inv_camera_matrix = matrix_transpose(camera_matrix);
+		}
 		
-		lightposition = lightposition - translate_vector; 
 		
-		
+		// Update model-view matrix
 		{
-			// Create  Model-View, Camera, Projection matricies
 			matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
 			matrix ry = { cosf(model_rotation.y), 0, sinf(model_rotation.y), 0, 0, 1, 0, 0, -sinf(model_rotation.y), 0, cosf(model_rotation.y), 0, 0, 0, 0, 1 };
 			matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
 			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
 			
-			matrix model_view_matrix = rx * ry * rz * scale * translate * camera_matrix;
+			matrix model_view_matrix = rx * ry * rz * scale * translate * inv_camera_matrix;
 			
 			
+			// fov
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
 			matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
 			
 			
 			// Send new constant data to the GPU
 			VSConstantBuffer vs_cbuf; 
-			vs_cbuf.transform        = model_view_matrix; 
+			vs_cbuf.transform        = model_view_matrix;  
 			vs_cbuf.projection       = projection; 
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			
@@ -1069,7 +1061,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			context->Unmap((ID3D11Resource *)cbuffer, 0);
 			
 			PSConstantBuffer ps_cbuf; 
-			ps_cbuf.point_light_position = lightposition;
+			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
 			
 			D3D11_MAPPED_SUBRESOURCE ps_mapped;
@@ -1086,7 +1078,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		//~
-		// Render Game
+		// Render Model
 		// 
 		
 		context->ClearRenderTargetView(frame_buffer_view, background_color);
@@ -1156,8 +1148,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		context->OMSetRenderTargets(1, &frame_buffer_view, nullptr);
 		context->DrawInstanced(4, sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 		
+		// present the backbuffer to the screen
 		swap_chain->Present(1, 0);
 		
+		
+		// end of frame
 		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1]; 
 		start_frame = end_frame; // update time for dt calc
 		}
