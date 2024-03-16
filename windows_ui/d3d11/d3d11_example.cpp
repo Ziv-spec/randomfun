@@ -41,6 +41,8 @@ static int window_height = 600;
 // Advanced Camera (better than the lookat matrix I have implemented)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
 // https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
+// https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
+
 
 /* 
 * TODO(ziv):
@@ -52,7 +54,7 @@ static int window_height = 600;
 			*   [x] Normal Camera
 			*   [ ] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
-* [ ] z-buffer
+* [x] z-buffer
 * [ ] Shadow Mapping
 * [ ] Normal Mapping
 * [ ] Keyboard Input
@@ -615,9 +617,55 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	{
 		ID3D11Texture2D* frame_buffer;
 		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
-		device->CreateRenderTargetView(frame_buffer, NULL, &frame_buffer_view);
+		
+		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
+		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
+		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		
+		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
 		frame_buffer->Release();
 	}
+	
+	// Create Depth Sentcil
+    ID3D11DepthStencilState* depth_stencil_state;
+	{
+		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
+		depth_stencil_desc.DepthEnable    = TRUE;
+		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
+		
+		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+	}
+	
+	// Create Z-Buffer
+	ID3D11DepthStencilView *zbuffer;
+		ID3D11Texture2D *zbuffer_texture; 
+	{
+		
+		// same descriptor as frame_buffer
+		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+		
+		// TODO(ziv): Make this dynamically resizeable
+		depth_buffer_desc.Width = 784;
+		depth_buffer_desc.Height = 561;
+		depth_buffer_desc.MipLevels = 1;
+		depth_buffer_desc.ArraySize = 1;
+		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_buffer_desc.SampleDesc.Count = 1;
+		depth_buffer_desc.SampleDesc.Quality = 0;
+		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
+		
+		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {}; 
+		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			depth_stencil_view_desc.Texture2D.MipSlice = 0; 
+		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
+	}
+	
+	context->OMSetDepthStencilState(depth_stencil_state, 0); // TODO(ziv): Move this!!
+	context->OMSetRenderTargets(1, &frame_buffer_view, zbuffer);
 	
 	// Create a Rasterizer
 		ID3D11RasterizerState1* rasterizer_cull_back;
@@ -990,7 +1038,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
 		LONG height = rect.bottom - rect.top;
-		
+		#if 0
 		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
 			
 			if (frame_buffer_view) {
@@ -1013,7 +1061,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			viewport.Width = (FLOAT)width; 
 			viewport.Height = (FLOAT)height;
 		}
-		
+		#endif 
 		
 
 /* 		
@@ -1132,7 +1180,96 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		inv_camera_matrix = matrix_transpose(camera_matrix);
 		}
 		
+		// Don't render when minimized
+		if (width == 0 && height == 0) {
+			Sleep(16); continue;
+		}
 		
+		
+		
+		
+		
+		
+		
+#if 1
+		model_translation.x = 0;
+		model_rotation.x = 0;
+		// Update model-view matrix
+		{
+			matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
+			matrix ry = { cosf(model_rotation.y), 0, sinf(model_rotation.y), 0, 0, 1, 0, 0, -sinf(model_rotation.y), 0, cosf(model_rotation.y), 0, 0, 0, 0, 1 };
+			matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
+			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
+			
+			matrix model_view_matrix = rx * ry * rz * scale * translate * inv_camera_matrix;
+			
+			
+			// fov
+			float w = viewport.Width / viewport.Height; // width (aspect ratio)
+			matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
+			
+			
+			// Send new constant data to the GPU
+			VSConstantBuffer vs_cbuf; 
+			vs_cbuf.transform        = model_view_matrix;  
+			vs_cbuf.projection       = projection; 
+			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
+			
+			D3D11_MAPPED_SUBRESOURCE mapped;
+			context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+			memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
+			context->Unmap((ID3D11Resource *)cbuffer, 0);
+			
+			PSConstantBuffer ps_cbuf; 
+			ps_cbuf.point_light_position = lightposition - translate_vector;
+			ps_cbuf.sun_light_direction = sun_direction;
+			
+			D3D11_MAPPED_SUBRESOURCE ps_mapped;
+			context->Map((ID3D11Resource *)ps_constant_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ps_mapped);
+			memcpy(ps_mapped.pData, &ps_cbuf, sizeof(ps_cbuf)); 
+			context->Unmap((ID3D11Resource *)ps_constant_buffer, 0);
+		}
+		
+		
+		context->ClearRenderTargetView(frame_buffer_view, background_color);
+		context->ClearDepthStencilView(zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
+		
+		// Input Assembler
+        context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(layout);
+		const UINT stride = sizeof(Vertex); 
+		const UINT offset = 0;
+        context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
+        context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
+		
+		// Vertex Shader
+        context->VSSetShader(vshader, NULL, 0);
+		context->VSSetConstantBuffers(0, 1, &cbuffer);
+		
+		// Rasterizer Stage
+        context->RSSetViewports(1, &viewport);
+		context->RSSetState(rasterizer_cull_back);
+		
+		// Pixel Shader
+        context->PSSetShader(pshader, NULL, 0);
+		context->PSSetConstantBuffers(0, 1, &ps_constant_buffer); 
+        context->PSSetShaderResources(0, 1, &texture_view);
+        context->PSSetSamplers(0, 1, &sampler_state);
+		
+		// Output Merger
+		context->DrawIndexed((UINT)indicies_count, 0, 0); 
+		
+		
+		
+#endif 
+		
+		
+		
+		
+		model_translation.x = 1;
+		model_rotation.x = 1;
+		 
 		// Update model-view matrix
 		{
 			matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
@@ -1172,26 +1309,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		
-		// Don't render when minimized
-		if (width == 0 && height == 0) {
-			Sleep(16); continue;
-		}
-		
 		//~
 		// Render Model
 		// 
 		
-		context->ClearRenderTargetView(frame_buffer_view, background_color);
-		//context->ClearDepthStencilView(depthBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 		
+
+/* 		
+		context->ClearRenderTargetView(frame_buffer_view, background_color);
+		context->ClearDepthStencilView(zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
+		 */
+
 		// Input Assembler
+		{
         context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			context->IASetInputLayout(layout);
 		const UINT stride = sizeof(Vertex); 
 		const UINT offset = 0;
         context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
         context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
-		
+		}
 		// Vertex Shader
         context->VSSetShader(vshader, NULL, 0);
 		context->VSSetConstantBuffers(0, 1, &cbuffer);
@@ -1199,7 +1336,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Rasterizer Stage
         context->RSSetViewports(1, &viewport);
 		context->RSSetState(rasterizer_cull_back);
-        //context->RSSetState(rasterizerState);
 		
 		// Pixel Shader
         context->PSSetShader(pshader, NULL, 0);
@@ -1208,11 +1344,33 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         context->PSSetSamplers(0, 1, &sampler_state);
 		
 		// Output Merger
-        context->OMSetRenderTargets(1, &frame_buffer_view, NULL);
-        //context->OMSetDepthStencilState(depthStencilState, 0);
-        //context->OMSetBlendState(nullptr, nullptr, 0xffffffff); // use default blend mode (i.e. disable)
-		
 		context->DrawIndexed((UINT)indicies_count, 0, 0); 
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		
 		
 		//~
@@ -1246,7 +1404,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         context->PSSetShaderResources(1, 1, &atlas_resource_view);
         context->PSSetSamplers(0, 1, &font_sampler);
 		
-		context->OMSetRenderTargets(1, &frame_buffer_view, nullptr);
+		//context->OMSetRenderTargets(1, &frame_buffer_view, nullptr);
 		context->DrawInstanced(4, sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 		
 		// present the backbuffer to the screen
@@ -1284,6 +1442,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	swap_chain->Release();
 	frame_buffer_view->Release();
 	rasterizer_cull_back->Release();
+	depth_stencil_state->Release(); 
+	zbuffer->Release();
+	zbuffer_texture->Release(); 
 	
 	return 0; 
 }

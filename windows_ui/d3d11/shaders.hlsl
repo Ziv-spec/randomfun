@@ -73,7 +73,7 @@ float4 ps_main(PS_INPUT p) : SV_Target {
 		// attenuation constants
 		float constant = 1.; 
 		float llinear = 0.09;
-		float quadratic = 0.032;
+		float quadratic = 0.0032;
 
 		float d = length(p.eye_position); // distance from fragment
 		float attenuation = 1 / (constant + llinear * d + quadratic * d * d);
