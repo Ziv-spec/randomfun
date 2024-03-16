@@ -306,7 +306,7 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 				s++;
 			indicies_count += 3; // 3 indicies per face
 		}
-		
+		 
 		while(*s != '\0' && *s++ != '\n');
 	}
 	
@@ -641,13 +641,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	ID3D11DepthStencilView *zbuffer;
 		ID3D11Texture2D *zbuffer_texture; 
 	{
-		
-		// same descriptor as frame_buffer
 		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
 		
 		// TODO(ziv): Make this dynamically resizeable
-		depth_buffer_desc.Width = 784;
-		depth_buffer_desc.Height = 561;
+		depth_buffer_desc.Width = window_height;
+		depth_buffer_desc.Height = window_width;
 		depth_buffer_desc.MipLevels = 1;
 		depth_buffer_desc.ArraySize = 1;
 		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
@@ -663,9 +661,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			depth_stencil_view_desc.Texture2D.MipSlice = 0; 
 		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
 	}
-	
-	context->OMSetDepthStencilState(depth_stencil_state, 0); // TODO(ziv): Move this!!
-	context->OMSetRenderTargets(1, &frame_buffer_view, zbuffer);
 	
 	// Create a Rasterizer
 		ID3D11RasterizerState1* rasterizer_cull_back;
@@ -1038,13 +1033,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
 		LONG height = rect.bottom - rect.top;
-		#if 0
 		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
 			
 			if (frame_buffer_view) {
 				context->ClearState(); 
 				frame_buffer_view->Release(); 
 				frame_buffer_view = NULL;
+				
+				zbuffer_texture->Release(); 
+				zbuffer->Release(); 
 			}
 			
 			if (width != 0 && height != 0) {
@@ -1056,12 +1053,31 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				swap_chain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)&backbuffer);
 				device->CreateRenderTargetView(backbuffer, NULL, &frame_buffer_view);
 				backbuffer->Release();
+				
+				// Create Z-Buffer
+					D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+					
+					depth_buffer_desc.Width = width;
+					depth_buffer_desc.Height = height;
+					depth_buffer_desc.MipLevels = 1;
+					depth_buffer_desc.ArraySize = 1;
+					depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
+					depth_buffer_desc.SampleDesc.Count = 1;
+					depth_buffer_desc.SampleDesc.Quality = 0;
+					depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+					depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+					device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
+					
+					D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {}; 
+					depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
+					depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+					depth_stencil_view_desc.Texture2D.MipSlice = 0; 
+					device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
 			}
 			
 			viewport.Width = (FLOAT)width; 
 			viewport.Height = (FLOAT)height;
 		}
-		#endif 
 		
 
 /* 		
@@ -1188,10 +1204,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		
-		
-		
-		
-#if 1
 		model_translation.x = 0;
 		model_rotation.x = 0;
 		// Update model-view matrix
@@ -1258,11 +1270,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         context->PSSetSamplers(0, 1, &sampler_state);
 		
 		// Output Merger
+		context->OMSetDepthStencilState(depth_stencil_state, 0);
+		context->OMSetRenderTargets(1, &frame_buffer_view, zbuffer);
+		
 		context->DrawIndexed((UINT)indicies_count, 0, 0); 
-		
-		
-		
-#endif 
 		
 		
 		
@@ -1345,33 +1356,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Output Merger
 		context->DrawIndexed((UINT)indicies_count, 0, 0); 
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
 		
 		//~
 		// Render Text
