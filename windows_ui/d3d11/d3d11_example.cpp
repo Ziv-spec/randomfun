@@ -70,17 +70,35 @@ static int window_height = 600;
 // Math
 //
 
-static inline float float_clamp(float val, float min, float max) {
-	float temp = MIN(val, max);
-	return MAX(temp, min);
+struct matrix { float m[4][4]; };
+struct float3 { float x, y, z; };
+
+inline static float3 operator+(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
+inline static float3 operator-(const float3& v1, const float3& v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
+inline static float3 operator*(const float3& v1, const float3& v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
+inline static float3 operator*(const float3& v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
+
+inline static float3 v3normalize(float3 v) {
+	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
+	float inv_len = 1/len; 
+	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
 }
 
-struct matrix { float m[4][4]; };
+inline static float3 v3cross(const float3& a, const float3& b) {
+	return float3{
+		a.y*b.z - a.z*b.y, 
+		a.z*b.x - a.x*b.z, 
+		a.x*b.y - a.y*b.x
+	};
+}
 
-static matrix operator*(const matrix& m1, const matrix& m2)
+inline static float v3dot(const float3& a, const float3& b) {
+	return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+
+inline static matrix operator*(const matrix& m1, const matrix& m2)
 {
-    return
-    {
+    return {
         m1.m[0][0] * m2.m[0][0] + m1.m[0][1] * m2.m[1][0] + m1.m[0][2] * m2.m[2][0] + m1.m[0][3] * m2.m[3][0],
         m1.m[0][0] * m2.m[0][1] + m1.m[0][1] * m2.m[1][1] + m1.m[0][2] * m2.m[2][1] + m1.m[0][3] * m2.m[3][1],
         m1.m[0][0] * m2.m[0][2] + m1.m[0][1] * m2.m[1][2] + m1.m[0][2] * m2.m[2][2] + m1.m[0][3] * m2.m[3][2],
@@ -122,7 +140,7 @@ static matrix matrix_inverse_transpose(matrix A) {
 	return r;
 }
 
-static matrix matrix_transpose(matrix A) {
+inline static matrix matrix_transpose(matrix A) {
 	matrix r = {
 		A.m[0][0], A.m[1][0], A.m[2][0], A.m[3][0], 
 		A.m[0][1], A.m[1][1], A.m[2][1], A.m[3][1], 
@@ -132,30 +150,48 @@ static matrix matrix_transpose(matrix A) {
 	return r; 
 }
 
-struct float3 { float x, y, z; };
-
-static float3 operator+(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
-static float3 operator-(const float3& v1, const float3& v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
-static float3 operator*(const float3& v1, const float3& v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
-static float3 operator*(const float3& v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
-
-static float3 v3normalize(float3 v) {
-	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
-	float inv_len = 1/len; 
-	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
+static inline float float_clamp(float val, float min, float max) {
+	float temp = MIN(val, max);
+	return MAX(temp, min);
 }
 
-static float3 v3cross(const float3& a, const float3& b) {
-	return float3{
-		a.y*b.z - a.z*b.y, 
-		a.z*b.x - a.x*b.z, 
-		a.x*b.y - a.y*b.x
+static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
+	#if 1
+	matrix rx = { 
+		1, 0,                0,                 0, 
+		0, cosf(rotation.x), -sinf(rotation.x), 0, 
+		0, sinf(rotation.x), cosf(rotation.x),  0, 
+		0, 0,                0,                 1 
 	};
+	matrix ry = { 
+		cosf(rotation.y), 0, sinf(rotation.y), 0, 
+		0,                1, 0,                0, 
+		-sinf(rotation.y),0, cosf(rotation.y), 0, 
+		0,                0, 0,                1
+	};
+	matrix rz = { 
+		cosf(rotation.z), -sinf(rotation.z), 0, 0, 
+		sinf(rotation.z), cosf(rotation.z), 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1 
+	};
+	matrix scale_xyz = { 
+		scale.x, 0, 0, 0,
+			 0, scale.y, 0, 0, 
+		0, 0, scale.z, 0, 
+		0, 0, 0, 1 
+	};
+	matrix translate_xyz = { 
+		1, 0, 0, 0, 
+		0, 1, 0, 0, 
+		0, 0, 1, 0, 
+		translation.x, translation.y, translation.z, 1 
+	};
+	return rx * ry * rz * scale_xyz * translate_xyz;
+		#endif 
 }
 
-static float v3dot(const float3& a, const float3& b) {
-	return a.x*b.x + a.y*b.y + a.z*b.z;
-}
+//~
 
 //
 // Font Atlas 
@@ -1208,21 +1244,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		model_rotation.x = 0;
 		// Update model-view matrix
 		{
-			matrix rx = { 1, 0, 0, 0, 0, cosf(model_rotation.x), -sinf(model_rotation.x), 0, 0, sinf(model_rotation.x), cosf(model_rotation.x), 0, 0, 0, 0, 1 };
-			matrix ry = { cosf(model_rotation.y), 0, sinf(model_rotation.y), 0, 0, 1, 0, 0, -sinf(model_rotation.y), 0, cosf(model_rotation.y), 0, 0, 0, 0, 1 };
-			matrix rz = { cosf(model_rotation.z), -sinf(model_rotation.z), 0, 0, sinf(model_rotation.z), cosf(model_rotation.z), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
-			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
-			
-			matrix model_view_matrix = rx * ry * rz * scale * translate * inv_camera_matrix;
-			
+			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * inv_camera_matrix;
 			
 			// fov
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
 			matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
 			
 			
-			// Send new constant data to the GPU
+			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf; 
 			vs_cbuf.transform        = model_view_matrix;  
 			vs_cbuf.projection       = projection; 
@@ -1233,6 +1262,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
 			context->Unmap((ID3D11Resource *)cbuffer, 0);
 			
+			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf; 
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
