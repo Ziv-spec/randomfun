@@ -48,9 +48,9 @@ static int window_height = 600;
 * [x] Obj dynamic transformation
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
-	* [ ] Camera
+	* [x] Camera
 			*   [x] Normal Camera
-			*   [ ] Free Camera 
+			*   [ ] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
 * [ ] z-buffer
 * [ ] Shadow Mapping
@@ -61,6 +61,7 @@ static int window_height = 600;
 * [ ] Font Rendering (Demo created but a better one should be done)
 * [ ] General UI (This has many steps which I will detail when I will begin working on it)
 * [ ] Update on Resize for fluid screen resize handling
+			* [ ] Pixelated look
 */
 
 // 
@@ -512,20 +513,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 								  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
 	
-	
-	bool show_free_camera = false; 
-	
-	// TODO(ziv): MOVE THIS CODE!!!
-	RECT rcClip;           // new area for ClipCursor
-	RECT rcOldClip;        // previous area for ClipCursor
-	
-	// Record the area in which the cursor can move. 
-	GetClipCursor(&rcOldClip); 
-	
-	// Get the dimensions of the application's window. 
-	GetWindowRect(window, &rcClip); 
-	
-	
 	//~
 	// D3D11 Initialization
 	//
@@ -636,7 +623,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		ID3D11RasterizerState1* rasterizer_cull_back;
 	{
 		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
-		rasterizer_desc.FillMode = D3D11_FILL_SOLID;
+		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
 		rasterizer_desc.CullMode = D3D11_CULL_BACK;
 		
 		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
@@ -812,6 +799,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		texture->Release();
 		free(bytes);
+		
 	}
 	
 	
@@ -955,7 +943,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	float camera_pitch = 0;
 	float camera_yaw = 3.14f/2; 
 	
-	float dx = 0, dy = 0;
+	
+	// Testing free camera option
+	//float dx = 0, dy = 0;
+	bool show_free_camera = false; 
+	
+	// TODO(ziv): MOVE THIS CODE!!!
+	RECT rcClip;           // new area for ClipCursor
+	RECT rcOldClip;        // previous area for ClipCursor
+	
+	// Record the area in which the cursor can move. 
+	GetClipCursor(&rcOldClip); 
+	
+	// Get the dimensions of the application's window. 
+	GetWindowRect(window, &rcClip); 
+	
+	
 	
 	// more things that I need I guess...
 	LARGE_INTEGER freq, start_frame, end_frame;
@@ -1071,8 +1074,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		{
 			// https://learnopengl.com/Getting-started/Camera
 			
-			dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
-			dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
+			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
 			
 			camera_yaw   = fmodf(camera_yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
 			camera_pitch = float_clamp(camera_pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
@@ -1083,7 +1086,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			sinf(camera_pitch), 
 			sinf(camera_yaw) * cosf(camera_pitch)
 		}; 
-		
+			
+			
 		float3 forward_vector = v3normalize(camera_dir); 
 		// some vector which is included in the up vector plain
 		float3 some_up_vector = { 0, 1, 0 }; 
@@ -1092,13 +1096,29 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
 		
 		float speed = 5;
+			
+			{
+			float3 fv, rv;
+				fv = float3 { cosf(camera_yaw), 0, sinf(camera_yaw)}; // forward
+				rv = v3normalize(v3cross(some_up_vector, fv)); 
+				
+				// first person camera movement
+				if (key_w) camera = camera+fv*(dt*speed);
+				if (key_s) camera = camera-fv*(dt*speed);
+				if (key_d) camera = camera+rv*(dt*speed);
+				if (key_a) camera = camera-rv*(dt*speed);
+			}
 
-		// change camera position according to the camera look at angle
-		if (key_w) camera = camera+forward_vector*(dt*speed);
+/* 			
+			{
+				// free camera movement
+				if (key_w) camera = camera+forward_vector*(dt*speed);
 		if (key_s) camera = camera-forward_vector*(dt*speed);
 		if (key_d) camera = camera+right_vector*(dt*speed);
 		if (key_a) camera = camera-right_vector*(dt*speed);
-		
+			}
+ */
+
 		translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
 		
 			matrix camera_matrix = matrix{

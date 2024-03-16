@@ -294,7 +294,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         modelRotation.z += 0.001f;
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-
+		
+		// NOTE(ziv): upload constant buffer to the gpu (updating it)
+		
         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
 
         deviceContext->Map(constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource);
