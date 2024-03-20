@@ -466,7 +466,7 @@ MouseWheelTiltRight = 0x00000040
 } Mouse_Buttons;
 
 typedef struct {
-	s64 dx, dy; // position detlta x, delta y
+	s64 px, py; // position detlta x, delta y
 	s64 wx, wy; // wheel x,y
 	Mouse_Buttons buttons;
 } Mouse;
@@ -566,10 +566,13 @@ static void poll_gameinput(Application_Input *input) {
 				input->gamepads[i].buttons = (Gamepad_Buttons)state.buttons;
 				input->gamepads[i].left_trigger  = state.leftTrigger;
 				input->gamepads[i].right_trigger = state.rightTrigger;
-				input->gamepads[i].left_thumbstick_x = state.leftThumbstickX; 
-				input->gamepads[i].left_thumbstick_y = state.leftThumbstickY; 
-				input->gamepads[i].right_thumbstick_x = state.rightThumbstickX; 
-				input->gamepads[i].right_thumbstick_y = state.rightThumbstickY; 
+				
+				float threshold = 0.2f;
+#define THRESHOLD_INPUT(val, t) (-t > val || val > t) ? val : 0
+				input->gamepads[i].left_thumbstick_x = THRESHOLD_INPUT(state.leftThumbstickX, threshold); 
+				input->gamepads[i].left_thumbstick_y = THRESHOLD_INPUT(state.leftThumbstickY, threshold); 
+				input->gamepads[i].right_thumbstick_x = THRESHOLD_INPUT(state.rightThumbstickX, threshold); 
+				input->gamepads[i].right_thumbstick_y = THRESHOLD_INPUT(state.rightThumbstickY, threshold); 
 				
 				reading->Release();
 			}
@@ -610,13 +613,13 @@ static void poll_gameinput(Application_Input *input) {
 	GameInputMouseState mouse_state;
 	if (reading->GetMouseState(&mouse_state)) {
 		input->mouse.buttons = (Mouse_Buttons)mouse_state.buttons; 
-		input->mouse.dx = mouse_state.positionX; 
-		input->mouse.dy = mouse_state.positionY;
+		input->mouse.px = mouse_state.positionX; 
+		input->mouse.py = mouse_state.positionY;
 		input->mouse.wx = mouse_state.wheelX; 
 		input->mouse.wy = mouse_state.wheelY;
 		
 		printf("mouse input "); 
-		printf("%d, %d,  %d, %d\n", (int)input->mouse.dx, (int)input->mouse.dx,
+		printf("%d, %d,  %d, %d\n", (int)input->mouse.px, (int)input->mouse.px,
 			   (int)mouse_state.wheelX, (int)mouse_state.wheelY);
 		reading->Release();
 	}
@@ -1261,6 +1264,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
 		}
 		
+		mouse_pos[0] = (int)input.mouse.px; 
+		mouse_pos[1] = (int)input.mouse.py; 
+		
 		//
 		// Handle window resize
 		//
@@ -1315,19 +1321,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			viewport.Height = (FLOAT)height;
 		}
 		
-
-/* 		
-		// TODO(ziv): Refactor this code please!!! (input must be better)
 		
+		//
 		// Enable/Disable Free Camera Mode
+		//
+		
+		// Update Mouse Clip area
+		GetWindowRect(window, &rcClip);
+		
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera; 
 			
 			if (show_free_camera) {
 				// Confine the cursor to the application's window. 
 				Assert(ClipCursor(&rcClip));
-				//bool success = ShowCursor(false);
-				//Assert(success); 
+				bool success = ShowCursor(false);
+				Assert(success); 
 			}
 			else {
 				// Restore the cursor to its previous area. 
@@ -1335,22 +1344,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				ShowCursor(true);
 			}
 		}
-		
-		if (show_free_camera) {
-			
-			last_mouse_pos[0] = (int)(rcClip.left + width/2);
-			last_mouse_pos[1] = (int)(rcClip.bottom + height/2);
-			
-		}
-		
 		key_tab_pressed = false;
 		
-		if (key_ctrl) {
-			return 0;;
-		}
-			 */
-
-			
 			
 		
 		
@@ -1377,6 +1372,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
 			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
 			
+			float speed = 5;
+			
+			dx += input.gamepads[0].right_thumbstick_x*speed;
+			dy += input.gamepads[0].right_thumbstick_y*speed;
+			
 			camera_yaw   = fmodf(camera_yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
 			camera_pitch = float_clamp(camera_pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
 			
@@ -1395,10 +1395,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
 		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
 		
-		float speed = 5;
-
-/* 			
-			{
+			if (!show_free_camera) {
 			float3 fv, rv;
 				fv = float3 { cosf(camera_yaw), 0, sinf(camera_yaw)}; // forward
 				rv = v3normalize(v3cross(some_up_vector, fv)); 
@@ -1408,10 +1405,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				if (key_s) camera = camera-fv*(dt*speed);
 				if (key_d) camera = camera+rv*(dt*speed);
 				if (key_a) camera = camera-rv*(dt*speed);
+				
+					camera = camera + rv*(dt*speed)*input.gamepads[0].left_thumbstick_x;
+					camera = camera + fv*(dt*speed)*input.gamepads[0].left_thumbstick_y;
 			}
- */
-
-			{
+			else {
 				// free camera movement
 				if (key_w) camera = camera+forward_vector*(dt*speed);
 		if (key_s) camera = camera-forward_vector*(dt*speed);
