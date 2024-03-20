@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 
 where /Q cl.exe || (
   set __VSCMD_ARG_NO_LOGO=1
-  for /f "tokens=*" %%i in ('"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath') do set VS=%%i
+  for /f "tokens=*" %%i in ('"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft	.VisualStudio.Workload.NativeDesktop -property installationPath') do set VS=%%i
   if "!VS!" equ "" (
     echo ERROR: Visual Studio installation not found
     exit /b 1
@@ -18,6 +18,12 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
   exit /b 1
 )
 
+where /Q gameinput.h
+if %errorlevel% neq 0 (
+	call "C:\Program Files (x86)\Microsoft GDK\Command Prompts\GamingDesktopVars.cmd" GamingDesktopVS2022
+)
+
+
 if "%1" equ "debug" (
   set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi /fsanitize=address
   set LINK_FLAGS= /DEBUG /subsystem:console
@@ -27,6 +33,7 @@ if "%1" equ "debug" (
   set LINK_FLAGS=%LINK_FLAGS% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
   set FXC=/O3
 ) 
+
 
 IF NOT EXIST build mkdir build 
 pushd build

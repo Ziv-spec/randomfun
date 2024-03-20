@@ -7,7 +7,9 @@
 #include <dxgi1_3.h>
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
+#include <gameinput.h>
 
+#include <stdint.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -18,6 +20,7 @@
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "dxguid")
 #pragma comment(lib, "d3dcompiler")
+#pragma comment(lib, "gameinput")
 
 #define APP_TITLE "Testing In Progress..."
 
@@ -31,6 +34,17 @@ static int window_height = 600;
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+typedef int64_t s64; 
+typedef int32_t s32;
+typedef int16_t s16;
+typedef int8_t  s8;
+typedef int64_t u64; 
+typedef int32_t u32;
+typedef int16_t u16;
+typedef int8_t  u8;
+typedef int b32; 
+
 
 // Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
@@ -434,6 +448,182 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 	return true;
 }
 
+//~
+
+// 
+// Application Input
+//
+
+typedef enum {
+MouseNone           = 0x00000000,
+MouseLeftButton     = 0x00000001,
+MouseRightButton    = 0x00000002,
+MouseMiddleButton   = 0x00000004,
+MouseButton4        = 0x00000008,
+MouseButton5        = 0x00000010,
+MouseWheelTiltLeft  = 0x00000020,
+MouseWheelTiltRight = 0x00000040
+} Mouse_Buttons;
+
+typedef struct {
+	s64 dx, dy; // position detlta x, delta y
+	s64 wx, wy; // wheel x,y
+	Mouse_Buttons buttons;
+} Mouse;
+
+typedef enum {
+	GamepadNone            = 0x00000000,
+    GamepadMenu            = 0x00000001,
+    GamepadView            = 0x00000002,
+    GamepadA               = 0x00000004,
+    GamepadB               = 0x00000008,
+    GamepadX               = 0x00000010,
+    GamepadY               = 0x00000020,
+    GamepadDPadUp          = 0x00000040,
+    GamepadDPadDown        = 0x00000080,
+    GamepadDPadLeft        = 0x00000100,
+    GamepadDPadRight       = 0x00000200,
+    GamepadLeftShoulder    = 0x00000400,
+    GamepadRightShoulder   = 0x00000800,
+    GamepadLeftThumbstick  = 0x00001000,
+    GamepadRightThumbstick = 0x00002000
+} Gamepad_Buttons; 
+
+typedef struct {
+    Gamepad_Buttons buttons;
+    float left_trigger;
+    float right_trigger;
+    float left_thumbstick_x;;
+    float left_thumbstick_y;
+    float right_thumbstick_x;
+    float right_thumbstick_y;
+} Gamepad;
+
+typedef struct {
+	//Keyboard keyboard;
+	Mouse mouse;
+	Gamepad gamepads[4]; 
+} Application_Input;
+
+
+
+
+IGameInput *g_gameinput = 0; 
+IGameInputDevice *g_gamepads[4]; // game supports upto 4 gamepads
+IGameInputDevice *g_mouse = 0;
+
+static HRESULT initialize_input() {
+	HRESULT result = GameInputCreate(&g_gameinput); 
+	return result;
+	}
+
+static void shutdown_input() {
+	
+	for (int i = 0; i < ArrayLength(g_gamepads); i++) {
+		if (g_gamepads[i]) { g_gamepads[i]->Release(); }
+	}
+	
+	if (g_gameinput) {
+		g_gameinput->Release();
+	}
+}
+
+static void poll_gameinput(Application_Input *input) {
+	// NOTE(ziv): GameInput is "Input-Centric" API. It finds the types 
+	// of input the user is interested in and then optionally query 
+	// the device from which it came from. 
+	
+	
+	// Ask for the latest reading from devices that provide fix-format
+	// gamepad state. If a device has beend assigned to g_gamepad, filter
+	// readings to just the ones coming from that device. Otherwise, if 
+	// g_gamepad is null, it will allow readings from any device.
+	
+	IGameInputReading *reading;
+	for (int i = 0; i < ArrayLength(g_gamepads); i++) {
+		
+		HRESULT success = g_gameinput->GetCurrentReading(GameInputKindGamepad, g_gamepads[i], &reading);
+		if (SUCCEEDED(success)) {
+			
+			// If not device has been assigned to g_gamepad yet, set it
+			// to the first device we recieve input from. (This must be 
+			// the one the player is using because it's generating input.)
+			if (!g_gamepads[i]) {
+				reading->GetDevice(&g_gamepads[i]); 
+			}
+			
+			if (i > 0 && g_gamepads[i] == g_gamepads[i-1]) {
+				g_gamepads[i] = 0; 
+				reading->Release();
+				break;
+			}
+			
+			// Retrive the fixed-format gamepad state from the reading
+			GameInputGamepadState state; 
+			if (reading->GetGamepadState(&state)) { 
+				
+				// Application specific code to process the gamepad state goes here: 
+				input->gamepads[i].buttons = (Gamepad_Buttons)state.buttons;
+				input->gamepads[i].left_trigger  = state.leftTrigger;
+				input->gamepads[i].right_trigger = state.rightTrigger;
+				input->gamepads[i].left_thumbstick_x = state.leftThumbstickX; 
+				input->gamepads[i].left_thumbstick_y = state.leftThumbstickY; 
+				input->gamepads[i].right_thumbstick_x = state.rightThumbstickX; 
+				input->gamepads[i].right_thumbstick_y = state.rightThumbstickY; 
+				
+				reading->Release();
+			}
+			
+		}
+		else { 
+			if (g_gamepads[i]) {
+				g_gamepads[i]->Release(); 
+				g_gamepads[i] = 0;
+			}
+			printf("Couldn't get any readings from gamepad\n"); 
+			break;
+		}
+		
+		
+	}
+	
+	//
+	// Mouse Input
+	// 
+	
+	HRESULT success = g_gameinput->GetCurrentReading(GameInputKindMouse, g_mouse, &reading);
+	
+	if (!SUCCEEDED(success)) {
+		if (g_mouse) {
+			g_mouse->Release(); 
+			g_mouse= 0;
+		}
+		printf("Couldn't get any mouse readings\n"); 
+		return; 
+	}
+	
+	
+	if (!g_mouse) {
+		reading->GetDevice(&g_mouse); 
+	}
+	
+	GameInputMouseState mouse_state;
+	if (reading->GetMouseState(&mouse_state)) {
+		input->mouse.buttons = (Mouse_Buttons)mouse_state.buttons; 
+		input->mouse.dx = mouse_state.positionX; 
+		input->mouse.dy = mouse_state.positionY;
+		input->mouse.wx = mouse_state.wheelX; 
+		input->mouse.wy = mouse_state.wheelY;
+		
+		printf("mouse input "); 
+		printf("%d, %d,  %d, %d\n", (int)input->mouse.dx, (int)input->mouse.dx,
+			   (int)mouse_state.wheelX, (int)mouse_state.wheelY);
+		reading->Release();
+	}
+	
+	
+	
+	}
 
 //~
 
@@ -1045,6 +1235,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	QueryPerformanceCounter(&start_frame); 
 	int last_mouse_pos[2] = {window_width/2, window_height/2};
 	
+	initialize_input(); 
+	
 	for (;;) {
 		
 		// 
@@ -1054,11 +1246,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		MSG msg; 
 		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
-				goto release_d3d_resources;
+				goto release_resources;
 			}
 			
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
+		}
+		
+		Application_Input input = {0}; 
+		poll_gameinput(&input); 
+		
+		for (int i = 0; i < ArrayLength(input.gamepads); i++) {
+			Gamepad gamepad = input.gamepads[i];
+			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
 		}
 		
 		//
@@ -1196,20 +1396,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
 		
 		float speed = 5;
-			
+
+/* 			
 			{
 			float3 fv, rv;
 				fv = float3 { cosf(camera_yaw), 0, sinf(camera_yaw)}; // forward
 				rv = v3normalize(v3cross(some_up_vector, fv)); 
-				
+
 				// first person camera movement
 				if (key_w) camera = camera+fv*(dt*speed);
 				if (key_s) camera = camera-fv*(dt*speed);
 				if (key_d) camera = camera+rv*(dt*speed);
 				if (key_a) camera = camera-rv*(dt*speed);
 			}
+ */
 
-/* 			
 			{
 				// free camera movement
 				if (key_w) camera = camera+forward_vector*(dt*speed);
@@ -1217,7 +1418,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (key_d) camera = camera+right_vector*(dt*speed);
 		if (key_a) camera = camera-right_vector*(dt*speed);
 			}
- */
 
 		translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
 		
@@ -1431,7 +1631,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 	
 	
-	release_d3d_resources:
+	release_resources:
+	
+	shutdown_input(); 
 	
 	index_buffer->Release();
 	vertex_buffer->Release();
