@@ -64,9 +64,9 @@ typedef int b32;
 * [x] Obj dynamic transformation
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
-	* [x] Camera
+	* [ ] Camera
 			*   [x] Normal Camera
-			*   [ ] Free Camera (The only thing left is free movement for which raw input/direct input needed
+			*   [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
 * [x] z-buffer
 * [ ] Shadow Mapping
@@ -136,18 +136,19 @@ static UINT atlas[] = {
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
 
+inline static float3 operator+=(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
 inline static float3 operator+(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
 inline static float3 operator-(const float3& v1, const float3& v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
 inline static float3 operator*(const float3& v1, const float3& v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
 inline static float3 operator*(const float3& v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
 
-inline static float3 v3normalize(float3 v) {
+inline static float3 f3normalize(float3 v) {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
 	float inv_len = 1/len; 
 	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
 }
 
-inline static float3 v3cross(const float3& a, const float3& b) {
+inline static float3 f3cross(const float3& a, const float3& b) {
 	return float3{
 		a.y*b.z - a.z*b.y, 
 		a.z*b.x - a.x*b.z, 
@@ -155,7 +156,7 @@ inline static float3 v3cross(const float3& a, const float3& b) {
 	};
 }
 
-inline static float v3dot(const float3& a, const float3& b) {
+inline static float f3dot(const float3& a, const float3& b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
@@ -253,6 +254,86 @@ static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 
 	return rx * ry * rz * scale_xyz * translate_xyz;
 		#endif 
 }
+
+//
+// Camera
+//
+
+typedef struct {
+	
+	// In
+	// camera
+	float3 pos;
+	float pitch, yaw;
+	
+	// projection
+	float fov;  // field of view
+	float n, f; // near, far plaines
+	float aspect_ratio;
+	
+	// Out
+	matrix view; // obj world->view space
+	matrix proj; // obj view->screen space
+	matrix norm; // normals world->view
+	matrix view_inv;
+	matrix proj_inv;
+	
+	// movement vectors
+	float3 right, left;
+	float3 up, down; 
+	float3 forward, backward;
+} Camera; 
+
+// [1] https://learnopengl.com/Getting-started/Camera
+// [2] 
+
+static void 
+CameraBuild(Camera *c) {
+	
+	// Build the lookat matrix [1]
+	float3 some_up_vector = { 0, 1, 0 }; 
+	
+	// this camera is pointing in the inverse direction of it's target
+	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
+	float3 rv = f3normalize(f3cross(some_up_vector, fv)); 
+	float3 uv = f3normalize(f3cross(fv, rv)); 
+	
+	matrix cmat = { 
+		rv.x, uv.x, fv.x, 0,
+		rv.y, uv.y, fv.y, 0,
+		rv.z, uv.z, fv.z, 0,
+		-(rv.x*rv.x+rv.y*rv.y+rv.z*rv.z), -(uv.x*uv.x+uv.y*uv.y+uv.z*uv.z), -(fv.x*fv.x+fv.y*fv.y+fv.z*fv.z), 1
+	};
+	
+	c->view = cmat; 
+	c->view_inv = matrix_transpose(cmat); // TODO(ziv): check whether this is actually the inverse matrix
+	
+	// Build the projection matrix [2]
+    float w = window_width/window_height; // width (aspect ratio)
+    float h = 1.0f;                       // height
+    float n = 1.0f;                       // near
+    float f = 90.0f;                      // far
+	
+	matrix projection = { 
+		2 * n / w, 0, 0, 0, 
+		0, 2 * n / h, 0, 0, 
+		0, 0, f / (f - n), 1, 
+		0, 0, n * f / (n - f), 0  
+	};
+	c->proj = projection;
+	
+	// Build the normal matrix
+	
+	
+}
+
+static void 
+CameraMove(Camera *c, float x, float y, float z) {
+	c->pos += c->right * x; 
+	c->pos += c->up * y; 
+	c->pos += c->forward * z; 
+}
+
 
 //~
 
@@ -453,7 +534,7 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 //~
 
 // 
-// Application Input
+// Game  Input
 //
 
 typedef enum {
@@ -505,7 +586,7 @@ typedef struct {
 	//Keyboard keyboard;
 	Mouse mouse;
 	Gamepad gamepads[4]; 
-} Application_Input;
+} Game_Input;
 
 
 
@@ -530,7 +611,7 @@ static void shutdown_input() {
 	}
 }
 
-static void poll_gameinput(Application_Input *input) {
+static void poll_gameinput(Game_Input *input) {
 	// NOTE(ziv): GameInput is "Input-Centric" API. It finds the types 
 	// of input the user is interested in and then optionally query 
 	// the device from which it came from. 
@@ -627,9 +708,61 @@ static void poll_gameinput(Application_Input *input) {
 		reading->Release();
 	}
 	
-	
-	
 	}
+
+// 
+// UI
+// 
+
+typedef enum {
+	UI_HOVERABLE, 
+	UI_CLICKABLE,
+} UI_Behaviour; 
+
+typedef struct {
+	int minx, miny;
+	int maxx, maxy;
+} UI_Box; 
+
+typedef struct { 
+	u8 behaviour;
+	UI_Box box; 
+} UI_Widget; 
+
+typedef struct {
+	bool clicked : 1; 
+	bool hovered : 1; 
+} UI_Output;
+
+typedef struct {
+	// Memory stuff here 
+	int something; 
+	// UI thingy here 
+	int somethingomre; 
+	//
+} Context; 
+
+static Context *g_context;
+
+static UI_Output
+ui_build_widget(Context *ctx, UI_Box box, u32 behaviour) {
+	
+	UI_Output output;
+	
+	// handle the behaviour as expected (use ctx to handle thingy with input) 
+	
+	// tell the system how to render the thingy
+	
+	return output;
+}
+
+static bool
+ui_button(Context *ctx, int x, int y, int w, int h) {
+	UI_Box box = { x, y, x+w, y+h };
+	UI_Output output = ui_build_widget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
+	return output.clicked;
+}
+
 
 //~
 
@@ -714,16 +847,8 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 	return DefWindowProcA(window, message, wparam, lparam);
 }
 
-#ifdef _DEBUG
-int main()
-#else
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
-#endif
-{
-	
-	//~
-	// Typical WIN32 Window creation
-	//
+static HWND 
+CreateWin32Window() {
 	
 	HINSTANCE instance_handle = GetModuleHandleW(NULL);
 	
@@ -746,6 +871,23 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
 								  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
+	
+	return window;
+}
+
+
+#ifdef _DEBUG
+int main()
+#else
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
+#endif
+{
+	
+	//~
+	// Typical WIN32 Window creation
+	//
+	
+	HWND window = CreateWin32Window();
 	
 	//~
 	// D3D11 Initialization
@@ -875,7 +1017,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	{
 		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
 		
-		// TODO(ziv): Make this dynamically resizeable
 		depth_buffer_desc.Width = window_height;
 		depth_buffer_desc.Height = window_width;
 		depth_buffer_desc.MipLevels = 1;
@@ -1074,7 +1215,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		texture->Release();
 		free(bytes);
-		
 	}
 	
 	
@@ -1259,7 +1399,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			DispatchMessageA(&msg);
 		}
 		
-		Application_Input input = {0}; 
+		Game_Input input = {0}; 
 		poll_gameinput(&input); 
 		
 		for (int i = 0; i < ArrayLength(input.gamepads); i++) {
@@ -1370,7 +1510,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		matrix inv_camera_matrix;
 		float3 translate_vector; 
 		{
-			// https://learnopengl.com/Getting-started/Camera
 			
 			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
 			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
@@ -1394,17 +1533,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}; 
 			
 			
-		float3 forward_vector = v3normalize(camera_dir); 
+		float3 forward_vector = f3normalize(camera_dir); 
 		// some vector which is included in the up vector plain
 		float3 some_up_vector = { 0, 1, 0 }; 
 		// calculate the right vector using a cross product
-		float3 right_vector = v3normalize(v3cross(some_up_vector, forward_vector)); 
-		float3 up_vector = v3normalize(v3cross(forward_vector, right_vector)); 
+		float3 right_vector = f3normalize(f3cross(some_up_vector, forward_vector)); 
+		float3 up_vector = f3normalize(f3cross(forward_vector, right_vector)); 
 		
 			if (!show_free_camera) {
 			float3 fv, rv;
 				fv = float3 { cosf(camera_yaw), 0, sinf(camera_yaw)}; // forward
-				rv = v3normalize(v3cross(some_up_vector, fv)); 
+				rv = f3normalize(f3cross(some_up_vector, fv)); 
 
 				// first person camera movement
 				if (key_w) camera = camera+fv*(dt*speed);
@@ -1426,7 +1565,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (key_a) camera = camera-right_vector*(dt*speed);
 			}
 
-		translate_vector = { v3dot(camera, right_vector), v3dot(camera, up_vector), v3dot(camera, forward_vector) };
+		translate_vector = { f3dot(camera, right_vector), f3dot(camera, up_vector), f3dot(camera, forward_vector) };
 		
 			matrix camera_matrix = matrix{
 			right_vector.x, right_vector.y, right_vector.z, -translate_vector.x, 
