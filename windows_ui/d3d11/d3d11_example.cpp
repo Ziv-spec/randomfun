@@ -55,6 +55,7 @@ typedef int b32;
 // Advanced Camera (better than the lookat matrix I have implemented)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
 // https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
+// https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
 
 
@@ -128,8 +129,13 @@ static UINT atlas[] = {
 };
 
 
+static void FatalError(const char* message)
+{
+    MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
+    ExitProcess(0);
+}
 
-// 
+//~
 // Math
 //
 
@@ -258,13 +264,14 @@ static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 
 //~
 // Camera
 //
+// Resources:
 // [1] https://learnopengl.com/Getting-started/Camera
 // [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
 //
 
 typedef struct {
 	
-	// In
+	/// In
 	// camera
 	float3 pos;
 	float pitch, yaw;
@@ -274,7 +281,7 @@ typedef struct {
 	float n, f; // near, far plaines
 	float aspect_ratio;
 	
-	// Out
+	/// Out
 	matrix view; // obj world->view space
 	matrix proj; // obj view->screen space
 	matrix norm; // normals world->view
@@ -286,6 +293,17 @@ typedef struct {
 	float3 up, down; 
 	float3 forward, backward;
 } Camera; 
+
+static void 
+CameraInit(Camera *c) {
+	c->fov = 0.25f*(float)M_PI;
+	c->n = .01f; 
+	c->f = 1000.f; 
+	
+	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+	
+	}
 
 static void 
 CameraBuild(Camera *c) {
@@ -317,7 +335,7 @@ CameraBuild(Camera *c) {
 	};
 	
 	c->view = cmat; 
-	c->view_inv = matrix_transpose(cmat); // TODO(ziv): check whether this is actually the inverse matrix
+	c->view_inv = matrix_transpose(cmat);
 	
 	c->forward.x = c->view_inv.m[2][0];
     c->forward.y = c->view_inv.m[2][1];
@@ -345,6 +363,7 @@ CameraBuild(Camera *c) {
 	
 	
 	
+	// TODO(ziv): Fix the projection matrix that I use in here 
 		// Build the projection matrix 
 	
 	// In this case the projection matrix which we are building 
@@ -360,7 +379,17 @@ CameraBuild(Camera *c) {
 	 // cn = -1 and cf = 1:
 	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
 	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
+
+/* 	
+	 //cn = 0 and cf = 1: 
+	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
+	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
 	
+	 //cn = -1 and cf = 0:
+	c->proj.m[2][2] = (c->n) / (c->n - c->f);
+	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
+	 */
+
 	// Inverse of the Projection Matrix
 	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
     c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
@@ -380,15 +409,26 @@ CameraMove(Camera *c, float x, float y, float z) {
 	// let the player have is one which respects the camera 
 	// viewing angle.
 	
+	// NOTE(ziv): Player movement is defined here
+	// Currently using first person shooter movement.
+	float cy = c->pos.y;
+	
 	c->pos = c->pos + c->right * x; 
 	c->pos = c->pos + c->up * y; 
-	c->pos = c->pos + c->forward * z; 
+		c->pos = c->pos + c->forward * z; 
+	
+	if (1) {
+		c->pos.y = cy;
+	}
+	
 }
 
 
 //~
+// Object File Parser
+// 
 
-static float parse_float(char* str, size_t *length) {
+static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
     int len = 0, dec = 0;
 	
@@ -419,7 +459,7 @@ static float parse_float(char* str, size_t *length) {
 	return num; 
 }
 
-static unsigned int parse_uint(char *str, size_t *length) {
+static unsigned int ObjParseUINT(char *str, size_t *length) {
 	unsigned int len = 0, result = 0;
 	
 	while (str[len] == ' ' && str[len] != '\0') len++; 
@@ -438,7 +478,7 @@ struct Vertex {
 	float uv[2];
 };
 
-static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
+static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
 	
 	if (v_cnt == NULL || i_cnt == NULL) 
 		return false;
@@ -522,20 +562,20 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 				s++;
 				if (*s == ' ') {
 					s++;
-					pos_buff[pos_idx++] = parse_float(s, &len); s+=len+1;
-					pos_buff[pos_idx++] = parse_float(s, &len); s+=len+1;
-					pos_buff[pos_idx++] = parse_float(s, &len); s+=len;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len;
 				}
 				else if (*s == 't') {
 					s+=2;
-					uv_buff[uv_idx++] = parse_float(s, &len); s+=len+1;
-					uv_buff[uv_idx++] = parse_float(s, &len); s+=len;
+					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len;
 				}
 				else if (*s == 'n') {
 					s++; s++;
-					normals_buff[norm_idx++] = parse_float(s, &len); s+=len+1;
-					normals_buff[norm_idx++] = parse_float(s, &len); s+=len+1;
-					normals_buff[norm_idx++] = parse_float(s, &len); s+=len;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len;
 				}
 				
 		}
@@ -544,9 +584,9 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 				
 				unsigned int vi, vt, vn;
 				for (int i = 0; i < 3; i++) {
-					vi = parse_uint(s, &len); s+=len+1;
-					vt = parse_uint(s, &len); s+=len+1;
-					vn = parse_uint(s, &len); s+=len+1;
+					vi = ObjParseUINT(s, &len); s+=len+1;
+					vt = ObjParseUINT(s, &len); s+=len+1;
+					vn = ObjParseUINT(s, &len); s+=len+1;
 					
 					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
 					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
@@ -583,28 +623,73 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 }
 
 
-static void FatalError(const char* message)
-{
-    MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
-    ExitProcess(0);
+//~
+// UI
+// 
+
+typedef enum {
+	UI_HOVERABLE, 
+	UI_CLICKABLE,
+} UI_Behaviour; 
+
+typedef struct {
+	int minx, miny;
+	int maxx, maxy;
+} UI_Box; 
+
+typedef struct { 
+	u8 behaviour;
+	UI_Box box; 
+} UI_Widget; 
+
+typedef struct {
+	bool clicked : 1; 
+	bool hovered : 1; 
+} UI_Output;
+
+typedef struct {
+	// Memory stuff here 
+	int something; 
+	// UI thingy here 
+	int somethingomre; 
+	//
+} Context; 
+
+static Context *g_context;
+
+static UI_Output
+UIBuildWidget(Context *ctx, UI_Box box, u32 behaviour) {
+	
+	UI_Output output;
+	
+	// handle the behaviour as expected (use ctx to handle thingy with input) 
+	
+	// tell the system how to render the thingy
+	
+	return output;
+}
+
+static bool
+UIButton(Context *ctx, int x, int y, int w, int h) {
+	UI_Box box = { x, y, x+w, y+h };
+	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
+	return output.clicked;
 }
 
 
 //~
-
-// 
-// Game  Input
+// Input
 //
 
 typedef enum {
-MouseNone           = 0x00000000,
-MouseLeftButton     = 0x00000001,
-MouseRightButton    = 0x00000002,
-MouseMiddleButton   = 0x00000004,
-MouseButton4        = 0x00000008,
-MouseButton5        = 0x00000010,
-MouseWheelTiltLeft  = 0x00000020,
-MouseWheelTiltRight = 0x00000040
+	MouseNone           = 0x00000000,
+	MouseLeftButton     = 0x00000001,
+	MouseRightButton    = 0x00000002,
+	MouseMiddleButton   = 0x00000004,
+	MouseButton4        = 0x00000008,
+	MouseButton5        = 0x00000010,
+	MouseWheelTiltLeft  = 0x00000020,
+	MouseWheelTiltRight = 0x00000040
 } Mouse_Buttons;
 
 typedef struct {
@@ -739,9 +824,6 @@ InputShutdown() {
 	
 }
 
-
-
-
 // GAMEINPUT implementation (for some reason doesn't work on my pc)
 
 IGameInput *g_gameinput = 0; 
@@ -751,7 +833,7 @@ IGameInputDevice *g_mouse = 0;
 static HRESULT initialize_input() {
 	HRESULT result = GameInputCreate(&g_gameinput); 
 	return result;
-	}
+}
 
 static void shutdown_input() {
 	
@@ -850,72 +932,18 @@ static void poll_gameinput(Game_Input *input) {
 		input->mouse.wx = mouse_state.wheelX;
 		input->mouse.wy = mouse_state.wheelY;
 		
-		#if 0
+#if 0
 		printf("mouse input "); 
 		printf("%d, %d,  %d, %d | %d\n", (int)input->mouse.px, (int)input->mouse.px,
 			   (int)mouse_state.wheelX, (int)mouse_state.wheelY, input->mouse.buttons);
-		#endif 
+#endif 
 		
 		reading->Release();
 	}
 	
-	}
-
-// 
-// UI
-// 
-
-typedef enum {
-	UI_HOVERABLE, 
-	UI_CLICKABLE,
-} UI_Behaviour; 
-
-typedef struct {
-	int minx, miny;
-	int maxx, maxy;
-} UI_Box; 
-
-typedef struct { 
-	u8 behaviour;
-	UI_Box box; 
-} UI_Widget; 
-
-typedef struct {
-	bool clicked : 1; 
-	bool hovered : 1; 
-} UI_Output;
-
-typedef struct {
-	// Memory stuff here 
-	int something; 
-	// UI thingy here 
-	int somethingomre; 
-	//
-} Context; 
-
-static Context *g_context;
-
-static UI_Output
-UIBuildWidget(Context *ctx, UI_Box box, u32 behaviour) {
-	
-	UI_Output output;
-	
-	// handle the behaviour as expected (use ctx to handle thingy with input) 
-	
-	// tell the system how to render the thingy
-	
-	return output;
-}
-
-static bool
-UIButton(Context *ctx, int x, int y, int w, int h) {
-	UI_Box box = { x, y, x+w, y+h };
-	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
-	return output.clicked;
 }
 
 
-//~
 
 static bool key_w; // up 
 static bool key_s; // down
@@ -1011,6 +1039,10 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 	return DefWindowProcA(window, message, wparam, lparam);
 }
 
+//~
+// Win32 API
+//
+
 static HWND 
 CreateWin32Window() {
 	
@@ -1047,13 +1079,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 	
-	//~
 	// Typical WIN32 Window creation
-	//
-	
 	HWND window = CreateWin32Window();
 	
-	InputInitialize(window);
+	//InputInitialize(window);
 	
 	//~
 	// D3D11 Initialization
@@ -1223,12 +1252,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	char model_path[] = "../resources/cube.obj";
 	
 	size_t verticies_count, indicies_count; 
-	bool success = parse_obj(model_path,NULL, &verticies_count, NULL, &indicies_count); 
+	bool success = ObjParseFile(model_path,NULL, &verticies_count, NULL, &indicies_count); 
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
 	
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
 	unsigned short *_indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = parse_obj(model_path,
+	success = ObjParseFile(model_path,
 						verticies, &verticies_count, 
 						_indicies, &indicies_count); 
 	Assert(success && "Failed extracting model data");
@@ -1519,26 +1548,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// point light
 	float3 lightposition = {  0, 0, 2 };
 	
-	// camera 
-	float3 camera = { 0, 0, 0 };
-	float camera_pitch = -3.14f/4;
-	float camera_yaw = -3.14f/2; 
-	
-	
-	// Testing free camera option
-	//float dx = 0, dy = 0;
-	
-	
 	// TODO(ziv): MOVE THIS CODE!!!
 	RECT rcClip;           // new area for ClipCursor
 	RECT rcOldClip;        // previous area for ClipCursor
-	
 	// Record the area in which the cursor can move. 
 	GetClipCursor(&rcOldClip); 
-	
 	// Get the dimensions of the application's window. 
 	GetWindowRect(window, &rcClip); 
-	
 	
 	
 	// more things that I need I guess...
@@ -1547,14 +1563,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	QueryPerformanceCounter(&start_frame); 
 	int last_mouse_pos[2] = {window_width/2, window_height/2};
 	
-	initialize_input(); 
 	
+	// Camera 
 	Camera c = {0};
-	c.fov = 90.f/180.f*(float)M_PI;
-	c.n = 1; 
-	c.f = 90; 
+	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
+	c.pos.z -= 5;
+	float camera_pitch = 0, camera_yaw = 0;
 	
+	#ifdef USE_GAMEINPUT
+	 initialize_input();
+#endif 
 	
 	for (;;) {
 		
@@ -1573,15 +1592,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		Game_Input input = {0}; 
+#ifdef USE_GAMEINPUT
 		poll_gameinput(&input); 
-		
+
 		for (int i = 0; i < ArrayLength(input.gamepads); i++) {
 			Gamepad gamepad = input.gamepads[i];
 			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
 		}
-		
+
 		mouse_pos[0] = (int)input.mouse.px; 
 		mouse_pos[1] = (int)input.mouse.py; 
+#endif 
 		
 		//
 		// Handle window resize
@@ -1635,6 +1656,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			viewport.Width = (FLOAT)width; 
 			viewport.Height = (FLOAT)height;
+			c.aspect_ratio = viewport.Width/viewport.Height;
 		}
 		
 		
@@ -1718,7 +1740,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			// fov
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
-			matrix projection = { 2 * n / w, 0, 0, 0, 0, 2 * n / h, 0, 0, 0, 0, f / (f - n), 1, 0, 0, n * f / (n - f), 0  };
+			matrix projection = { 
+				2 * n / w, 0, 0, 0,
+				0, 2 * n / h, 0, 0, 
+				0, 0, f / (f - n), 1, 0, 
+				0, n * f / (n - f), 0  
+			};
 			
 			
 			// Vertex Contstant Buffer
