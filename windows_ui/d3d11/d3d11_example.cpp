@@ -1,4 +1,4 @@
-/// direct3d 11 example
+// direct3d 11 example
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS
@@ -64,7 +64,7 @@ typedef int b32;
 * [x] Obj dynamic transformation
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
-	* [ ] Camera
+	* [x] Camera
 			*   [x] Normal Camera
 			*   [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
@@ -136,11 +136,11 @@ static UINT atlas[] = {
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
 
-inline static float3 operator+=(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
-inline static float3 operator+(const float3& v1, const float3& v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
-inline static float3 operator-(const float3& v1, const float3& v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
-inline static float3 operator*(const float3& v1, const float3& v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
-inline static float3 operator*(const float3& v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
+inline static float3 operator+=(const float3 v1, const float3 v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
+inline static float3 operator+(const float3 v1, const float3 v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
+inline static float3 operator-(const float3 v1, const float3 v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
+inline static float3 operator*(const float3 v1, const float3 v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
+inline static float3 operator*(const float3 v, const float c)     { return float3{ v.x*c, v.y*c, v.z*c }; }
 
 inline static float3 f3normalize(float3 v) {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
@@ -255,8 +255,11 @@ static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 
 		#endif 
 }
 
-//
+//~
 // Camera
+//
+// [1] https://learnopengl.com/Getting-started/Camera
+// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
 //
 
 typedef struct {
@@ -284,54 +287,102 @@ typedef struct {
 	float3 forward, backward;
 } Camera; 
 
-// [1] https://learnopengl.com/Getting-started/Camera
-// [2] 
-
 static void 
 CameraBuild(Camera *c) {
+	Assert(c);
 	
-	// Build the lookat matrix [1]
+	// Build the lookat matrix 
 	float3 some_up_vector = { 0, 1, 0 }; 
+	
+	// The lookat matrix is a matrix created from a 'single' vector 
+	// pointing in the forward direction of the player looking at the 
+	// object we want to point the camera towards. 
+	// In this case I create the forward vector using the pitch and yaw
+	// values and from it I compute the space in which the camera lies. 
+	// The view matrix created from this space is the inverse translation
+	// and inverse rotations done by the camera itself [2].
 	
 	// this camera is pointing in the inverse direction of it's target
 	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
 	float3 rv = f3normalize(f3cross(some_up_vector, fv)); 
 	float3 uv = f3normalize(f3cross(fv, rv)); 
 	
+	float3 p = c->pos;
+	
 	matrix cmat = { 
 		rv.x, uv.x, fv.x, 0,
 		rv.y, uv.y, fv.y, 0,
 		rv.z, uv.z, fv.z, 0,
-		-(rv.x*rv.x+rv.y*rv.y+rv.z*rv.z), -(uv.x*uv.x+uv.y*uv.y+uv.z*uv.z), -(fv.x*fv.x+fv.y*fv.y+fv.z*fv.z), 1
+		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
 	};
 	
 	c->view = cmat; 
 	c->view_inv = matrix_transpose(cmat); // TODO(ziv): check whether this is actually the inverse matrix
 	
-	// Build the projection matrix [2]
-    float w = window_width/window_height; // width (aspect ratio)
-    float h = 1.0f;                       // height
-    float n = 1.0f;                       // near
-    float f = 90.0f;                      // far
+	c->forward.x = c->view_inv.m[2][0];
+    c->forward.y = c->view_inv.m[2][1];
+    c->forward.z = c->view_inv.m[2][2];
 	
-	matrix projection = { 
-		2 * n / w, 0, 0, 0, 
-		0, 2 * n / h, 0, 0, 
-		0, 0, f / (f - n), 1, 
-		0, 0, n * f / (n - f), 0  
-	};
-	c->proj = projection;
+    c->backward.x = -c->view_inv.m[2][0];
+    c->backward.y = -c->view_inv.m[2][1];
+    c->backward.z = -c->view_inv.m[2][2];
 	
-	// Build the normal matrix
+    c->right.x = c->view_inv.m[0][0];
+    c->right.y = c->view_inv.m[0][1];
+    c->right.z = c->view_inv.m[0][2];
 	
+    c->left.x = -c->view_inv.m[0][0];
+    c->left.y = -c->view_inv.m[0][1];
+    c->left.z = -c->view_inv.m[0][2];
+	
+    c->up.x = c->view_inv.m[1][0];
+    c->up.y = c->view_inv.m[1][1];
+    c->up.z = c->view_inv.m[1][2];
+	
+    c->down.x = -c->view_inv.m[1][0];
+    c->down.y = -c->view_inv.m[1][1];
+    c->down.z = -c->view_inv.m[1][2];
+	
+	
+	
+		// Build the projection matrix 
+	
+	// In this case the projection matrix which we are building 
+	// is mapping object's in the players thrustum inside a 
+	// -1 to 1 cordinate space [2].
+		float hfov = 1.0f/tanf(c->fov*0.5f); 
+			
+		c->proj = matrix{0}; 
+		c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
+		c->proj.m[1][1] = 1.0f/hfov; 
+		c->proj.m[2][3] = -1.0f;
+			
+	 // cn = -1 and cf = 1:
+	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
+	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
+	
+	// Inverse of the Projection Matrix
+	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
+    c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
+    c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
+    c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
+    c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
+    c->proj_inv.m[3][3] = -c->proj.m[2][2];
+    c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
 	
 }
 
 static void 
 CameraMove(Camera *c, float x, float y, float z) {
-	c->pos += c->right * x; 
-	c->pos += c->up * y; 
-	c->pos += c->forward * z; 
+	
+	// Here we use the right up and forward vectors aligned to 
+	// the camera space. We do so such that every movement we 
+	// let the player have is one which respects the camera 
+	// viewing angle.
+	
+	c->pos = c->pos + c->right * x; 
+	c->pos = c->pos + c->up * y; 
+	c->pos = c->pos + c->forward * z; 
 }
 
 
@@ -531,6 +582,14 @@ static bool parse_obj(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *
 	return true;
 }
 
+
+static void FatalError(const char* message)
+{
+    MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
+    ExitProcess(0);
+}
+
+
 //~
 
 // 
@@ -589,7 +648,101 @@ typedef struct {
 } Game_Input;
 
 
+// RAWINPUT implementation (should work on all pc's)
 
+// Terms used by rawinput api
+// HID - Human Interface Device
+
+// In the RawInput API you must register the devices you 
+// want to get data from. Then you can poll for data which 
+// happens from WM_INPUT
+//
+// By default no application recieves rawinput. You must 
+// register the device to begin recieving rawinput. 
+
+static void 
+InputInitialize(HWND window) {
+	
+	// Create a mouse rawinput device
+	
+	RAWINPUTDEVICE Rid[1];
+	Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+	Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+	Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
+	Rid[0].hwndTarget = window;
+	
+	if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
+	{
+		//registration failed. Call GetLastError for the cause of the error.
+		FatalError("Couldn't register a mouse\n"); 
+	}
+	
+}
+
+static bool
+InputUpdate(LPARAM lparam) {
+	
+	UINT dwSize;
+	
+	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+	
+	LPBYTE lpb = new BYTE[dwSize];
+	if (lpb == NULL) 
+	{
+		return 0; 
+	} 
+	
+	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
+		OutputDebugString (TEXT("GetRawInputData does not return correct size !\n")); 
+	
+	RAWINPUT* raw = (RAWINPUT*)lpb;
+	if (raw->header.dwType == RIM_TYPEMOUSE) 
+	{
+		
+		if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0) printf("---\n%d %d \n", raw->data.mouse.lLastX, raw->data.mouse.lLastY); 
+		switch (raw->data.mouse.ulButtons) {
+			case RI_MOUSE_BUTTON_1_DOWN: printf("button1 down\n"); break;
+			case RI_MOUSE_BUTTON_1_UP:   printf("button1 up\n"); break;
+			case RI_MOUSE_BUTTON_2_DOWN: printf("button2 down\n"); break;
+			case RI_MOUSE_BUTTON_2_UP:   printf("button2 up\n"); break;
+			case RI_MOUSE_BUTTON_3_DOWN: printf("button3 down\n"); break;
+			case RI_MOUSE_BUTTON_3_UP:   printf("button3 up\n"); break;
+		}
+		
+		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
+			int delta_m = (int)raw->data.mouse.usButtonData; 
+			printf("wheel: %d\n", delta_m);
+		}
+		
+		
+	} 
+	
+	delete[] lpb; 
+	
+	return 1;
+}
+
+static void
+InputShutdown() {
+	
+	RAWINPUTDEVICE Rid[1];
+	Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+	Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+	Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+	Rid[0].hwndTarget = 0;
+	
+	if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
+	{
+		//registration failed. Call GetLastError for the cause of the error.
+		FatalError("Couldn't register a mouse\n"); 
+	}
+	
+}
+
+
+
+
+// GAMEINPUT implementation (for some reason doesn't work on my pc)
 
 IGameInput *g_gameinput = 0; 
 IGameInputDevice *g_gamepads[4]; // game supports upto 4 gamepads
@@ -615,7 +768,6 @@ static void poll_gameinput(Game_Input *input) {
 	// NOTE(ziv): GameInput is "Input-Centric" API. It finds the types 
 	// of input the user is interested in and then optionally query 
 	// the device from which it came from. 
-	
 	
 	// Ask for the latest reading from devices that provide fix-format
 	// gamepad state. If a device has beend assigned to g_gamepad, filter
@@ -666,7 +818,7 @@ static void poll_gameinput(Game_Input *input) {
 				g_gamepads[i]->Release(); 
 				g_gamepads[i] = 0;
 			}
-			printf("Couldn't get any readings from gamepad\n"); 
+			//printf("Couldn't get any readings from gamepad\n"); 
 			break;
 		}
 		
@@ -678,7 +830,6 @@ static void poll_gameinput(Game_Input *input) {
 	// 
 	
 	HRESULT success = g_gameinput->GetCurrentReading(GameInputKindMouse, g_mouse, &reading);
-	
 	if (!SUCCEEDED(success)) {
 		if (g_mouse) {
 			g_mouse->Release(); 
@@ -686,7 +837,6 @@ static void poll_gameinput(Game_Input *input) {
 		}
 		return; 
 	}
-	
 	
 	if (!g_mouse) {
 		reading->GetDevice(&g_mouse); 
@@ -697,14 +847,15 @@ static void poll_gameinput(Game_Input *input) {
 		input->mouse.buttons = (Mouse_Buttons)mouse_state.buttons; 
 		input->mouse.px = mouse_state.positionX; 
 		input->mouse.py = mouse_state.positionY;
-		input->mouse.wx = mouse_state.wheelX; 
+		input->mouse.wx = mouse_state.wheelX;
 		input->mouse.wy = mouse_state.wheelY;
 		
 		#if 0
 		printf("mouse input "); 
-		printf("%d, %d,  %d, %d\n", (int)input->mouse.px, (int)input->mouse.px,
-			   (int)mouse_state.wheelX, (int)mouse_state.wheelY);
+		printf("%d, %d,  %d, %d | %d\n", (int)input->mouse.px, (int)input->mouse.px,
+			   (int)mouse_state.wheelX, (int)mouse_state.wheelY, input->mouse.buttons);
 		#endif 
+		
 		reading->Release();
 	}
 	
@@ -745,7 +896,7 @@ typedef struct {
 static Context *g_context;
 
 static UI_Output
-ui_build_widget(Context *ctx, UI_Box box, u32 behaviour) {
+UIBuildWidget(Context *ctx, UI_Box box, u32 behaviour) {
 	
 	UI_Output output;
 	
@@ -757,20 +908,14 @@ ui_build_widget(Context *ctx, UI_Box box, u32 behaviour) {
 }
 
 static bool
-ui_button(Context *ctx, int x, int y, int w, int h) {
+UIButton(Context *ctx, int x, int y, int w, int h) {
 	UI_Box box = { x, y, x+w, y+h };
-	UI_Output output = ui_build_widget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
+	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
 	return output.clicked;
 }
 
 
 //~
-
-static void FatalError(const char* message)
-{
-    MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
-    ExitProcess(0);
-}
 
 static bool key_w; // up 
 static bool key_s; // down
@@ -789,6 +934,8 @@ static bool key_left;
 
 
 static int mouse_pos[2];
+
+bool show_free_camera = false; 
 
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	
@@ -841,7 +988,24 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			POINTS p = MAKEPOINTS(lparam);
 			mouse_pos[0] = p.x; mouse_pos[1] = p.y;
 		} break;
-		 
+		
+		
+		
+		//
+		// Rawinput 
+		//
+		
+		
+		case WM_INPUT: {
+			
+			if (!InputUpdate(lparam)) {
+				FatalError("Program ran out of memory!");
+				return 0; 
+			}
+			
+		} break; 
+		
+		
 		
 	}
 	return DefWindowProcA(window, message, wparam, lparam);
@@ -888,6 +1052,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	//
 	
 	HWND window = CreateWin32Window();
+	
+	InputInitialize(window);
 	
 	//~
 	// D3D11 Initialization
@@ -1361,7 +1527,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	// Testing free camera option
 	//float dx = 0, dy = 0;
-	bool show_free_camera = false; 
+	
 	
 	// TODO(ziv): MOVE THIS CODE!!!
 	RECT rcClip;           // new area for ClipCursor
@@ -1382,6 +1548,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	int last_mouse_pos[2] = {window_width/2, window_height/2};
 	
 	initialize_input(); 
+	
+	Camera c = {0};
+	c.fov = 90.f/180.f*(float)M_PI;
+	c.n = 1; 
+	c.f = 90; 
+	c.aspect_ratio = (float)window_width/(float)window_height;
+	
 	
 	for (;;) {
 		
@@ -1507,10 +1680,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 		
 		// Update Camera
-		matrix inv_camera_matrix;
-		float3 translate_vector; 
-		{
-			
 			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
 			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
 			
@@ -1525,58 +1694,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			camera_yaw   = fmodf(camera_yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
 			camera_pitch = float_clamp(camera_pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
 			
-			// this camera is pointing in the inverse direction of it's target
-		float3 camera_dir = {
-			cosf(camera_yaw) * cosf(camera_pitch), 
-			sinf(camera_pitch), 
-			sinf(camera_yaw) * cosf(camera_pitch)
-		}; 
+			c.yaw = camera_yaw; 
+			c.pitch = camera_pitch; 
 			
+			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
+			CameraBuild(&c); 
 			
-		float3 forward_vector = f3normalize(camera_dir); 
-		// some vector which is included in the up vector plain
-		float3 some_up_vector = { 0, 1, 0 }; 
-		// calculate the right vector using a cross product
-		float3 right_vector = f3normalize(f3cross(some_up_vector, forward_vector)); 
-		float3 up_vector = f3normalize(f3cross(forward_vector, right_vector)); 
-		
-			if (!show_free_camera) {
-			float3 fv, rv;
-				fv = float3 { cosf(camera_yaw), 0, sinf(camera_yaw)}; // forward
-				rv = f3normalize(f3cross(some_up_vector, fv)); 
-
-				// first person camera movement
-				if (key_w) camera = camera+fv*(dt*speed);
-				if (key_s) camera = camera-fv*(dt*speed);
-				if (key_d) camera = camera+rv*(dt*speed);
-				if (key_a) camera = camera-rv*(dt*speed);
-				
-				for (int i = 0; i < 4; i++) {
-					camera = camera + rv*(dt*speed)*input.gamepads[i].left_thumbstick_x;
-					camera = camera + fv*(dt*speed)*input.gamepads[i].left_thumbstick_y;
-				}
-				
-			}
-			else {
-				// free camera movement
-				if (key_w) camera = camera+forward_vector*(dt*speed);
-		if (key_s) camera = camera-forward_vector*(dt*speed);
-		if (key_d) camera = camera+right_vector*(dt*speed);
-		if (key_a) camera = camera-right_vector*(dt*speed);
-			}
-
-		translate_vector = { f3dot(camera, right_vector), f3dot(camera, up_vector), f3dot(camera, forward_vector) };
-		
-			matrix camera_matrix = matrix{
-			right_vector.x, right_vector.y, right_vector.z, -translate_vector.x, 
-			up_vector.x,    up_vector.y,    up_vector.z,    -translate_vector.y, 
-			camera_dir.x,   camera_dir.y,   camera_dir.z,   -translate_vector.z, 
-			0, 0, 0, 1
-													}; 
-		
-		// inverse the camera matrix to create the inverse transform
-		inv_camera_matrix = matrix_transpose(camera_matrix);
-		}
+		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 		
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
@@ -1590,7 +1714,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		model_rotation.x = 0;
 		// Update model-view matrix
 		{
-			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * inv_camera_matrix;
+			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
 			
 			// fov
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
@@ -1665,7 +1789,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			matrix scale = { model_scale.x, 0, 0, 0, 0, model_scale.y, 0, 0, 0, 0, model_scale.z, 0, 0, 0, 0, 1 };
 			matrix translate = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, model_translation.x, model_translation.y, model_translation.z, 1 };
 			
-			matrix model_view_matrix = rx * ry * rz * scale * translate * inv_camera_matrix;
+			matrix model_view_matrix = rx * ry * rz * scale * translate * c.view;
 			
 			
 			// fov

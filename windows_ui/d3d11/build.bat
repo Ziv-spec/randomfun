@@ -18,6 +18,8 @@ if "%VSCMD_ARG_TGT_ARCH%" neq "x64" (
   exit /b 1
 )
 
+set original_path=%cd%
+
 where /Q gameinput.h
 if %errorlevel% neq 0 (
 	call "C:\Program Files (x86)\Microsoft GDK\Command Prompts\GamingDesktopVars.cmd" GamingDesktopVS2022
@@ -34,6 +36,7 @@ if "%1" equ "debug" (
   set FXC=/O3
 ) 
 
+cd %original_path%
 
 IF NOT EXIST build mkdir build 
 pushd build
