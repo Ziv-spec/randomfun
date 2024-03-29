@@ -261,421 +261,6 @@ static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 
 		#endif 
 }
 
-//~
-// Camera
-//
-// Resources:
-// [1] https://learnopengl.com/Getting-started/Camera
-// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
-//
-
-typedef struct {
-	
-	/// In
-	// camera
-	float3 pos;
-	float pitch, yaw;
-	
-	// projection
-	float fov;  // field of view
-	float n, f; // near, far plaines
-	float aspect_ratio;
-	
-	/// Out
-	matrix view; // obj world->view space
-	matrix proj; // obj view->screen space
-	matrix norm; // normals world->view
-	matrix view_inv;
-	matrix proj_inv;
-	
-	// movement vectors
-	float3 right, left;
-	float3 up, down; 
-	float3 forward, backward;
-} Camera; 
-
-static void 
-CameraInit(Camera *c) {
-	c->fov = 0.25f*(float)M_PI;
-	c->n = .01f; 
-	c->f = 1000.f; 
-	
-	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-	
-	}
-
-static void 
-CameraBuild(Camera *c) {
-	Assert(c);
-	
-	// Build the lookat matrix 
-	float3 some_up_vector = { 0, 1, 0 }; 
-	
-	// The lookat matrix is a matrix created from a 'single' vector 
-	// pointing in the forward direction of the player looking at the 
-	// object we want to point the camera towards. 
-	// In this case I create the forward vector using the pitch and yaw
-	// values and from it I compute the space in which the camera lies. 
-	// The view matrix created from this space is the inverse translation
-	// and inverse rotations done by the camera itself [2].
-	
-	// this camera is pointing in the inverse direction of it's target
-	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
-	float3 rv = f3normalize(f3cross(some_up_vector, fv)); 
-	float3 uv = f3normalize(f3cross(fv, rv)); 
-	
-	float3 p = c->pos;
-	
-	matrix cmat = { 
-		rv.x, uv.x, fv.x, 0,
-		rv.y, uv.y, fv.y, 0,
-		rv.z, uv.z, fv.z, 0,
-		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
-	};
-	
-	c->view = cmat; 
-	c->view_inv = matrix_transpose(cmat);
-	
-	c->forward.x = c->view_inv.m[2][0];
-    c->forward.y = c->view_inv.m[2][1];
-    c->forward.z = c->view_inv.m[2][2];
-	
-    c->backward.x = -c->view_inv.m[2][0];
-    c->backward.y = -c->view_inv.m[2][1];
-    c->backward.z = -c->view_inv.m[2][2];
-	
-    c->right.x = c->view_inv.m[0][0];
-    c->right.y = c->view_inv.m[0][1];
-    c->right.z = c->view_inv.m[0][2];
-	
-    c->left.x = -c->view_inv.m[0][0];
-    c->left.y = -c->view_inv.m[0][1];
-    c->left.z = -c->view_inv.m[0][2];
-	
-    c->up.x = c->view_inv.m[1][0];
-    c->up.y = c->view_inv.m[1][1];
-    c->up.z = c->view_inv.m[1][2];
-	
-    c->down.x = -c->view_inv.m[1][0];
-    c->down.y = -c->view_inv.m[1][1];
-    c->down.z = -c->view_inv.m[1][2];
-	
-	
-	
-	// TODO(ziv): Fix the projection matrix that I use in here 
-		// Build the projection matrix 
-	
-	// In this case the projection matrix which we are building 
-	// is mapping object's in the players thrustum inside a 
-	// -1 to 1 cordinate space [2].
-		float hfov = 1.0f/tanf(c->fov*0.5f); 
-			
-		c->proj = matrix{0}; 
-		c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
-		c->proj.m[1][1] = 1.0f/hfov; 
-		c->proj.m[2][3] = -1.0f;
-			
-	 // cn = -1 and cf = 1:
-	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
-	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
-
-/* 	
-	 //cn = 0 and cf = 1: 
-	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
-	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
-	
-	 //cn = -1 and cf = 0:
-	c->proj.m[2][2] = (c->n) / (c->n - c->f);
-	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
-	 */
-
-	// Inverse of the Projection Matrix
-	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
-    c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
-    c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
-    c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
-    c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
-    c->proj_inv.m[3][3] = -c->proj.m[2][2];
-    c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
-	
-}
-
-static void 
-CameraMove(Camera *c, float x, float y, float z) {
-	
-	// Here we use the right up and forward vectors aligned to 
-	// the camera space. We do so such that every movement we 
-	// let the player have is one which respects the camera 
-	// viewing angle.
-	
-	// NOTE(ziv): Player movement is defined here
-	// Currently using first person shooter movement.
-	float cy = c->pos.y;
-	
-	c->pos = c->pos + c->right * x; 
-	c->pos = c->pos + c->up * y; 
-		c->pos = c->pos + c->forward * z; 
-	
-	if (1) {
-		c->pos.y = cy;
-	}
-	
-}
-
-
-//~
-// Object File Parser
-// 
-
-static float ObjParseFloat(char* str, size_t *length) {
-	float num = 0.0, mul = 1.0;
-    int len = 0, dec = 0;
-	
-	while (str[len] == ' ' || str[len] == '\n') len++;
-	
-	if (str[len] == '-') len++;
-    while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
-	
-    for (int idx = len - 1; idx >= 0; idx--)
-    {
-        char chr = str[idx] - '0';
-		
-        if      (chr == '-' - '0') num = -num;
-        else if (chr == '.' - '0') dec = 0; 
-        else if (dec)
-        {
-            num += chr;
-            num *= 0.1f;
-        }
-        else
-        {
-            num += chr * mul;
-            mul *= 10.0;
-        }
-    }
-	
-	*length = len;
-	return num; 
-}
-
-static unsigned int ObjParseUINT(char *str, size_t *length) {
-	unsigned int len = 0, result = 0;
-	
-	while (str[len] == ' ' && str[len] != '\0') len++; 
-	
-	while (((unsigned int)str[len] - '0') < 10) {
-		result = 10*result + str[len++]-'0';
-	}
-	
-	*length = len;
-	return result; 
-}
-
-struct Vertex {
-	float pos[3];
-	float norm[3];
-	float uv[2];
-};
-
-static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
-	
-	if (v_cnt == NULL || i_cnt == NULL) 
-		return false;
-	
-	// Read .obj file
-	char *obj_buf;
-	{
-	HANDLE file = CreateFileA(path,
-                       GENERIC_READ,          // open for reading
-                       FILE_SHARE_READ,       // share for reading
-                       NULL,                  // default security
-                       OPEN_EXISTING,         // existing file only
-                       FILE_ATTRIBUTE_NORMAL, // normal file
-                       NULL);
-		Assert(file != INVALID_HANDLE_VALUE);
-		
-	DWORD file_size = GetFileSize(file, NULL);
-		obj_buf = (char *)malloc((file_size+1) * sizeof(char));
-	
-	DWORD bytes_read_cnt;
-	bool success = ReadFile(file, obj_buf, file_size, &bytes_read_cnt, NULL);
-		if (!success || file_size != bytes_read_cnt) {
-			return false;
-		}
-		
-		obj_buf[file_size] = '\0'; // NULL terminate the string
-	}
-	
-	
-	
-	int verticies_pos_count = 0; 
-	int indicies_count = 0; 
-	int normals_count = 0; 
-	int texture_cords_count = 0; 
-	
-	// count amount of verticies and indicies needed
-	{
-		
-	char *s = obj_buf; 
-	while (*s) {
-		
-			if (*s == 'v') {
-				s++;
-			if (*s == ' ') verticies_pos_count++; 
-			else if (*s == 'n') normals_count++; 
-			else if (*s == 't') texture_cords_count++; 
-		}
-			else if (*s == 'f') {
-				s++;
-			indicies_count += 3; // 3 indicies per face
-		}
-		 
-		while(*s != '\0' && *s++ != '\n');
-	}
-	
-	}
-	
-	// when there is no output buffer, give the user the sizes of buffers required
-	if (idest == NULL || vdest == NULL) {
-		*v_cnt = indicies_count; 
-		*i_cnt = indicies_count ; 
-		return true;
-	}
-	
-	float *shared = (float *)malloc( 1+(3*verticies_pos_count+3*normals_count+2*texture_cords_count)*sizeof(float) );
-	float *normals_buff = shared;
-	float *uv_buff      = normals_buff + (3*normals_count); 
-	float *pos_buff     = uv_buff + (2*texture_cords_count);
-	int pos_idx = 0, uv_idx = 0, norm_idx = 0;
-	unsigned short idx = 0;
-	
-	Vertex *v = vdest; 
-	
-	// parse obj file
-	{
-		size_t len = 0;
-	char *s = obj_buf;
-	while (*s) {
-		
-			if (*s == 'v') {
-				s++;
-				if (*s == ' ') {
-					s++;
-					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
-					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
-					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len;
-				}
-				else if (*s == 't') {
-					s+=2;
-					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len+1;
-					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len;
-				}
-				else if (*s == 'n') {
-					s++; s++;
-					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
-					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
-					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len;
-				}
-				
-		}
-			else if (*s == 'f') {
-				s++;
-				
-				unsigned int vi, vt, vn;
-				for (int i = 0; i < 3; i++) {
-					vi = ObjParseUINT(s, &len); s+=len+1;
-					vt = ObjParseUINT(s, &len); s+=len+1;
-					vn = ObjParseUINT(s, &len); s+=len+1;
-					
-					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
-					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
-					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
-					
-					
-					// Search for existing vertex for it's index
-					unsigned short match_index = -1;
-					if (idx > 0) { 
-					for (int j = 0; j < idx; j++) {
-						if (memcmp(&vdest[j], v, sizeof(Vertex)) == 0) {
-							match_index = j;
-							break;
-						}
-					}
-					}
-					
-					if (match_index == (unsigned short)-1) { v++; *idest++ = idx++; }
-					else { *idest++ = match_index; }
-				}
-				s--;
-				
-			}
-			
-			while(*s != '\0' && *s++ != '\n');
-		}
-		
-	}
-	
-	// update new vertex count
-	*v_cnt = idx;
-	
-	return true;
-}
-
-
-//~
-// UI
-// 
-
-typedef enum {
-	UI_HOVERABLE, 
-	UI_CLICKABLE,
-} UI_Behaviour; 
-
-typedef struct {
-	int minx, miny;
-	int maxx, maxy;
-} UI_Box; 
-
-typedef struct { 
-	u8 behaviour;
-	UI_Box box; 
-} UI_Widget; 
-
-typedef struct {
-	bool clicked : 1; 
-	bool hovered : 1; 
-} UI_Output;
-
-typedef struct {
-	// Memory stuff here 
-	int something; 
-	// UI thingy here 
-	int somethingomre; 
-	//
-} Context; 
-
-static Context *g_context;
-
-static UI_Output
-UIBuildWidget(Context *ctx, UI_Box box, u32 behaviour) {
-	
-	UI_Output output;
-	
-	// handle the behaviour as expected (use ctx to handle thingy with input) 
-	
-	// tell the system how to render the thingy
-	
-	return output;
-}
-
-static bool
-UIButton(Context *ctx, int x, int y, int w, int h) {
-	UI_Box box = { x, y, x+w, y+h };
-	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
-	return output.clicked;
-}
-
 
 //~
 // Input
@@ -991,7 +576,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			
 			if (wparam == VK_TAB) { key_tab = true; }
 		} break; 
-		 
+		
 		case WM_KEYUP: 
 		{
 			key_w = (char)wparam == 'W' ? false : key_w;
@@ -1037,6 +622,420 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 		
 	}
 	return DefWindowProcA(window, message, wparam, lparam);
+}
+
+//~
+// Camera
+//
+// Resources:
+// [1] https://learnopengl.com/Getting-started/Camera
+// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
+//
+
+typedef struct {
+	
+	/// In
+	// camera
+	float3 pos;
+	float pitch, yaw;
+	
+	// projection
+	float fov;  // field of view
+	float n, f; // near, far plaines
+	float aspect_ratio;
+	
+	/// Out
+	matrix view; // obj world->view space
+	matrix proj; // obj view->screen space
+	matrix norm; // normals world->view
+	matrix view_inv;
+	matrix proj_inv;
+	
+	// movement vectors
+	float3 right, left;
+	float3 up, down; 
+	float3 forward, backward;
+} Camera; 
+
+static void 
+CameraInit(Camera *c) {
+	c->fov = 0.25f*(float)M_PI;
+	c->n = .01f; 
+	c->f = 1000.f; 
+	
+	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+	
+	}
+
+static void 
+CameraBuild(Camera *c) {
+	Assert(c);
+	
+	// Build the lookat matrix 
+	float3 some_up_vector = { 0, 1, 0 }; 
+	
+	// The lookat matrix is a matrix created from a 'single' vector 
+	// pointing in the forward direction of the player looking at the 
+	// object we want to point the camera towards. 
+	// In this case I create the forward vector using the pitch and yaw
+	// values and from it I compute the space in which the camera lies. 
+	// The view matrix created from this space is the inverse translation
+	// and inverse rotations done by the camera itself [2].
+	
+	// this camera is pointing in the inverse direction of it's target
+	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
+	float3 rv = f3normalize(f3cross(some_up_vector, fv)); 
+	float3 uv = f3normalize(f3cross(fv, rv)); 
+	
+	float3 p = c->pos;
+	
+	matrix cmat = { 
+		rv.x, uv.x, fv.x, 0,
+		rv.y, uv.y, fv.y, 0,
+		rv.z, uv.z, fv.z, 0,
+		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
+	};
+	
+	c->view = cmat; 
+	c->view_inv = matrix_transpose(cmat);
+	
+	c->forward.x = c->view_inv.m[2][0];
+    c->forward.y = c->view_inv.m[2][1];
+    c->forward.z = c->view_inv.m[2][2];
+	
+    c->backward.x = -c->view_inv.m[2][0];
+    c->backward.y = -c->view_inv.m[2][1];
+    c->backward.z = -c->view_inv.m[2][2];
+	
+    c->right.x = c->view_inv.m[0][0];
+    c->right.y = c->view_inv.m[0][1];
+    c->right.z = c->view_inv.m[0][2];
+	
+    c->left.x = -c->view_inv.m[0][0];
+    c->left.y = -c->view_inv.m[0][1];
+    c->left.z = -c->view_inv.m[0][2];
+	
+    c->up.x = c->view_inv.m[1][0];
+    c->up.y = c->view_inv.m[1][1];
+    c->up.z = c->view_inv.m[1][2];
+	
+    c->down.x = -c->view_inv.m[1][0];
+    c->down.y = -c->view_inv.m[1][1];
+    c->down.z = -c->view_inv.m[1][2];
+	
+	
+	
+	// TODO(ziv): Fix the projection matrix that I use in here 
+		// Build the projection matrix 
+	
+	// In this case the projection matrix which we are building 
+	// is mapping object's in the players thrustum inside a 
+	// -1 to 1 cordinate space [2].
+		float hfov = 1.0f/tanf(c->fov*0.5f); 
+			
+		c->proj = matrix{0}; 
+		c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
+		c->proj.m[1][1] = 1.0f/hfov; 
+		c->proj.m[2][3] = -1.0f;
+			
+	 // cn = -1 and cf = 1:
+	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
+	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
+
+/* 	
+	 //cn = 0 and cf = 1: 
+	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
+	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
+	
+	 //cn = -1 and cf = 0:
+	c->proj.m[2][2] = (c->n) / (c->n - c->f);
+	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
+	 */
+
+	// Inverse of the Projection Matrix
+	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
+    c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
+    c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
+    c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
+    c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
+    c->proj_inv.m[3][3] = -c->proj.m[2][2];
+    c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
+	
+}
+
+static void 
+CameraMove(Camera *c, float x, float y, float z) {
+	
+	// Here we use the right up and forward vectors aligned to 
+	// the camera space. We do so such that every movement we 
+	// let the player have is one which respects the camera 
+	// viewing angle.
+	
+	// NOTE(ziv): Player movement is defined here
+	// Currently using first person shooter movement.
+	float cy = c->pos.y;
+	
+	c->pos = c->pos + c->right * x; 
+	c->pos = c->pos + c->up * y; 
+		c->pos = c->pos + c->forward * z; 
+	
+	if (1) {
+		c->pos.y = cy;
+	}
+	
+}
+
+
+//~
+// UI
+// 
+
+typedef enum {
+	UI_HOVERABLE, 
+	UI_CLICKABLE,
+} UI_Behaviour; 
+
+typedef struct {
+	int minx, miny;
+	int maxx, maxy;
+} UI_Box; 
+
+typedef struct { 
+	u8 behaviour;
+	UI_Box box; 
+} UI_Widget; 
+
+typedef struct {
+	bool clicked : 1; 
+	bool hovered : 1; 
+} UI_Output;
+
+typedef struct {
+	Game_Input *input;
+	
+} Context; 
+
+static Context *g_context;
+
+static UI_Output
+UIBuildWidget(Context *ctx, UI_Box box, u32 behaviour) {
+	
+	UI_Output output;
+	
+	
+	
+	// handle the behaviour as expected (use ctx to handle thingy with input) 
+	
+	// tell the system how to render the thingy
+	
+	return output;
+}
+
+static bool
+UIButton(Context *ctx, int x, int y, int w, int h) {
+	UI_Box box = { x, y, x+w, y+h };
+	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
+	return output.clicked;
+}
+
+
+//~
+// Object File Parser
+// 
+
+static float ObjParseFloat(char* str, size_t *length) {
+	float num = 0.0, mul = 1.0;
+    int len = 0, dec = 0;
+	
+	while (str[len] == ' ' || str[len] == '\n') len++;
+	
+	if (str[len] == '-') len++;
+    while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
+	
+    for (int idx = len - 1; idx >= 0; idx--)
+    {
+        char chr = str[idx] - '0';
+		
+        if      (chr == '-' - '0') num = -num;
+        else if (chr == '.' - '0') dec = 0; 
+        else if (dec)
+        {
+            num += chr;
+            num *= 0.1f;
+        }
+        else
+        {
+            num += chr * mul;
+            mul *= 10.0;
+        }
+    }
+	
+	*length = len;
+	return num; 
+}
+
+static unsigned int ObjParseUINT(char *str, size_t *length) {
+	unsigned int len = 0, result = 0;
+	
+	while (str[len] == ' ' && str[len] != '\0') len++; 
+	
+	while (((unsigned int)str[len] - '0') < 10) {
+		result = 10*result + str[len++]-'0';
+	}
+	
+	*length = len;
+	return result; 
+}
+
+struct Vertex {
+	float pos[3];
+	float norm[3];
+	float uv[2];
+};
+
+static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
+	
+	if (v_cnt == NULL || i_cnt == NULL) 
+		return false;
+	
+	// Read .obj file
+	char *obj_buf;
+	{
+		HANDLE file = CreateFileA(path,
+								  GENERIC_READ,          // open for reading
+								  FILE_SHARE_READ,       // share for reading
+								  NULL,                  // default security
+								  OPEN_EXISTING,         // existing file only
+								  FILE_ATTRIBUTE_NORMAL, // normal file
+								  NULL);
+		Assert(file != INVALID_HANDLE_VALUE);
+		
+		DWORD file_size = GetFileSize(file, NULL);
+		obj_buf = (char *)malloc((file_size+1) * sizeof(char));
+		
+		DWORD bytes_read_cnt;
+		bool success = ReadFile(file, obj_buf, file_size, &bytes_read_cnt, NULL);
+		if (!success || file_size != bytes_read_cnt) {
+			return false;
+		}
+		
+		obj_buf[file_size] = '\0'; // NULL terminate the string
+	}
+	
+	
+	
+	int verticies_pos_count = 0; 
+	int indicies_count = 0; 
+	int normals_count = 0; 
+	int texture_cords_count = 0; 
+	
+	// count amount of verticies and indicies needed
+	{
+		
+		char *s = obj_buf; 
+		while (*s) {
+			
+			if (*s == 'v') {
+				s++;
+				if (*s == ' ') verticies_pos_count++; 
+				else if (*s == 'n') normals_count++; 
+				else if (*s == 't') texture_cords_count++; 
+			}
+			else if (*s == 'f') {
+				s++;
+				indicies_count += 3; // 3 indicies per face
+			}
+			
+			while(*s != '\0' && *s++ != '\n');
+		}
+		
+	}
+	
+	// when there is no output buffer, give the user the sizes of buffers required
+	if (idest == NULL || vdest == NULL) {
+		*v_cnt = indicies_count; 
+		*i_cnt = indicies_count ; 
+		return true;
+	}
+	
+	float *shared = (float *)malloc( 1+(3*verticies_pos_count+3*normals_count+2*texture_cords_count)*sizeof(float) );
+	float *normals_buff = shared;
+	float *uv_buff      = normals_buff + (3*normals_count); 
+	float *pos_buff     = uv_buff + (2*texture_cords_count);
+	int pos_idx = 0, uv_idx = 0, norm_idx = 0;
+	unsigned short idx = 0;
+	
+	Vertex *v = vdest; 
+	
+	// parse obj file
+	{
+		size_t len = 0;
+		char *s = obj_buf;
+		while (*s) {
+			
+			if (*s == 'v') {
+				s++;
+				if (*s == ' ') {
+					s++;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					pos_buff[pos_idx++] = ObjParseFloat(s, &len); s+=len;
+				}
+				else if (*s == 't') {
+					s+=2;
+					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					uv_buff[uv_idx++] = ObjParseFloat(s, &len); s+=len;
+				}
+				else if (*s == 'n') {
+					s++; s++;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
+					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len;
+				}
+				
+			}
+			else if (*s == 'f') {
+				s++;
+				
+				unsigned int vi, vt, vn;
+				for (int i = 0; i < 3; i++) {
+					vi = ObjParseUINT(s, &len); s+=len+1;
+					vt = ObjParseUINT(s, &len); s+=len+1;
+					vn = ObjParseUINT(s, &len); s+=len+1;
+					
+					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
+					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
+					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
+					
+					
+					// Search for existing vertex for it's index
+					unsigned short match_index = -1;
+					if (idx > 0) { 
+						for (int j = 0; j < idx; j++) {
+							if (memcmp(&vdest[j], v, sizeof(Vertex)) == 0) {
+								match_index = j;
+								break;
+							}
+						}
+					}
+					
+					if (match_index == (unsigned short)-1) { v++; *idest++ = idx++; }
+					else { *idest++ = match_index; }
+				}
+				s--;
+				
+			}
+			
+			while(*s != '\0' && *s++ != '\n');
+		}
+		
+	}
+	
+	// update new vertex count
+	*v_cnt = idx;
+	
+	return true;
 }
 
 //~
