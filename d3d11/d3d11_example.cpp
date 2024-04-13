@@ -67,8 +67,8 @@ typedef int b32;
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
 	* [x] Camera
-			*   [x] Normal Camera
-			*   [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
+		*   [x] Normal Camera
+		*   [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
 * [x] z-buffer
 * [ ] Shadow Mapping
@@ -82,8 +82,18 @@ typedef int b32;
 			* [ ] Pixelated look
 
 @IMPORTANT  These have a higher importance level right now
- * [ ] Create a "Renderer" seperating d3d11
+* [ ] Create a "Renderer" seperating d3d11
 * [ ] Create a "Drawing" library using the renderer for effient simple object rendering
+
+Structure of code:
+	Math
+	Input
+	Camera
+	UI
+	ObjFileLoader
+	Win32 API
+	D3D11 Renderer
+	main
 */
 
 
@@ -618,8 +628,7 @@ CameraInit(Camera *c) {
 	
 	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-	
-	}
+}
 
 static void 
 CameraBuild(Camera *c) {
@@ -654,49 +663,49 @@ CameraBuild(Camera *c) {
 	c->view_inv = matrix_transpose(cmat);
 	
 	c->forward.x = c->view_inv.m[2][0];
-    c->forward.y = c->view_inv.m[2][1];
-    c->forward.z = c->view_inv.m[2][2];
-	
-    c->backward.x = -c->view_inv.m[2][0];
-    c->backward.y = -c->view_inv.m[2][1];
-    c->backward.z = -c->view_inv.m[2][2];
-	
-    c->right.x = c->view_inv.m[0][0];
-    c->right.y = c->view_inv.m[0][1];
-    c->right.z = c->view_inv.m[0][2];
-	
-    c->left.x = -c->view_inv.m[0][0];
-    c->left.y = -c->view_inv.m[0][1];
-    c->left.z = -c->view_inv.m[0][2];
-	
-    c->up.x = c->view_inv.m[1][0];
-    c->up.y = c->view_inv.m[1][1];
-    c->up.z = c->view_inv.m[1][2];
-	
-    c->down.x = -c->view_inv.m[1][0];
-    c->down.y = -c->view_inv.m[1][1];
-    c->down.z = -c->view_inv.m[1][2];
-	
-	
-	
+	c->forward.y = c->view_inv.m[2][1];
+	c->forward.z = c->view_inv.m[2][2];
+
+	c->backward.x = -c->view_inv.m[2][0];
+	c->backward.y = -c->view_inv.m[2][1];
+	c->backward.z = -c->view_inv.m[2][2];
+
+	c->right.x = c->view_inv.m[0][0];
+	c->right.y = c->view_inv.m[0][1];
+	c->right.z = c->view_inv.m[0][2];
+
+	c->left.x = -c->view_inv.m[0][0];
+	c->left.y = -c->view_inv.m[0][1];
+	c->left.z = -c->view_inv.m[0][2];
+
+	c->up.x = c->view_inv.m[1][0];
+	c->up.y = c->view_inv.m[1][1];
+	c->up.z = c->view_inv.m[1][2];
+
+	c->down.x = -c->view_inv.m[1][0];
+	c->down.y = -c->view_inv.m[1][1];
+	c->down.z = -c->view_inv.m[1][2];
+
+
+
 	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here 
 		// Build the projection matrix 
 	
 	// In this case the projection matrix which we are building 
 	// is mapping object's in the players thrustum inside a 
 	// -1 to 1 cordinate space [2].
-		float hfov = 1.0f/tanf(c->fov*0.5f); 
-			
-		c->proj = matrix{0}; 
-		c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
-		c->proj.m[1][1] = 1.0f/hfov; 
-		c->proj.m[2][3] = -1.0f;
-			
+	float hfov = 1.0f/tanf(c->fov*0.5f); 
+		
+	c->proj = matrix{0}; 
+	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
+	c->proj.m[1][1] = 1.0f/hfov; 
+	c->proj.m[2][3] = -1.0f;
+	
 	 // cn = -1 and cf = 1:
 	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
 	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
 
-/* 	
+	/* 	
 	 //cn = 0 and cf = 1: 
 	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
 	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
@@ -708,18 +717,17 @@ CameraBuild(Camera *c) {
 
 	// Inverse of the Projection Matrix
 	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
-    c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
-    c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
-    c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
-    c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
-    c->proj_inv.m[3][3] = -c->proj.m[2][2];
-    c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
-	
+	c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
+	c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
+	c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
+	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
+	c->proj_inv.m[3][3] = -c->proj.m[2][2];
+	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
+		
 }
 
 static void 
 CameraMove(Camera *c, float x, float y, float z) {
-	
 	// Here we use the right up and forward vectors aligned to 
 	// the camera space. We do so such that every movement we 
 	// let the player have is one which respects the camera 
@@ -731,12 +739,14 @@ CameraMove(Camera *c, float x, float y, float z) {
 	
 	c->pos = c->pos + c->right * x; 
 	c->pos = c->pos + c->up * y; 
-		c->pos = c->pos + c->forward * z; 
+	c->pos = c->pos + c->forward * z; 
 	
-	if (1) {
+	if (1) { 
+		// in a first person shooter camera we don't change the players
+		// y position because he looked in that direction. Only when the 
+		// player requrests.
 		c->pos.y = cy;
 	}
-	
 }
 
 
@@ -792,35 +802,35 @@ UIButton(Context *ctx, int x, int y, int w, int h) {
 
 
 //~
-// Object File Parser
+// Object File Loader 
 // 
 
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
-    int len = 0, dec = 0;
+	int len = 0, dec = 0;
 	
 	while (str[len] == ' ' || str[len] == '\n') len++;
 	
 	if (str[len] == '-') len++;
-    while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
+	while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
 	
-    for (int idx = len - 1; idx >= 0; idx--)
-    {
-        char chr = str[idx] - '0';
-		
-        if      (chr == '-' - '0') num = -num;
-        else if (chr == '.' - '0') dec = 0; 
-        else if (dec)
-        {
-            num += chr;
-            num *= 0.1f;
-        }
-        else
-        {
-            num += chr * mul;
-            mul *= 10.0;
-        }
-    }
+	for (int idx = len - 1; idx >= 0; idx--)
+	{
+		char chr = str[idx] - '0';
+			
+		if      (chr == '-' - '0') num = -num;
+		else if (chr == '.' - '0') dec = 0; 
+		else if (dec)
+		{
+		    num += chr;
+		    num *= 0.1f;
+		}
+		else
+		{
+		    num += chr * mul;
+		    mul *= 10.0;
+		}
+	}
 	
 	*length = len;
 	return num; 
@@ -845,7 +855,7 @@ struct Vertex {
 	float uv[2];
 };
 
-static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
+static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
 	
 	if (v_cnt == NULL || i_cnt == NULL) 
 		return false;
@@ -854,13 +864,13 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 	char *obj_buf;
 	{
 		HANDLE file = CreateFileA(path,
-								  GENERIC_READ,          // open for reading
-								  FILE_SHARE_READ,       // share for reading
-								  NULL,                  // default security
-								  OPEN_EXISTING,         // existing file only
-								  FILE_ATTRIBUTE_NORMAL, // normal file
-								  NULL);
-		Assert(file != INVALID_HANDLE_VALUE);
+					  GENERIC_READ,          // open for reading
+					  FILE_SHARE_READ,       // share for reading
+					  NULL,                  // default security
+					  OPEN_EXISTING,         // existing file only
+					  FILE_ATTRIBUTE_NORMAL, // normal file
+					  NULL);
+		Assert(file != INVALID_HANDLE_VALUE); // TODO(ziv): Make it trip the assertion when the file just doesn't exist
 		
 		DWORD file_size = GetFileSize(file, NULL);
 		obj_buf = (char *)malloc((file_size+1) * sizeof(char));
@@ -873,9 +883,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		
 		obj_buf[file_size] = '\0'; // NULL terminate the string
 	}
-	
-	
-	
+
 	int verticies_pos_count = 0; 
 	int indicies_count = 0; 
 	int normals_count = 0; 
@@ -924,7 +932,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		size_t len = 0;
 		char *s = obj_buf;
 		while (*s) {
-			
+
 			if (*s == 'v') {
 				s++;
 				if (*s == ' ') {
@@ -948,7 +956,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 			}
 			else if (*s == 'f') {
 				s++;
-				
+
 				unsigned int vi, vt, vn;
 				for (int i = 0; i < 3; i++) {
 					vi = ObjParseUINT(s, &len); s+=len+1;
@@ -958,8 +966,6 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
 					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
 					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
-					
-					
 					// Search for existing vertex for it's index
 					unsigned short match_index = -1;
 					if (idx > 0) { 
@@ -982,10 +988,9 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		}
 		
 	}
-	
+
 	// update new vertex count
 	*v_cnt = idx;
-	
 	return true;
 }
 
@@ -1011,11 +1016,11 @@ CreateWin32Window() {
 	Assert(atom && "Could not register class"); 
 	
 	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW, 
-								  window_class.lpszClassName, 
-								  APP_TITLE, 
-								  WS_OVERLAPPEDWINDOW,
-								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
-								  NULL, NULL, window_class.hInstance, NULL);
+					  window_class.lpszClassName, 
+					  APP_TITLE, 
+					  WS_OVERLAPPEDWINDOW,
+					  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
+					  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
 	
 	return window;
@@ -1024,6 +1029,65 @@ CreateWin32Window() {
 //~
 // D3D11 Renderer
 // 
+
+// 
+// Planning of the API: 
+// The general usecase of the renderer is to draw `Mesh`
+// This brings the most minimal overhead in terms of the api but the least
+// opportunities to automatically handle optimizations like grouping drawing 
+// commands, pushing this onto the user.
+//
+// There is going to be a further abstraction which will use this renderer. 
+// The abstraction is a draw library which will allow for you to have a layer of 
+// optimizing logic which will efficiently draw certain primitives. 
+// 
+// Lets say you want to draw a button and represent it as a simple rectangle. 
+// You then call the function `DrawRectanlge(rect, color);`
+// This functions aggragates all the rectangles and then at a certain point 
+// in the rendering pipeline it goes to the Renderer and asks for it to 
+// draw all the  rectangles at once in a single draw command. 
+// There should also be a cache system in place. This is because 
+// The drawing library is expected to be used in sync with the ui library 
+// which will make many call to get the same results frame after frame where 
+// cacheing is useful. 
+// 
+// `RendererDrawInstanced(normal_rect, shader, resources)`
+// norma_rect - verticies data
+// shader - pixel and vertex shaders
+// resources - pointer to an array of general resources like textures and or 
+//             StructuredBuffers and so on...
+// 
+
+// 
+// Another proposal:
+// The renderer will have a couple of primitives 
+// `Mesh` will be a general mesh with properties the user can define
+// `SimpleQuad` is a rectangular shape with a solid color
+// `Quad` is a rectangular shape which has a general shader attached to it
+// `Lines` takes a list of points and draws in an instanced way the lines 
+//         between all these points
+//
+
+// 
+// Essentially the renderer is a big bit, it contains all ways of drawing 
+// anything that you might want. Like a graphics library, it should have 
+// primitives both specific and general. This is actually a pretty bad 
+// abstraction now that I think about it more carefully. 
+//
+// Instead of a clear seperation between what the graphics cards supports
+// and allows you to do, and what you want to draw which are mostly 
+// primitives who's drawing I can optimize. I am pushing everything onto a 
+// lesser clean interface which allows you to have everything both lowlevel 
+// control and higher level control. 
+// 
+// Usually a more promising design I have seen is a good low level core, 
+// paired with a high level clean interface. This  allows for a stable 
+// core and a high level interface which is extendable and can change 
+// as the user so desires
+// 
+
+
+
 
 typedef struct {
 	ID3D11Device1 *device; 
@@ -1048,17 +1112,15 @@ typedef struct {
 	ID3D11ShaderResourceView *tex;
 } R_Texture; 
 
-
 // API 
 static void RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window); 
 static void RendererD3D11Terminate(R_D3D11_Renderer *r);
 static R_Texture RendererGetTexture(R_D3D11_Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags);
+static void RenderDraw(); 
+static void RenderDrawIndexed(); 
+static void RenderDrawInstanced(); 
 
 
-typedef enum {
-	RCT_MESH, // general mesh  
-	RCT_QUAD, // a single quad
-} RenderCommand_Type;
 
 typedef struct {
 	unsigned char flags;
@@ -1068,9 +1130,6 @@ typedef struct {
 	unsigned int *indicies;
 	unsigned int verticies_count;
 	unsigned int indicies_count;;
-	
-	// Quad
-	
 } RenderCommand; 
 
 static void 
@@ -1098,11 +1157,11 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 		ID3D11DeviceContext* base_context;
 		
 		hr = D3D11CreateDevice(NULL, // Default adapter
-							   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
-							   NULL, // Software renderer if specified to use CPU
-							   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
-							   featureLevels, ARRAYSIZE(featureLevels), 
-							   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
+				   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
+				   NULL, // Software renderer if specified to use CPU
+				   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
+				   featureLevels, ARRAYSIZE(featureLevels), 
+				   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
 		AssertHR(hr); 
 		
 		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
@@ -1116,19 +1175,19 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
     {
         ID3D11InfoQueue* info;
 		
-		device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
+	device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
         info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
         info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-		info->Release();
+	info->Release();
     }
 	
     // enable debug break for DXGI too
     {
         IDXGIInfoQueue* dxgi_info;
-		hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
+	hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
         AssertHR(hr);
-		dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-		dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+	dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+	dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
         dxgi_info->Release();
     }
 	
@@ -1191,7 +1250,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 	// 
 	
 	// Create Depth Sentcil
-    ID3D11DepthStencilState* depth_stencil_state;
+	ID3D11DepthStencilState* depth_stencil_state;
 	{
 		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
 		depth_stencil_desc.DepthEnable    = TRUE;
@@ -1239,6 +1298,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
 	}
 	
+	// Set all d3d11 com objects
 	r->device = device; 
 	r->context = context; 
 	r->swap_chain = swap_chain; 
@@ -1381,12 +1441,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	char model_path[] = "../resources/cube.obj";
 	
 	size_t verticies_count, indicies_count; 
-	bool success = ObjParseFile(model_path,NULL, &verticies_count, NULL, &indicies_count); 
+	bool success = ObjLoadFile(model_path,NULL, &verticies_count, NULL, &indicies_count); 
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
 	
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
 	unsigned short *_indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = ObjParseFile(model_path,
+	success = ObjLoadFile(model_path,
 						verticies, &verticies_count, 
 						_indicies, &indicies_count); 
 	Assert(success && "Failed extracting model data");
@@ -1494,55 +1554,55 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 	
 	// Create Sampler State
-    ID3D11SamplerState* sampler_state;
-    {
-        D3D11_SAMPLER_DESC sampler_desc = {};
-        sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-        sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.BorderColor[0] = 1.0f;
-        sampler_desc.BorderColor[1] = 1.0f;
-        sampler_desc.BorderColor[2] = 1.0f;
-        sampler_desc.BorderColor[3] = 1.0f;
-        sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-        r.device->CreateSamplerState(&sampler_desc, &sampler_state);
-    }
-	
+	ID3D11SamplerState* sampler_state;
+	{
+		D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.BorderColor[0] = 1.0f;
+		sampler_desc.BorderColor[1] = 1.0f;
+		sampler_desc.BorderColor[2] = 1.0f;
+		sampler_desc.BorderColor[3] = 1.0f;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+			
+		r.device->CreateSamplerState(&sampler_desc, &sampler_state);
+	}
+
 	// Texture
 	ID3D11ShaderResourceView *texture_view;
 	{
 		// Load Image
-	int tex_w, tex_h, tex_num_channels;
-    unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
-    Assert(bytes);
+		int tex_w, tex_h, tex_num_channels;
+		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
+		Assert(bytes);
 		int pitch = 4 * tex_w;
+			
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = tex_w;
+		texture_desc.Height             = tex_h;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
+		texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
 		
-			D3D11_TEXTURE2D_DESC texture_desc = {};
-			texture_desc.Width              = tex_w;
-			texture_desc.Height             = tex_h;
-			texture_desc.MipLevels          = 1;
-			texture_desc.ArraySize          = 1;
-			texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-			texture_desc.SampleDesc.Count   = 1;
-			texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
-			texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-			
-			D3D11_SUBRESOURCE_DATA texture_data = {};
-			texture_data.pSysMem = bytes;
-			texture_data.SysMemPitch = pitch;
-			
-			ID3D11Texture2D* texture;
+		D3D11_SUBRESOURCE_DATA texture_data = {};
+		texture_data.pSysMem = bytes;
+		texture_data.SysMemPitch = pitch;
+		
+		ID3D11Texture2D* texture;
 		r.device->CreateTexture2D(&texture_desc, &texture_data, &texture);
 		r.device->CreateShaderResourceView(texture, NULL, &texture_view);
 		
 		texture->Release();
 		free(bytes);
 	}
-	
+
 	ShowWindow(window, SW_SHOW);
-	
+
 	//~
 	// Main Game Loop
 	//
@@ -1557,15 +1617,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 	
 	// projection matrix variables
-    float w = viewport.Width / viewport.Height; // width (aspect ratio)
-    float h = 1.0f;                             // height
-    float n = 1.0f;                             // near
-    float f = 90.0f;                            // far
-	
-    float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
-    float3 model_scale       = { 1.5f, 1.5f, 1.5f };
-    float3 model_translation = { 0.0f, 0.0f, 4.0f };
-	
+	float w = viewport.Width / viewport.Height; // width (aspect ratio)
+	float h = 1.0f;                             // height
+	float n = 1.0f;                             // near
+	float f = 90.0f;                            // far
+
+	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
+	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
+	float3 model_translation = { 0.0f, 0.0f, 4.0f };
+		
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 }; 
 	// point light
@@ -1593,7 +1653,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	
-	#ifdef USE_GAMEINPUT
+#ifdef USE_GAMEINPUT
 	 initialize_input();
 #endif 
 	
@@ -1626,8 +1686,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		mouse_pos[0] = (int)input.mouse.px; 
 		mouse_pos[1] = (int)input.mouse.py; 
 #endif 
-		
-		
+
 		//
 		// Handle window resize
 		//
@@ -1681,22 +1740,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
 		
 		// Update Camera
-			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
-			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+		float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
+		float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+		
+		float speed = 5;
+		
+		for (int i = 0; i < 4; i++) {
+			dx += input.gamepads[i].right_thumbstick_x*speed;
+			dy += input.gamepads[i].right_thumbstick_y*speed;
 			
-			float speed = 5;
-			
-			for (int i = 0; i < 4; i++) {
-				dx += input.gamepads[i].right_thumbstick_x*speed;
-				dy += input.gamepads[i].right_thumbstick_y*speed;
-				
-			}
-			
-			c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));; 
+		}
+		
+		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));; 
 		c.pitch = float_clamp(c.pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
 			
-			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
-			CameraBuild(&c); 
+		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
+		CameraBuild(&c); 
 			
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 		
@@ -1753,26 +1812,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r.context->ClearDepthStencilView(r.zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 		
 		// Input Assembler
-        r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		r.context->IASetInputLayout(layout);
 		const UINT stride = sizeof(Vertex); 
 		const UINT offset = 0;
-        r.context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-        r.context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
+		r.context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
+		r.context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
 		
 		// Vertex Shader
-        r.context->VSSetShader(vshader, NULL, 0);
+		r.context->VSSetShader(vshader, NULL, 0);
 		r.context->VSSetConstantBuffers(0, 1, &cbuffer);
 		
 		// Rasterizer Stage
-        r.context->RSSetViewports(1, &viewport);
+		r.context->RSSetViewports(1, &viewport);
 		r.context->RSSetState(r.rasterizer_cull_back);
 		
 		// Pixel Shader
-        r.context->PSSetShader(pshader, NULL, 0);
+		r.context->PSSetShader(pshader, NULL, 0);
 		r.context->PSSetConstantBuffers(0, 1, &ps_constant_buffer); 
-        r.context->PSSetShaderResources(0, 1, &texture_view);
-        r.context->PSSetSamplers(0, 1, &sampler_state);
+		r.context->PSSetShaderResources(0, 1, &texture_view);
+		r.context->PSSetSamplers(0, 1, &sampler_state);
 		
 		// Output Merger
 		r.context->OMSetDepthStencilState(r.depth_stencil_state, 0);
@@ -1789,7 +1848,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// end of frame
 		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1]; 
 		start_frame = end_frame; // update time for dt calc
-		}
+	}
 	
 	
 	release_resources:
