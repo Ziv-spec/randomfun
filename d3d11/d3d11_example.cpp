@@ -618,16 +618,15 @@ CameraInit(Camera *c) {
 	
 	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-	
-	}
+}
 
 static void 
 CameraBuild(Camera *c) {
 	Assert(c);
-	
+
 	// Build the lookat matrix 
 	float3 some_up_vector = { 0, 1, 0 }; 
-	
+
 	// The lookat matrix is a matrix created from a 'single' vector 
 	// pointing in the forward direction of the player looking at the 
 	// object we want to point the camera towards. 
@@ -635,72 +634,72 @@ CameraBuild(Camera *c) {
 	// values and from it I compute the space in which the camera lies. 
 	// The view matrix created from this space is the inverse translation
 	// and inverse rotations done by the camera itself [2].
-	
+
 	// this camera is pointing in the inverse direction of it's target
 	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
 	float3 rv = f3normalize(f3cross(some_up_vector, fv)); 
 	float3 uv = f3normalize(f3cross(fv, rv)); 
-	
+
 	float3 p = c->pos;
-	
+
 	matrix cmat = { 
 		rv.x, uv.x, fv.x, 0,
 		rv.y, uv.y, fv.y, 0,
 		rv.z, uv.z, fv.z, 0,
 		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
 	};
-	
+
 	c->view = cmat; 
 	c->view_inv = matrix_transpose(cmat);
-	
+
 	c->forward.x = c->view_inv.m[2][0];
-    c->forward.y = c->view_inv.m[2][1];
-    c->forward.z = c->view_inv.m[2][2];
-	
-    c->backward.x = -c->view_inv.m[2][0];
-    c->backward.y = -c->view_inv.m[2][1];
-    c->backward.z = -c->view_inv.m[2][2];
-	
-    c->right.x = c->view_inv.m[0][0];
-    c->right.y = c->view_inv.m[0][1];
-    c->right.z = c->view_inv.m[0][2];
-	
-    c->left.x = -c->view_inv.m[0][0];
-    c->left.y = -c->view_inv.m[0][1];
-    c->left.z = -c->view_inv.m[0][2];
-	
-    c->up.x = c->view_inv.m[1][0];
-    c->up.y = c->view_inv.m[1][1];
-    c->up.z = c->view_inv.m[1][2];
-	
-    c->down.x = -c->view_inv.m[1][0];
-    c->down.y = -c->view_inv.m[1][1];
-    c->down.z = -c->view_inv.m[1][2];
-	
-	
-	
+	c->forward.y = c->view_inv.m[2][1];
+	c->forward.z = c->view_inv.m[2][2];
+
+	c->backward.x = -c->view_inv.m[2][0];
+	c->backward.y = -c->view_inv.m[2][1];
+	c->backward.z = -c->view_inv.m[2][2];
+
+	c->right.x = c->view_inv.m[0][0];
+	c->right.y = c->view_inv.m[0][1];
+	c->right.z = c->view_inv.m[0][2];
+
+	c->left.x = -c->view_inv.m[0][0];
+	c->left.y = -c->view_inv.m[0][1];
+	c->left.z = -c->view_inv.m[0][2];
+
+	c->up.x = c->view_inv.m[1][0];
+	c->up.y = c->view_inv.m[1][1];
+	c->up.z = c->view_inv.m[1][2];
+
+	c->down.x = -c->view_inv.m[1][0];
+	c->down.y = -c->view_inv.m[1][1];
+	c->down.z = -c->view_inv.m[1][2];
+
+
+
 	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here 
 		// Build the projection matrix 
-	
+
 	// In this case the projection matrix which we are building 
 	// is mapping object's in the players thrustum inside a 
 	// -1 to 1 cordinate space [2].
-		float hfov = 1.0f/tanf(c->fov*0.5f); 
-			
-		c->proj = matrix{0}; 
-		c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
-		c->proj.m[1][1] = 1.0f/hfov; 
-		c->proj.m[2][3] = -1.0f;
+	float hfov = 1.0f/tanf(c->fov*0.5f); 
+		
+	c->proj = matrix{0}; 
+	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
+	c->proj.m[1][1] = 1.0f/hfov; 
+	c->proj.m[2][3] = -1.0f;
 			
 	 // cn = -1 and cf = 1:
 	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
 	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
 
-/* 	
+	/* 	
 	 //cn = 0 and cf = 1: 
 	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
 	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
-	
+
 	 //cn = -1 and cf = 0:
 	c->proj.m[2][2] = (c->n) / (c->n - c->f);
 	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
@@ -708,12 +707,12 @@ CameraBuild(Camera *c) {
 
 	// Inverse of the Projection Matrix
 	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
-    c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
-    c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
-    c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
-    c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
-    c->proj_inv.m[3][3] = -c->proj.m[2][2];
-    c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
+	c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
+	c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
+	c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
+	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
+	c->proj_inv.m[3][3] = -c->proj.m[2][2];
+	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
 	
 }
 
@@ -1006,16 +1005,15 @@ CreateWin32Window() {
 	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
 	window_class.lpszClassName = "d3d11 example";
 	
-	
 	ATOM atom = RegisterClassExA(&window_class); 
 	Assert(atom && "Could not register class"); 
 	
 	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW, 
-								  window_class.lpszClassName, 
-								  APP_TITLE, 
-								  WS_OVERLAPPEDWINDOW,
-								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
-								  NULL, NULL, window_class.hInstance, NULL);
+				  window_class.lpszClassName, 
+				  APP_TITLE, 
+				  WS_OVERLAPPEDWINDOW,
+				  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
+				  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
 	
 	return window;
@@ -1098,11 +1096,11 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 		ID3D11DeviceContext* base_context;
 		
 		hr = D3D11CreateDevice(NULL, // Default adapter
-							   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
-							   NULL, // Software renderer if specified to use CPU
-							   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
-							   featureLevels, ARRAYSIZE(featureLevels), 
-							   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
+				   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
+				   NULL, // Software renderer if specified to use CPU
+				   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
+				   featureLevels, ARRAYSIZE(featureLevels), 
+				   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
 		AssertHR(hr); 
 		
 		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
@@ -1365,7 +1363,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	R_D3D11_Renderer r;
 	RendererD3D11Initialize(&r, window);
 	
-	HRESULT hr; 
 	
 	//InputInitialize(window);
 	
@@ -1378,6 +1375,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Model Data
 	//
 	
+	HRESULT hr; 
 	char model_path[] = "../resources/cube.obj";
 	
 	size_t verticies_count, indicies_count; 
@@ -1385,15 +1383,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
 	
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
-	unsigned short *_indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = ObjParseFile(model_path,
-						verticies, &verticies_count, 
-						_indicies, &indicies_count); 
+	unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
+	success = ObjParseFile(model_path, verticies, &verticies_count, indicies, &indicies_count); 
 	Assert(success && "Failed extracting model data");
 	
-	Vertex *data = verticies; 
-	unsigned short *indicies = _indicies; 
-
 	// Create Vertex And Index Buffers
 	ID3D11Buffer *vertex_buffer, *index_buffer;
 	{
@@ -1401,7 +1394,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		vertex_descriptor.ByteWidth = (UINT)verticies_count*sizeof(Vertex);
 		vertex_descriptor.Usage = D3D11_USAGE_DEFAULT;
 		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		D3D11_SUBRESOURCE_DATA vertex_data  = { data };
+		D3D11_SUBRESOURCE_DATA vertex_data  = { verticies };
 		r.device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
 		
 		D3D11_BUFFER_DESC index_descriptor = {};
@@ -1494,46 +1487,46 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 	
 	// Create Sampler State
-    ID3D11SamplerState* sampler_state;
-    {
-        D3D11_SAMPLER_DESC sampler_desc = {};
-        sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-        sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
-        sampler_desc.BorderColor[0] = 1.0f;
-        sampler_desc.BorderColor[1] = 1.0f;
-        sampler_desc.BorderColor[2] = 1.0f;
-        sampler_desc.BorderColor[3] = 1.0f;
-        sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	ID3D11SamplerState* sampler_state;
+	{
+		D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
+		sampler_desc.BorderColor[0] = 1.0f;
+		sampler_desc.BorderColor[1] = 1.0f;
+		sampler_desc.BorderColor[2] = 1.0f;
+		sampler_desc.BorderColor[3] = 1.0f;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+			
+		r.device->CreateSamplerState(&sampler_desc, &sampler_state);
+	}
 		
-        r.device->CreateSamplerState(&sampler_desc, &sampler_state);
-    }
-	
 	// Texture
 	ID3D11ShaderResourceView *texture_view;
 	{
 		// Load Image
-	int tex_w, tex_h, tex_num_channels;
-    unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
-    Assert(bytes);
+		int tex_w, tex_h, tex_num_channels;
+		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
+		Assert(bytes);
 		int pitch = 4 * tex_w;
 		
-			D3D11_TEXTURE2D_DESC texture_desc = {};
-			texture_desc.Width              = tex_w;
-			texture_desc.Height             = tex_h;
-			texture_desc.MipLevels          = 1;
-			texture_desc.ArraySize          = 1;
-			texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-			texture_desc.SampleDesc.Count   = 1;
-			texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
-			texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-			
-			D3D11_SUBRESOURCE_DATA texture_data = {};
-			texture_data.pSysMem = bytes;
-			texture_data.SysMemPitch = pitch;
-			
-			ID3D11Texture2D* texture;
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = tex_w;
+		texture_desc.Height             = tex_h;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
+		texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+		
+		D3D11_SUBRESOURCE_DATA texture_data = {};
+		texture_data.pSysMem = bytes;
+		texture_data.SysMemPitch = pitch;
+		
+		ID3D11Texture2D* texture;
 		r.device->CreateTexture2D(&texture_desc, &texture_data, &texture);
 		r.device->CreateShaderResourceView(texture, NULL, &texture_view);
 		
@@ -1557,20 +1550,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 	
 	// projection matrix variables
-    float w = viewport.Width / viewport.Height; // width (aspect ratio)
-    float h = 1.0f;                             // height
-    float n = 1.0f;                             // near
-    float f = 90.0f;                            // far
-	
-    float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
-    float3 model_scale       = { 1.5f, 1.5f, 1.5f };
-    float3 model_translation = { 0.0f, 0.0f, 4.0f };
+	float w = viewport.Width / viewport.Height; // width (aspect ratio)
+	float h = 1.0f;                             // height
+	float n = 1.0f;                             // near
+	float f = 90.0f;                            // far
+
+	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
+	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
+	float3 model_translation = { 0.0f, 0.0f, 4.0f };
 	
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 }; 
 	// point light
 	float3 lightposition = {  0, 0, 2 };
-	
+
 	// TODO(ziv): MOVE THIS CODE!!!
 	RECT rcClip;           // new area for ClipCursor
 	RECT rcOldClip;        // previous area for ClipCursor
@@ -1578,8 +1571,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	GetClipCursor(&rcOldClip); 
 	// Get the dimensions of the application's window. 
 	GetWindowRect(window, &rcClip); 
-	
-	
+
+
 	// more things that I need I guess...
 	LARGE_INTEGER freq, start_frame, end_frame;
 	QueryPerformanceFrequency(&freq); 
@@ -1593,8 +1586,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	
-	#ifdef USE_GAMEINPUT
-	 initialize_input();
+#ifdef USE_GAMEINPUT
+	initialize_input();
 #endif 
 	
 	for (;;) {
@@ -1681,23 +1674,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
 		
 		// Update Camera
-			float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
-			float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
-			
-			float speed = 5;
-			
-			for (int i = 0; i < 4; i++) {
-				dx += input.gamepads[i].right_thumbstick_x*speed;
-				dy += input.gamepads[i].right_thumbstick_y*speed;
-				
-			}
-			
-			c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));; 
+		float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
+		float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+		
+		float speed = 5;
+		
+		for (int i = 0; i < 4; i++) {
+			dx += input.gamepads[i].right_thumbstick_x*speed;
+			dy += input.gamepads[i].right_thumbstick_y*speed;
+		}
+		
+		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));; 
 		c.pitch = float_clamp(c.pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
 			
-			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
-			CameraBuild(&c); 
-			
+		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
+		CameraBuild(&c); 
+	
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 		
 		// Don't render when minimized
@@ -1753,26 +1745,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r.context->ClearDepthStencilView(r.zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 		
 		// Input Assembler
-        r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		r.context->IASetInputLayout(layout);
 		const UINT stride = sizeof(Vertex); 
 		const UINT offset = 0;
-        r.context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-        r.context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
+		r.context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
+		r.context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
 		
 		// Vertex Shader
-        r.context->VSSetShader(vshader, NULL, 0);
+		r.context->VSSetShader(vshader, NULL, 0);
 		r.context->VSSetConstantBuffers(0, 1, &cbuffer);
 		
 		// Rasterizer Stage
-        r.context->RSSetViewports(1, &viewport);
+		r.context->RSSetViewports(1, &viewport);
 		r.context->RSSetState(r.rasterizer_cull_back);
 		
 		// Pixel Shader
-        r.context->PSSetShader(pshader, NULL, 0);
+		r.context->PSSetShader(pshader, NULL, 0);
 		r.context->PSSetConstantBuffers(0, 1, &ps_constant_buffer); 
-        r.context->PSSetShaderResources(0, 1, &texture_view);
-        r.context->PSSetSamplers(0, 1, &sampler_state);
+		r.context->PSSetShaderResources(0, 1, &texture_view);
+		r.context->PSSetSamplers(0, 1, &sampler_state);
 		
 		// Output Merger
 		r.context->OMSetDepthStencilState(r.depth_stencil_state, 0);
@@ -1789,7 +1781,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// end of frame
 		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1]; 
 		start_frame = end_frame; // update time for dt calc
-		}
+	}
 	
 	
 	release_resources:
