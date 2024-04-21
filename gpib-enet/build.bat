@@ -1,9 +1,10 @@
 @echo off
 
+mkdir build
 pushd build
 
 REM set PATH=C:\Program Files\CMake\bin;C:\Users\bkandler\Desktop\raylib\w64devkit\bin;%PATH%
-
+set PATH=C:\Users\ziv\Desktop\zivbackup\raylib\raylib\w64devkit\bin;%PATH%
 set include=-I..\include\ -I..\WpdPack\Include
 set lib=-L..\lib -L..\WpdPack\Lib
 
@@ -16,6 +17,6 @@ REM cl /FC /nologo /Zi %include% ..\main.c /link /OUT:ipassign.exe /libpath:%wpa
 
 
 REM RELEASE
-gcc.exe ..\main.c -o ipassign.exe -std=c99 -O2 -DPLATFORM_DESKTOP -DDEBUG=0 %include% %lib% -lwpcap -liphlpapi -lraylib -lwinmm -lgdi32 -mwindows
+C:\Users\ziv\Desktop\zivbackup\raylib\raylib\w64devkit\bin\gcc.exe ..\main.c -o ipassign.exe -std=c99 -O2 -DPLATFORM_DESKTOP -DDEBUG=0 %include% %lib% -lwpcap -liphlpapi -lraylib -lwinmm -lgdi32 -mwindows
 
 popd
