@@ -67,8 +67,8 @@ typedef int b32;
 * [x] Obj dynamic lighting(global illumination + point light)
 * [x] Texture mapping
 	* [x] Camera
-			*   [x] Normal Camera
-			*   [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
+		* [x] Normal Camera
+		* [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
 * [x] Face Culling
 * [x] z-buffer
 * [ ] Shadow Mapping
@@ -82,8 +82,18 @@ typedef int b32;
 			* [ ] Pixelated look
 
 @IMPORTANT  These have a higher importance level right now
- * [ ] Create a "Renderer" seperating d3d11
+* [ ] Create a "Renderer" seperating d3d11
 * [ ] Create a "Drawing" library using the renderer for effient simple object rendering
+
+Structure of code:
+	Math
+	Input
+	Camera
+	UI
+	ObjFileLoader
+	Win32 API
+	D3D11 Renderer
+	main
 */
 
 
@@ -679,7 +689,7 @@ CameraBuild(Camera *c) {
 
 
 	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here 
-		// Build the projection matrix 
+    // Build the projection matrix 
 
 	// In this case the projection matrix which we are building 
 	// is mapping object's in the players thrustum inside a 
@@ -690,7 +700,7 @@ CameraBuild(Camera *c) {
 	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
 	c->proj.m[1][1] = 1.0f/hfov; 
 	c->proj.m[2][3] = -1.0f;
-			
+
 	 // cn = -1 and cf = 1:
 	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
 	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
@@ -713,12 +723,10 @@ CameraBuild(Camera *c) {
 	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
 	c->proj_inv.m[3][3] = -c->proj.m[2][2];
 	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
-	
 }
 
 static void 
 CameraMove(Camera *c, float x, float y, float z) {
-	
 	// Here we use the right up and forward vectors aligned to 
 	// the camera space. We do so such that every movement we 
 	// let the player have is one which respects the camera 
@@ -730,12 +738,14 @@ CameraMove(Camera *c, float x, float y, float z) {
 	
 	c->pos = c->pos + c->right * x; 
 	c->pos = c->pos + c->up * y; 
-		c->pos = c->pos + c->forward * z; 
+	c->pos = c->pos + c->forward * z; 
 	
-	if (1) {
+	if (1) { 
+		// in a first person shooter camera we don't change the players
+		// y position because he looked in that direction. Only when the 
+		// player requrests.
 		c->pos.y = cy;
 	}
-	
 }
 
 
@@ -791,35 +801,35 @@ UIButton(Context *ctx, int x, int y, int w, int h) {
 
 
 //~
-// Object File Parser
+// Object File Loader 
 // 
 
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
-    int len = 0, dec = 0;
+	int len = 0, dec = 0;
 	
 	while (str[len] == ' ' || str[len] == '\n') len++;
 	
 	if (str[len] == '-') len++;
-    while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
+	while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
 	
-    for (int idx = len - 1; idx >= 0; idx--)
-    {
-        char chr = str[idx] - '0';
-		
-        if      (chr == '-' - '0') num = -num;
-        else if (chr == '.' - '0') dec = 0; 
-        else if (dec)
-        {
-            num += chr;
-            num *= 0.1f;
-        }
-        else
-        {
-            num += chr * mul;
-            mul *= 10.0;
-        }
-    }
+	for (int idx = len - 1; idx >= 0; idx--)
+	{
+		char chr = str[idx] - '0';
+			
+		if      (chr == '-' - '0') num = -num;
+		else if (chr == '.' - '0') dec = 0; 
+		else if (dec)
+		{
+		    num += chr;
+		    num *= 0.1f;
+		}
+		else
+		{
+		    num += chr * mul;
+		    mul *= 10.0;
+		}
+	}
 	
 	*length = len;
 	return num; 
@@ -844,7 +854,7 @@ struct Vertex {
 	float uv[2];
 };
 
-static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
+static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
 	
 	if (v_cnt == NULL || i_cnt == NULL) 
 		return false;
@@ -853,13 +863,13 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 	char *obj_buf;
 	{
 		HANDLE file = CreateFileA(path,
-								  GENERIC_READ,          // open for reading
-								  FILE_SHARE_READ,       // share for reading
-								  NULL,                  // default security
-								  OPEN_EXISTING,         // existing file only
-								  FILE_ATTRIBUTE_NORMAL, // normal file
-								  NULL);
-		Assert(file != INVALID_HANDLE_VALUE);
+					  GENERIC_READ,          // open for reading
+					  FILE_SHARE_READ,       // share for reading
+					  NULL,                  // default security
+					  OPEN_EXISTING,         // existing file only
+					  FILE_ATTRIBUTE_NORMAL, // normal file
+					  NULL);
+		Assert(file != INVALID_HANDLE_VALUE); // TODO(ziv): Make it trip the assertion when the file just doesn't exist
 		
 		DWORD file_size = GetFileSize(file, NULL);
 		obj_buf = (char *)malloc((file_size+1) * sizeof(char));
@@ -872,9 +882,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		
 		obj_buf[file_size] = '\0'; // NULL terminate the string
 	}
-	
-	
-	
+
 	int verticies_pos_count = 0; 
 	int indicies_count = 0; 
 	int normals_count = 0; 
@@ -923,7 +931,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		size_t len = 0;
 		char *s = obj_buf;
 		while (*s) {
-			
+
 			if (*s == 'v') {
 				s++;
 				if (*s == ' ') {
@@ -947,7 +955,7 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 			}
 			else if (*s == 'f') {
 				s++;
-				
+
 				unsigned int vi, vt, vn;
 				for (int i = 0; i < 3; i++) {
 					vi = ObjParseUINT(s, &len); s+=len+1;
@@ -957,8 +965,6 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
 					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
 					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
-					
-					
 					// Search for existing vertex for it's index
 					unsigned short match_index = -1;
 					if (idx > 0) { 
@@ -981,10 +987,9 @@ static bool ObjParseFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned shor
 		}
 		
 	}
-	
+
 	// update new vertex count
 	*v_cnt = idx;
-	
 	return true;
 }
 
@@ -1009,11 +1014,11 @@ CreateWin32Window() {
 	Assert(atom && "Could not register class"); 
 	
 	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW, 
-				  window_class.lpszClassName, 
-				  APP_TITLE, 
-				  WS_OVERLAPPEDWINDOW,
-				  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
-				  NULL, NULL, window_class.hInstance, NULL);
+					  window_class.lpszClassName, 
+					  APP_TITLE, 
+					  WS_OVERLAPPEDWINDOW,
+					  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
+					  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window"); 
 	
 	return window;
@@ -1022,6 +1027,65 @@ CreateWin32Window() {
 //~
 // D3D11 Renderer
 // 
+
+// 
+// Planning of the API: 
+// The general use case of the renderer is to draw `Mesh`
+// This brings the most minimal overhead in terms of the API but the least
+// opportunities to automatically handle optimizations like grouping drawing 
+// commands, pushing this onto the user.
+//
+// There is going to be a further abstraction which will use this renderer. 
+// The abstraction is a draw library which will allow for you to have a layer of 
+// optimizing logic which will efficiently draw certain primitives. 
+// 
+// Lets say you want to draw a button and represent it as a simple rectangle. 
+// You then call the function `DrawRectanlge(rect, color);`
+// This functions aggragate all the rectangles and then at a certain point 
+// in the rendering pipeline it goes to the Renderer and asks for it to 
+// draw all the  rectangles at once in a single draw command. 
+// There should also be a cache system in place. This is because 
+// The drawing library is expected to be used in sync with the UI library 
+// which will make many call to get the same results frame after frame where 
+// cacheing is useful. 
+// 
+// `RendererDrawInstanced(normal_rect, shader, resources)`
+// norma_rect - verticies data
+// shader - pixel and vertex shaders
+// resources - pointer to an array of general resources like textures and or 
+//             StructuredBuffers and so on...
+// 
+
+// 
+// Another proposal:
+// The renderer will have a couple of primitives 
+// `Mesh` will be a general mesh with properties the user can define
+// `SimpleQuad` is a rectangular shape with a solid color
+// `Quad` is a rectangular shape which has a general shader attached to it
+// `Lines` takes a list of points and draws in an instanced way the lines 
+//         between all these points
+//
+
+// 
+// Essentially the renderer is a big bit, it contains all ways of drawing 
+// anything that you might want. Like a graphics library, it should have 
+// primitives both specific and general. This is actually a pretty bad 
+// abstraction now that I think about it more carefully. 
+//
+// Instead of a clear separation between what the graphics cards supports
+// and allows you to do, and what you want to draw which are mostly 
+// primitives who's drawing I can optimize. I am pushing everything onto a 
+// lesser clean interface which allows you to have everything both low-level 
+// control and higher level control. 
+// 
+// Usually a more promising design I have seen is a good low level core, 
+// paired with a high level clean interface. This  allows for a stable 
+// core and a high level interface which is extendable and can change 
+// as the user so desires
+// 
+
+
+
 
 typedef struct {
 	ID3D11Device1 *device; 
@@ -1046,17 +1110,15 @@ typedef struct {
 	ID3D11ShaderResourceView *tex;
 } R_Texture; 
 
-
 // API 
 static void RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window); 
 static void RendererD3D11Terminate(R_D3D11_Renderer *r);
 static R_Texture RendererGetTexture(R_D3D11_Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags);
+static void RenderDraw(); 
+static void RenderDrawIndexed(); 
+static void RenderDrawInstanced(); 
 
 
-typedef enum {
-	RCT_MESH, // general mesh  
-	RCT_QUAD, // a single quad
-} RenderCommand_Type;
 
 typedef struct {
 	unsigned char flags;
@@ -1066,9 +1128,6 @@ typedef struct {
 	unsigned int *indicies;
 	unsigned int verticies_count;
 	unsigned int indicies_count;;
-	
-	// Quad
-	
 } RenderCommand; 
 
 static void 
@@ -1114,19 +1173,19 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
     {
         ID3D11InfoQueue* info;
 		
-		device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
+	device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
         info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
         info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-		info->Release();
+	info->Release();
     }
 	
     // enable debug break for DXGI too
     {
         IDXGIInfoQueue* dxgi_info;
-		hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
+	hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
         AssertHR(hr);
-		dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-		dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+	dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+	dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
         dxgi_info->Release();
     }
 	
@@ -1189,7 +1248,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 	// 
 	
 	// Create Depth Sentcil
-    ID3D11DepthStencilState* depth_stencil_state;
+	ID3D11DepthStencilState* depth_stencil_state;
 	{
 		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
 		depth_stencil_desc.DepthEnable    = TRUE;
@@ -1237,6 +1296,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
 	}
 	
+	// Set all d3d11 com objects
 	r->device = device; 
 	r->context = context; 
 	r->swap_chain = swap_chain; 
@@ -1379,12 +1439,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	char model_path[] = "../resources/cube.obj";
 	
 	size_t verticies_count, indicies_count; 
-	bool success = ObjParseFile(model_path,NULL, &verticies_count, NULL, &indicies_count); 
+	bool success = ObjLoadFile(model_path,NULL, &verticies_count, NULL, &indicies_count); 
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
 	
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex)); 
 	unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = ObjParseFile(model_path, verticies, &verticies_count, indicies, &indicies_count); 
+	success = ObjLoadFile(model_path, verticies, &verticies_count, indicies, &indicies_count); 
 	Assert(success && "Failed extracting model data");
 	
 	// Create Vertex And Index Buffers
@@ -1502,7 +1562,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 		r.device->CreateSamplerState(&sampler_desc, &sampler_state);
 	}
-		
+
 	// Texture
 	ID3D11ShaderResourceView *texture_view;
 	{
@@ -1511,7 +1571,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
 		Assert(bytes);
 		int pitch = 4 * tex_w;
-		
+			
 		D3D11_TEXTURE2D_DESC texture_desc = {};
 		texture_desc.Width              = tex_w;
 		texture_desc.Height             = tex_h;
@@ -1533,9 +1593,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture->Release();
 		free(bytes);
 	}
-	
+
 	ShowWindow(window, SW_SHOW);
-	
+
 	//~
 	// Main Game Loop
 	//
@@ -1558,7 +1618,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-	
+    
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 }; 
 	// point light
@@ -1619,8 +1679,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		mouse_pos[0] = (int)input.mouse.px; 
 		mouse_pos[1] = (int)input.mouse.py; 
 #endif 
-		
-		
+
 		//
 		// Handle window resize
 		//
@@ -1689,7 +1748,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
 		CameraBuild(&c); 
-	
+
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 		
 		// Don't render when minimized
