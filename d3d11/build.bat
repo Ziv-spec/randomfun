@@ -22,7 +22,7 @@ set original_path=%cd%
 
 where /Q gameinput.h
 if %errorlevel% neq 0 (
-	call "C:\Program Files (x86)\Microsoft GDK\Command Prompts\GamingDesktopVars.cmd" GamingDesktopVS2022
+	REM call "C:\Program Files (x86)\Microsoft GDK\Command Prompts\GamingDesktopVars.cmd" GamingDesktopVS2022
 )
 
 

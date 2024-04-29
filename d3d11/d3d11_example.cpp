@@ -1,5 +1,4 @@
-// direct3d 11 example
-#define COBJMACROS
+//#define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
@@ -7,7 +6,7 @@
 #include <dxgi1_3.h>
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
-#include <gameinput.h>
+//#include <gameinput.h>
 
 #include <stdint.h>
 #define _USE_MATH_DEFINES
@@ -20,9 +19,9 @@
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "dxguid")
 #pragma comment(lib, "d3dcompiler")
-#pragma comment(lib, "gameinput")
+//#pragma comment(lib, "gameinput")
 
-#define APP_TITLE "Testing In Progress..."
+#define APP_TITLE "D3D11 application!!!"
 
 // default starting width and height for the window
 static int window_width = 800;
@@ -56,12 +55,10 @@ typedef int b32;
 // https://ameye.dev/notes/stylized-water-shader/                    - stylized water shader
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
-// Advanced Camera (better than the lookat matrix I have implemented)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
 // https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras 
 // https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
-
 
 /* 
 * TODO(ziv):
@@ -87,18 +84,6 @@ typedef int b32;
 @IMPORTANT  These have a higher importance level right now
 * [ ] Create a "Renderer" seperating d3d11
 * [ ] Create a "Drawing" library using the renderer for effient simple object rendering
-
-Structure of code:
-	Math
-	Win32 API
-	D3D11 Renderer
-	Input
-    Renderer
-    Draw
-	UI
-	ObjFileLoader
-	Camera
-	main
 */
 
 
@@ -121,13 +106,15 @@ inline static float3 operator-(const float3 v1, const float3 v2) { return float3
 inline static float3 operator*(const float3 v1, const float3 v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
 inline static float3 operator*(const float3 v, const float c)    { return float3{ v.x*c, v.y*c, v.z*c }; }
 
-inline static float3 f3normalize(float3 v) {
+inline static float3 
+f3normalize(float3 v) {
 	float len = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); 
 	float inv_len = 1/len; 
 	return float3{ v.x*inv_len, v.y*inv_len, v.z*inv_len }; 
 }
 
-inline static float3 f3cross(const float3& a, const float3& b) {
+inline static float3 
+f3cross(const float3& a, const float3& b) {
 	return float3{
 		a.y*b.z - a.z*b.y, 
 		a.z*b.x - a.x*b.z, 
@@ -135,11 +122,13 @@ inline static float3 f3cross(const float3& a, const float3& b) {
 	};
 }
 
-inline static float f3dot(const float3& a, const float3& b) {
+inline static float 
+f3dot(const float3& a, const float3& b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-inline static matrix operator*(const matrix& m1, const matrix& m2)
+inline static matrix 
+operator*(const matrix& m1, const matrix& m2)
 {
     return {
         m1.m[0][0] * m2.m[0][0] + m1.m[0][1] * m2.m[1][0] + m1.m[0][2] * m2.m[2][0] + m1.m[0][3] * m2.m[3][0],
@@ -161,7 +150,8 @@ inline static matrix operator*(const matrix& m1, const matrix& m2)
     };
 }
 
-static matrix matrix_inverse_transpose(matrix A) {
+static matrix 
+matrix_inverse_transpose(matrix A) {
 	matrix r = {0};
 	
 	float determinant = 
@@ -183,7 +173,8 @@ static matrix matrix_inverse_transpose(matrix A) {
 	return r;
 }
 
-inline static matrix matrix_transpose(matrix A) {
+inline static matrix 
+matrix_transpose(matrix A) {
 	matrix r = {
 		A.m[0][0], A.m[1][0], A.m[2][0], A.m[3][0], 
 		A.m[0][1], A.m[1][1], A.m[2][1], A.m[3][1], 
@@ -193,12 +184,14 @@ inline static matrix matrix_transpose(matrix A) {
 	return r; 
 }
 
-static inline float float_clamp(float val, float min, float max) {
+static inline float 
+float_clamp(float val, float min, float max) {
 	float temp = MIN(val, max);
 	return MAX(temp, min);
 }
 
-static matrix get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
+static matrix 
+get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 #if 1
 	matrix rx = { 
 		1, 0,                0,                 0, 
@@ -306,19 +299,28 @@ typedef struct {
 static void 
 InputInitialize(HWND window) {
 	
-	// Create a mouse rawinput device
-	
-	RAWINPUTDEVICE Rid[1];
+	// Rawinput API
+	{
+		
+		RAWINPUTDEVICE Rid[1];
 	Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
 	Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
 	Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
 	Rid[0].hwndTarget = window;
 	
-	if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
-	{
+	if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE) {
 		//registration failed. Call GetLastError for the cause of the error.
-		FatalError("Couldn't register a mouse\n"); 
+		FatalError("Rawinput couldn't register a mouse\n"); 
+		}
+		
 	}
+	
+	
+	// Gameinput
+	{
+		
+	}
+	
 	
 }
 
@@ -330,17 +332,16 @@ InputUpdate(LPARAM lparam) {
 	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
 	
 	LPBYTE lpb = new BYTE[dwSize];
-	if (lpb == NULL) 
-	{
+	if (lpb == NULL) {
 		return 0; 
 	} 
 	
-	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
-		OutputDebugString (TEXT("GetRawInputData does not return correct size !\n")); 
+	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
+		OutputDebugString(TEXT("GetRawInputData does not return correct size !\n")); 
+	}
 	
 	RAWINPUT* raw = (RAWINPUT*)lpb;
-	if (raw->header.dwType == RIM_TYPEMOUSE) 
-	{
+	if (raw->header.dwType == RIM_TYPEMOUSE) {
 		
 		if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0) printf("---\n%d %d \n", raw->data.mouse.lLastX, raw->data.mouse.lLastY); 
 		switch (raw->data.mouse.ulButtons) {
@@ -366,6 +367,8 @@ InputUpdate(LPARAM lparam) {
 static void
 InputShutdown() {
 	
+	// Rawinput
+	{
 	RAWINPUTDEVICE Rid[1];
 	Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
 	Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
@@ -377,9 +380,12 @@ InputShutdown() {
 		//registration failed. Call GetLastError for the cause of the error.
 		FatalError("Couldn't register a mouse\n"); 
 	}
+	}
+	
 	
 }
 
+#if 0
 // GAMEINPUT implementation (for some reason doesn't work on my pc)
 
 IGameInput *g_gameinput = 0; 
@@ -498,7 +504,7 @@ static void poll_gameinput(Game_Input *input) {
 	}
 	
 }
-
+#endif 
 
 
 static bool key_w; // up 
@@ -789,64 +795,37 @@ CreateWin32Window() {
 // D3D11 Renderer
 // 
 
-// 
-// Planning of the API: 
-// The general use case of the renderer is to draw `Mesh`
-// This brings the most minimal overhead in terms of the API but the least
-// opportunities to automatically handle optimizations like grouping drawing 
-// commands, pushing this onto the user.
-//
-// There is going to be a further abstraction which will use this renderer. 
-// The abstraction is a draw library which will allow for you to have a layer of 
-// optimizing logic which will efficiently draw certain primitives. 
-// 
-// Lets say you want to draw a button and represent it as a simple rectangle. 
-// You then call the function `DrawRectanlge(rect, color);`
-// This functions aggragate all the rectangles and then at a certain point 
-// in the rendering pipeline it goes to the Renderer and asks for it to 
-// draw all the  rectangles at once in a single draw command. 
-// There should also be a cache system in place. This is because 
-// The drawing library is expected to be used in sync with the UI library 
-// which will make many call to get the same results frame after frame where 
-// cacheing is useful. 
-// 
-// `RendererDrawInstanced(normal_rect, shader, resources)`
-// norma_rect - verticies data
-// shader - pixel and vertex shaders
-// resources - pointer to an array of general resources like textures and or 
-//             StructuredBuffers and so on...
-// 
 
-// 
-// Another proposal:
-// The renderer will have a couple of primitives 
-// `Mesh` will be a general mesh with properties the user can define
-// `SimpleQuad` is a rectangular shape with a solid color
-// `Quad` is a rectangular shape which has a general shader attached to it
-// `Lines` takes a list of points and draws in an instanced way the lines 
-//         between all these points
-//
+// API 
+#define D3D11_BUFFER_SIZE       0x100
+#define D3D11_PIXELSHADER_SIZE  0x100
+#define D3D11_VERTEXSHADER_SIZE 0x100
+#define D3D11_LAYOUT_SIZE       0x100
 
-// 
-// Essentially the renderer is a big bit, it contains all ways of drawing 
-// anything that you might want. Like a graphics library, it should have 
-// primitives both specific and general. This is actually a pretty bad 
-// abstraction now that I think about it more carefully. 
-//
-// Instead of a clear separation between what the graphics cards supports
-// and allows you to do, and what you want to draw which are mostly 
-// primitives who's drawing I can optimize. I am pushing everything onto a 
-// lesser clean interface which allows you to have everything both low-level 
-// control and higher level control. 
-// 
-// Usually a more promising design I have seen is a good low level core, 
-// paired with a high level clean interface. This  allows for a stable 
-// core and a high level interface which is extendable and can change 
-// as the user so desires
-// 
+typedef struct { int x; } R_Buffer; 
+typedef struct { int x; } R_PixelShader; 
+typedef struct { int x; } R_VertexShader; 
 
+typedef enum { 
+	// two bits
+	BF_USAGE_IMMUTABLE = 1 << 0,
+	BF_USAGE_DYNAMIC   = 1 << 1,
+	// two bits
+	BF_CPU_ACESS_WRITE = 1 << 2,
+	BF_CPU_ACESS_READ  = 1 << 3, 
+	// three bits
+	BF_VERTEX_BUFFER   = 1 << 4,
+	BF_INDEX_BUFFER    = 1 << 5,
+	BF_CONSTNAT_BUFFER = (1 << 4) | (1 << 5),
+} Buffer_Flag;
 
 typedef struct {
+	int aaaaa;
+} Renderer_Command;
+
+typedef struct {
+	HWND window;
+	
 	ID3D11Device1 *device; 
 	ID3D11DeviceContext1*context;
 	IDXGISwapChain1* swap_chain;
@@ -857,36 +836,53 @@ typedef struct {
 	ID3D11Texture2D *zbuffer_texture; 
 	ID3D11RasterizerState1* rasterizer_cull_back;
 	
-	RendererData render_command_data[100];
-	int 
-	RendererCommand renderer_command[1000];
 	
-} R_D3D11_Renderer;
+	// Data uploaded to the GPU already would get reused through 
+	// handles to the data (essentially this will be the user faceing info)
+	struct { 
+		R_Buffer handle;
+		ID3D11Buffer *buf;
+	} buffers[D3D11_BUFFER_SIZE];
+	size_t buffer_count;
+	
+	struct { 
+		R_VertexShader handle;
+		ID3D11InputLayout *layout;
+		ID3D11VertexShader *vs;
+	} vertex_shaders[D3D11_VERTEXSHADER_SIZE];
+	size_t vertex_shader_count;
+	
+	struct { 
+		R_PixelShader handle;
+		ID3D11PixelShader *ps;
+	} pixel_shaders[D3D11_PIXELSHADER_SIZE];
+	size_t pixel_shader_count;
+	
+	} Renderer;
 
-RendererData
+// Initialization and DeInitialization
+static void RendererCreate(Renderer *r, HWND window); 
+static void RendererDestroy(Renderer *r);
+static void RendererResize(Renderer *r, unsigned int width, unsigned int height); 
 
- RendererData GetRendererData(RendererDataHandle handle);
+
+// Resource Aquasition (Sending data to GPU)
+static R_Buffer RendererCreateBuffer(Renderer *r, const void *data, u32 size, u16 flags); 
+static ID3D11Buffer *RendererGetBufferFromHandle(Renderer *r, R_Buffer handle);
+
+static R_VertexShader RendererCreateVertexShader(Renderer *r, const char *hlsl, D3D11_INPUT_ELEMENT_DESC format[], // TODO(ziv): This is d3d11 specific for a unified API generalize this 
+												 u8 flags); 
+
+static R_PixelShader RendererCreatePixelShader(Renderer *r, const char *hlsl, u8 flags); 
+
+// Drawing Functions
+static void RendererDraw(Renderer *r, R_Buffer vbuffer, R_VertexShader vs, R_PixelShader ps, R_Buffer cbuffer, u8 flags);
 
 
-typedef enum {
-	RTF_SRGB      = 1 << 0, 
-	RTF_IMMUTABLE = 1 << 1, 
-} R_Texture_Flags;
 
-typedef struct {
-	unsigned int width; 
-	unsigned int height;
-	ID3D11ShaderResourceView *tex;
-} R_Texture; 
-
-// API 
-static void RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window); 
-static void RendererD3D11Terminate(R_D3D11_Renderer *r);
-static R_Texture RendererGetTexture(R_D3D11_Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags);
-static void RenderDraw(); 
-static void RenderDrawIndexed(); 
-static void RenderDrawInstanced(); 
-
+// 
+// Implementation
+// 
 
 struct Vertex {
 	float pos[3];
@@ -894,20 +890,8 @@ struct Vertex {
 	float uv[2];
 };
 
-typedef struct {
-	unsigned char flags;
-	unsigned short parent; // ID of the parent rendercommand used for creating a instanced buffer of rendering commands.
-	// Mesh
-	void *verticies; // generic data, which I will use introspection for auto generating things I guess
-	unsigned int *indicies;
-	unsigned int verticies_count;
-	unsigned int indicies_count;;
-} RenderCommand; 
-
-static R_D3D11_Renderer r;
-
 static void 
-RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
+RendererCreate(Renderer *r, HWND window) {
 	
 	//
 	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
@@ -1072,6 +1056,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 	}
 
 	// Set all d3d11 com objects
+	r->window = window;
 	r->device = device; 
 	r->context = context; 
 	r->swap_chain = swap_chain; 
@@ -1083,7 +1068,7 @@ RendererD3D11Initialize(R_D3D11_Renderer *r, HWND window) {
 }
 
 static void 
-RendererD3D11Terminate(R_D3D11_Renderer *r) {
+RendererDestroy(Renderer *r) {
 	r->device->Release();
 	r->context->Release();
 	r->swap_chain->Release();
@@ -1092,10 +1077,13 @@ RendererD3D11Terminate(R_D3D11_Renderer *r) {
 	r->zbuffer->Release();
 	r->zbuffer_texture->Release(); 
 	r->rasterizer_cull_back->Release();
+	
+	// TODO(ziv): Deallocate all user allocated resources
 }
 
 static void 
-RendererD3D11Resize(R_D3D11_Renderer *r, unsigned int width, unsigned int height) {
+RendererResize(Renderer *r, unsigned int width, unsigned int height) {
+	Assert(r); 
 	
 	if (r->frame_buffer_view) {
 		r->context->ClearState(); 
@@ -1140,11 +1128,251 @@ RendererD3D11Resize(R_D3D11_Renderer *r, unsigned int width, unsigned int height
 	
 }
 
+static R_Buffer 
+RendererCreateBuffer(Renderer *r, const void *data, u32 size, u16 flags) {
+	Assert((flags & 0xfc) && "Must supply the type of buffer and it's usage type");
+	
+	static D3D11_USAGE usage[] = {  D3D11_USAGE_DEFAULT, D3D11_USAGE_IMMUTABLE, D3D11_USAGE_DYNAMIC, };
+	static D3D11_BIND_FLAG bind[] = { D3D11_BIND_VERTEX_BUFFER, D3D11_BIND_INDEX_BUFFER, D3D11_BIND_CONSTANT_BUFFER, };
+	static D3D11_CPU_ACCESS_FLAG cpu_access[] = { (D3D11_CPU_ACCESS_FLAG)0, D3D11_CPU_ACCESS_WRITE, D3D11_CPU_ACCESS_READ };
+	
+	ID3D11Buffer *buffer;
+	{
+		D3D11_BUFFER_DESC descriptor = {}; 
+		descriptor.ByteWidth = (size + 0xf) & 0xffffff0;
+		descriptor.Usage = usage[(u8)flags & 0x3];
+		descriptor.BindFlags = bind[((u8)(flags >> 4) & 0x7)-1];
+		descriptor.CPUAccessFlags = cpu_access[((u8)flags >> 2) & 0x3];
+		
+		if (data) {
+		D3D11_SUBRESOURCE_DATA buffer_data  = { data };
+			r->device->CreateBuffer(&descriptor, &buffer_data, &buffer);
+		}
+		else {
+			r->device->CreateBuffer(&descriptor, NULL, &buffer);
+		}
+		
+	}
+	
+	// The user will use the resource through it's handle
+	// Format:    0000 0000 0000 kkkk iiii iiii iiii iiii
+	// i - index, k - kind
+	
+	Assert(r->buffer_count < D3D11_BUFFER_SIZE); 
+	
+	u32 idx = (u16)r->buffer_count;
+	u32 kind = flags >> 4;
+	R_Buffer handle = { (kind << 16) | (idx) };
+	
+	// Copy of the handle is used to know if data has changed
+	r->buffers[r->buffer_count++] = { handle, buffer };
+	
+	// TODO(ziv): Make allocation of new buffers smarter
+	// Currently I just allocate statically a buffer and 
+	// I don't deallocate or do anything to free resources
+	// Since the option of adding smarter allocation should 
+	// be easy and a smart move forward, implement a nice 
+	// system for allocation/deallocation of these slots
+	
+	return handle; 
+}
 
-// Resource Aquasition
+static ID3D11Buffer *
+RendererGetBufferFromHandle(Renderer *r, R_Buffer handle) {
+	Assert(r);
+	Assert((handle.x >> 4) > 0 && "Invalid Buffer!!! Must contain a kind");
+	
+	int idx = handle.x & 0xffff; 
+	Assert(0 <= idx && idx <= D3D11_BUFFER_SIZE); 
+	
+	ID3D11Buffer *result = NULL; 
+	if (handle.x == r->buffers[idx].handle.x) {
+	result = r->buffers[idx].buf;
+	}
+	return result;
+}
+
+static R_VertexShader 
+RendererCreateVertexShader(Renderer *r, const char *hlsl, u32 length, const D3D11_INPUT_ELEMENT_DESC format[], u32 format_elem_count, u8 flags) {
+	Assert(r && hlsl && format && format_elem_count > 0); 
+	
+    HRESULT hr; 
+	ID3D11InputLayout  *layout = NULL;
+	ID3D11VertexShader *vshader = NULL; 
+	{
+		
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *vblob;
+		hr = D3DCompile(hlsl, length, NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile pertex shader!");
+		}
+		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
+		
+		r->device->CreateInputLayout(format, format_elem_count, 
+									 vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
+		
+		vblob->Release();
+	}
+	
+	
+	
+	// TODO(ziv): Improve allocation and deallocation scheme here too 
+	u16 idx = (u16)r->vertex_shader_count;
+	R_VertexShader handle = { idx }; 
+	
+	r->vertex_shaders[r->vertex_shader_count++] = { handle, layout, vshader };
+	
+	return handle;
+}
+
+static ID3D11VertexShader*
+RendererGetVertexShaderFromHandle(Renderer *r, R_VertexShader handle) {
+	Assert(r);
+	
+	int idx = handle.x & 0xffff; 
+	Assert(0 <= idx && idx <= D3D11_VERTEXSHADER_SIZE); 
+	
+	ID3D11VertexShader *result = NULL; 
+	if (handle.x == r->vertex_shaders[idx].handle.x) {
+		result = r->vertex_shaders[idx].vs;
+	}
+	return result;
+}
+
+static ID3D11InputLayout*
+RendererGetLayoutFromHandle(Renderer *r, R_VertexShader handle) {
+	Assert(r);
+	
+	int idx = handle.x & 0xffff; 
+	Assert(0 <= idx && idx <= D3D11_VERTEXSHADER_SIZE); 
+	
+	ID3D11InputLayout  *result = NULL; 
+	if (handle.x == r->vertex_shaders[idx].handle.x) {
+		result = r->vertex_shaders[idx].layout;
+	}
+	return result;
+}
+
+static R_PixelShader 
+RendererCreatePixelShader(Renderer *r, const char *hlsl, u32 length, u8 flags) {
+	
+	HRESULT hr; 
+	ID3D11PixelShader *pshader;
+	{
+		
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *pblob;
+	hr = D3DCompile(hlsl, length, NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+	if (FAILED(hr)) {
+		const char *message = (const char *)error->GetBufferPointer(); 
+		OutputDebugStringA(message); 
+		Assert(!"Failed to compile pixel shader!");
+	}
+	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
+	pblob->Release(); 
+	}
+	
+	
+	// TODO(ziv): Improve allocation and deallocation scheme here too 
+	
+	u16 idx = (u16)r->pixel_shader_count;
+	R_PixelShader handle = { idx }; 
+	
+	r->pixel_shaders[r->pixel_shader_count++] = { handle, pshader };
+	
+	return handle;
+}
+
+static ID3D11PixelShader*
+RendererGetPixelShaderFromHandle(Renderer *r, R_PixelShader handle) {
+	Assert(r);
+	
+	int idx = handle.x & 0xffff; 
+	Assert(0 <= idx && idx <= D3D11_PIXELSHADER_SIZE); 
+	
+	ID3D11PixelShader *result = NULL; 
+	if (handle.x == r->pixel_shaders[idx].handle.x) {
+		result = r->pixel_shaders[idx].ps;
+	}
+	return result;
+}
+
+static void 
+RendererDraw(Renderer *r, R_Buffer vbuffer, R_VertexShader vs, R_PixelShader ps, R_Buffer cbuffer, u8 flags) {
+	Assert((vbuffer.x >> 16) == 1);
+	Assert((cbuffer.x >> 16) == 3);
+	
+	ID3D11Buffer *verticies = RendererGetBufferFromHandle(r, vbuffer);
+	ID3D11Buffer *constant_buffer = RendererGetBufferFromHandle(r, cbuffer);
+	ID3D11InputLayout *layout = RendererGetLayoutFromHandle(r, vs);
+	ID3D11VertexShader *vshader = RendererGetVertexShaderFromHandle(r, vs);
+	ID3D11PixelShader *pshader = RendererGetPixelShaderFromHandle(r, ps);
+	
+	RECT rect; 
+	GetClientRect(r->window, &rect);
+	LONG width = rect.right - rect.left;
+	LONG height = rect.bottom - rect.top;
+	
+	D3D11_VIEWPORT viewport = {0};
+	viewport.Width = (FLOAT)width; 
+	viewport.Height = (FLOAT)height;
+	viewport.MaxDepth = 1;
+	
+    // Input Assembler
+    r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    r->context->IASetInputLayout(layout);
+    const UINT stride = 2*sizeof(float); 
+    const UINT offset = 0;
+    r->context->IASetVertexBuffers(0, 1, &verticies, &stride, &offset);
+    
+    // Vertex Shader
+    r->context->VSSetShader(vshader, NULL, 0);
+    
+    // Pixel Shader
+    r->context->PSSetShader(pshader, NULL, 0);
+    r->context->PSSetConstantBuffers(0, 1, &constant_buffer); 
+    
+    // Rasterizer
+    r->context->RSSetViewports(1, &viewport);
+    
+    // Output Merger
+    r->context->OMSetRenderTargets(1, &r->frame_buffer_view, 0);
+    
+    r->context->Draw(4,0);
+	
+}
+
+
+/*
+typedef enum {
+	RTF_SRGB      = 1 << 0, 
+	RTF_IMMUTABLE = 1 << 1, 
+} R_Texture_Flags;
+
+typedef struct {
+	unsigned int width; 
+	unsigned int height;
+	ID3D11ShaderResourceView *tex;
+} R_Texture; 
+
 
 static R_Texture 
-RendererGetTexture(R_D3D11_Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags) {
+RendererGetTexture(Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags) {
 	// Upload the texture to the GPU and keep the resource around
 	ID3D11ShaderResourceView *texture_view;
 	
@@ -1176,6 +1404,10 @@ static void
 RendererDestroyTexture(R_Texture *t) {
 	t->tex->Release(); 
 }
+*/
+
+
+
 
 
 
@@ -1186,29 +1418,29 @@ typedef struct { float r, g, b, a; } Color;
 typedef struct { Box box, Color; } DrawQuadCommand; 
 static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
-
+static Color LIGHTERRED = { 1, .3f, .3f, 1};
 
 typedef struct { 
+	Renderer *renderer; 
 	
-	ID3D11Buffer *cbuffer, *vbuffer; 
-	ID3D11InputLayout *layout;
-	ID3D11VertexShader *vshader;
-	ID3D11PixelShader *pshader;
+	// For Quad Rendering
+	R_VertexShader vshader; 
+	R_PixelShader pshader; 
+	R_Buffer vertex_buffer; 
+	R_Buffer constant_buffer;
 	
-} DrawContext; 
-
+} Draw_Context; 
 
 static void 
-DrawBegin(DrawContext *ctx) { 
+DrawBegin(Draw_Context *ctx, Renderer *r) { 
     
-	
     float sz = .5;
     float verticies[] = {
 		-1, -1,  -1, 1,
 		1, -1,   1, 1,
     };
 	
-    char hlsl[] = 
+    static char hlsl[] = 
         "#line " STR(__LINE__)                                "\n"
         "                                                      \n"
         "float4 vs_main(float2 p : Position) : SV_Position {   \n" 
@@ -1223,103 +1455,39 @@ DrawBegin(DrawContext *ctx) {
         "    return color;                                     \n"
         "}                                                     \n";
 	
+	R_Buffer vbuffer = RendererCreateBuffer(r, verticies, sizeof(verticies), BF_VERTEX_BUFFER | BF_USAGE_DYNAMIC | BF_CPU_ACESS_WRITE);
+	R_Buffer cbuffer = RendererCreateBuffer(r, &RED, sizeof(Color), BF_CONSTNAT_BUFFER | BF_USAGE_DYNAMIC | BF_CPU_ACESS_WRITE);
 	
-	// Create pbuffer
-	ID3D11Buffer *vbuffer;
-	{
-		D3D11_BUFFER_DESC vertex_descriptor = {}; 
-		vertex_descriptor.ByteWidth = (UINT)sizeof(verticies);
-		vertex_descriptor.Usage = D3D11_USAGE_DYNAMIC;
-		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		vertex_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		D3D11_SUBRESOURCE_DATA vertex_data  = { verticies };
-		r.device->CreateBuffer(&vertex_descriptor, &vertex_data, &vbuffer);
-	}
+	// Vertex Shader Fromat Descriptor
+	const D3D11_INPUT_ELEMENT_DESC format[] = {
+		{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
 	
-    HRESULT hr; 
-	// Create Vertex And Pixel Shaders
-	ID3D11InputLayout  *layout = NULL;
-	ID3D11VertexShader *vshader = NULL; 
-	ID3D11PixelShader  *pshader = NULL; 
-	{
-		
-		// Vertex Shader Fromat Descriptor
-		const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
-			{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		};
-		
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer(); 
-			OutputDebugStringA(message); 
-			Assert(!"Failed to compile pertex shader!");
-		}
-		r.device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
-		
-		r.device->CreateInputLayout(vs_input_desc, ARRAYSIZE(vs_input_desc), 
-									vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
-		
-		ID3DBlob *pblob;
-		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer(); 
-			OutputDebugStringA(message); 
-			Assert(!"Failed to compile pixel shader!");
-		}
-		r.device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
-		
-		vblob->Release();
-		pblob->Release(); 
+	R_VertexShader vs = RendererCreateVertexShader(r, hlsl, sizeof(hlsl), format, ARRAYSIZE(format), 0);
+	R_PixelShader ps = RendererCreatePixelShader(r, hlsl, sizeof(hlsl), 0);
+	
+	// TODO(ziv): This should change for sure
+	ctx->renderer = r;
+	ctx->vshader = vs; 
+	ctx->pshader = ps; 
+	ctx->vertex_buffer = vbuffer;
+	ctx->constant_buffer = cbuffer;
+	
 	}
     
-	// Pixel shader constant buffer 
-	ID3D11Buffer *cbuffer; 
-	{
-		D3D11_BUFFER_DESC cbuffer_descriptor = {};
-		cbuffer_descriptor.ByteWidth = (sizeof(Color) + 0xf) & 0xffffff0;
-		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
-		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		r.device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer); 
-	}
-	
-	ctx->vbuffer = vbuffer;
-	ctx->cbuffer = cbuffer; 
-	ctx->vshader = vshader; 
-	ctx->pshader = pshader; 
-	ctx->layout = layout; 
-	
-}
-
 static void 
-DrawEnd(DrawContext *ctx) {
+DrawEnd(Draw_Context *ctx) {
     // Take all common commands and draw instanced
     // RendererDrawInstanced()
 	
-    ctx->vbuffer->Release(); 
-    ctx->cbuffer->Release(); 
-    ctx->vshader->Release();
-    ctx->pshader->Release();
-    ctx->layout->Release();
-	
 }
 
-static HWND g_window;
-
 static void 
-DrawBox(DrawContext *ctx, Box box, Color color) { 
+DrawBox(Draw_Context *ctx, Box box, Color color) { 
     // Post a drawquad command
 	
 	RECT rect; 
-	GetClientRect(g_window, &rect);
+	GetClientRect(ctx->renderer->window, &rect);
 	float width = (float)(rect.right - rect.left);
 	float height = (float)(rect.bottom - rect.top);
 	
@@ -1338,45 +1506,25 @@ DrawBox(DrawContext *ctx, Box box, Color color) {
 		maxx, miny, maxx, maxy, 
     };
 	
-	
-	D3D11_VIEWPORT viewport = {0};
-	viewport.Width = (FLOAT)width; 
-	viewport.Height = (FLOAT)height;
-	viewport.MaxDepth = 1;
+	// TODO(ziv): Make a renderer wrapping for this changing of buffer data dynamically.
+	ID3D11Buffer *vbuffer = RendererGetBufferFromHandle(ctx->renderer, ctx->vertex_buffer); 
+	ID3D11Buffer *cbuffer = RendererGetBufferFromHandle(ctx->renderer, ctx->constant_buffer);
+	Renderer *r = ctx->renderer;
 	
 	D3D11_MAPPED_SUBRESOURCE mapped;
-	r.context->Map((ID3D11Resource *)ctx->cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-	memcpy(mapped.pData, &color, sizeof(Color)); 
-	r.context->Unmap((ID3D11Resource *)ctx->cbuffer, 0);
-	
-	
-	r.context->Map((ID3D11Resource *)ctx->vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	r->context->Map((ID3D11Resource *)vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 	memcpy(mapped.pData, &verticies, sizeof(verticies)); 
-	r.context->Unmap((ID3D11Resource *)ctx->vbuffer, 0);
+	r->context->Unmap((ID3D11Resource *)vbuffer, 0);
 	
+		r->context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		memcpy(mapped.pData, &color, sizeof(Color)); 
+	r->context->Unmap((ID3D11Resource *)cbuffer, 0);
 	
-    // Input Assembler
-    r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    r.context->IASetInputLayout(ctx->layout);
-    const UINT stride = 2*sizeof(float); 
-    const UINT offset = 0;
-    r.context->IASetVertexBuffers(0, 1, &ctx->vbuffer, &stride, &offset);
-    
-    // Vertex Shader
-    r.context->VSSetShader(ctx->vshader, NULL, 0);
-    
-    // Pixel Shader
-    r.context->PSSetShader(ctx->pshader, NULL, 0);
-    r.context->PSSetConstantBuffers(0, 1, &ctx->cbuffer); 
-    
-    // Rasterizer
-    r.context->RSSetViewports(1, &viewport);
-    
-    // Output Merger
-    r.context->OMSetRenderTargets(1, &r.frame_buffer_view, 0);
-    
-    r.context->Draw(4,0);
-    
+	RendererDraw(ctx->renderer, 
+				 ctx->vertex_buffer, 
+				 ctx->vshader, 
+				 ctx->pshader, 
+				 ctx->constant_buffer, 0); 
 }
 
 
@@ -1385,10 +1533,10 @@ DrawBox(DrawContext *ctx, Box box, Color color) {
 // 
 
 typedef enum {
-	UI_HOVERABLE,   // can be hovered
-	UI_CLICKABLE,   // can be clicked 
-    UI_SLIDERABLE,  // slider property (also allows for mouse movement)
-    UI_INPUTABLE,   // accepts keyboard input
+	UI_HOVERABLE = 1,   // can be hovered
+	UI_CLICKABLE = 2,   // can be clicked 
+    UI_SLIDERABLE = 4,  // slider property (also allows for mouse movement)
+    UI_INPUTABLE = 8,   // accepts keyboard input
 } UI_Behaviour; 
 
 typedef struct {
@@ -1409,12 +1557,14 @@ typedef int UI_Widget_Handle;
 typedef struct {
 	Game_Input *input;
 	
-    UI_Widget widgets[WIDGETS_COUNT];
+	Draw_Context *draw_ctx;
+	
+    //UI_Widget widgets[WIDGETS_COUNT];
     UI_Widget_Handle last;
     UI_Widget_Handle hot, active; 
 } UI_Context; 
 
-#define UI_INVALID_WIDGET -1 
+#define UI_INVALID_WIDGET -1
 
 static UI_Output
 UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
@@ -1458,13 +1608,16 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
 
 static bool
 UIButton(UI_Context *ctx, int x, int y, int w, int h) {
-    // Input handling
+    
+	// Input handling
 	Box box = { x, y, x+w, y+h };
 	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
 
     // Drawing 
-    Color color = output.clicked ? LIGHTRED : RED;
-    //DrawBox(&ctx, box, color);
+    Color color = output.hovered ? LIGHTRED : RED;
+    color = output.clicked ? LIGHTERRED : color;
+	
+	 DrawBox(ctx->draw_ctx, box, color);
 
 	return output.clicked;
 }
@@ -1546,6 +1699,8 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 		}
 		
 		obj_buf[file_size] = '\0'; // NULL terminate the string
+		
+		// TODO(ziv): Close the file? 
 	}
 
 	int verticies_pos_count = 0; 
@@ -1578,7 +1733,7 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 	// when there is no output buffer, give the user the sizes of buffers required
 	if (idest == NULL || vdest == NULL) {
 		*v_cnt = indicies_count; 
-		*i_cnt = indicies_count ; 
+		*i_cnt = indicies_count; 
 		return true;
 	}
 	
@@ -1670,16 +1825,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	// Typical WIN32 Window creation
 	HWND window = CreateWin32Window();
-	g_window = window;
+	
 	// Renderer Initialization
-	RendererD3D11Initialize(&r, window);
+	Renderer r = {0};
+	RendererCreate(&r, window);
 	
+	InputInitialize(window);
 	
-	//InputInitialize(window);
+
+	// Initialize drawing library for Quad rendering
+	Draw_Context ctx = {0};
+	DrawBegin(&ctx, &r); 
+
 	
-	//~
-	// D3D11 Initialization
-	//
 	
 	
 	//~
@@ -1901,9 +2059,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	initialize_input();
 #endif 
 	
-	DrawContext ctx = {0};
-	DrawBegin(&ctx); 
-	
 	for (;;) {
 		
 		// 
@@ -1943,7 +2098,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		LONG width = rect.right - rect.left;
 		LONG height = rect.bottom - rect.top;
 		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
-			RendererD3D11Resize(&r, width, height); 
+			RendererResize(&r, width, height); 
 			
 			// TODO(ziv): Remove viewport from here
 			viewport.Width = (FLOAT)width; 
@@ -2088,15 +2243,27 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// NOTE(ziv): Testing for UI & API purposes
 		 // 
-		
+
 		static int val = 10;
 		
         DrawBox(&ctx, { val, 10, 100+val, 100 }, RED);
 		DrawBox(&ctx, { 110, 10, 200, 200 }, LIGHTRED);
 		DrawBox(&ctx, { 210, 10, 300, 300 }, LIGHTRED);
 		
-		val++;
+		UI_Context ui = { }; 
+		ui.hot = UI_INVALID_WIDGET;
+		ui.active = UI_INVALID_WIDGET;
+		ui.draw_ctx = &ctx;
+		ui.input = &input;
 		
+		input.mouse.px = mouse_pos[0];
+		input.mouse.py = height-mouse_pos[1];
+		
+		printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
+		
+		UIButton(&ui, 400, 10, 100, 100);
+		
+		val++;
 		
 		
 		
@@ -2116,6 +2283,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	DrawEnd(&ctx);
 	
+	InputShutdown(); // rawinput
+	
 #ifdef USE_GAMEINPUT
 	shutdown_input(); 
 #endif 
@@ -2130,13 +2299,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	pshader->Release();
 	vshader->Release();
 	
-	RendererD3D11Terminate(&r);
+	RendererDestroy(&r);
 	
 	return 0; 
 }
 
-
-#if 0
+/*
 
 //
 // Font Atlas 
@@ -2335,4 +2503,4 @@ atlas_resource_view->Release();
 sprite_resource_view->Release(); 
 sprite_buffer->Release(); 
 
-#endif
+*/
