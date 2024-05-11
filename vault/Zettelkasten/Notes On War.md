@@ -1,6 +1,6 @@
 202311251416
 Status: #idea
-Tags:
+Tags: #story 
 
 # Notes On War
 
@@ -17,13 +17,74 @@ After reaching my base, and getting ready, I went to my work place and I was tol
 
 After these 4 days, I came back to my work place, to find many new faces these were the reservists who got called up. For 2 weeks after these 4 days I continued working hard in trying both to make sure there are many good units we could use to replace faulty ones. Along with it I learned as much as I could from the reservists who came. 
 
-At some point we had a goal of mending some of our faulty test hardware that helps us fix faulty units. This is hardware that worked last 10 or 15 years ago but no longer works. And so I began taking it upon myself to mend all stations that we can. 
+During this time I ended working on many airplanes which had bombs attached to them. Normally in regular times, there are people who first disarm the airplane and only then I come to fix it. But these times things have become quite different. I ended up working on armed airplanes very often. This time I for some reason had not felt the same way I felt when I began working on combat airplanes. I for some reason don't have this  [[Combat-Aircrafts-Are-Scary]] mentality anymore. Even though I was working on significantly worse (safety wise) conditions. 
+
+We worked 12 hour shifts split between everyone so some worked only during the day and some the night. I ended up working 12 hour shifts during the day, so I had ample opportunity to both learn and do things during the day that I would be too tired to do at night. 
+
+And so came to me the first opportunity which was upgrading the computer for the AIU test station. The AIU is a complicated piece of hardware in terms of the amount of unique signals that go in and out of it. It had a white and a black computer sitting on it's table. The white computer was a 1995 computer which required up-to 15 minutes to load everything needed and begin testing. The black computer was a failed attempt of a israeli team at upgrading this old white computer.
+
+As I learned of this I thought "Why not try to do this upgrade myself?" and so the journey began. I began learning how does the station work both in hardware and especially software. Although the AIU is itself complicated because of the amount of signals it is capable of processing, The test station that tests the hardware is in my opinion even more complicated. Not only is it capable of simulating every signal required it is also extremely dynamic by design. So dynamic that I had spent many weeks understanding how does it work. Although I ended up unsuccessful in my attempt, I ended up opening the door for more successful attempts later.
+
+One of the reservists who came is one of the people who brought the F15I airplane to  Israel. He took it upon himself to fix an old Display test station. This test station is used to fix both the displays themselves and their computer (yes your read it right it has it's own computer just for displays). Because at this point we have almost all units we needed to fix fixed, we thought why not try to fix these testing stations.
 
 So far I was unsuccessful. With lacking parts, dying computers, weird software requirements and more I couldn't fix these stations. But the fight has not ended and I am still trying.  
 
+***===Couple months later===***
+
+Success!! My friend Shalev and I have managed to do a couple of things:
+ - Upgrade 3 computers into new ones 
+ - Fix Displays test station
+ - Fix HUD test station 
+ - Fix NAVIGATION pod test station
+
+So this begins with the Displays Test Station. We at first were confronted with a broken plug. The main plug that all important testing signals go through was broken, and needed a replacement. Second, we had a video generator which had a address which we needed to change from 15 to 16. At first I did not understand why but later I figured out that the devices work on a GPIB bus which every device has to have a known address beforehand to access it. Third we had a card in the testing station which did not turn on (meaning it was broken). Another challenge was the fact that the computer running this Testing Station was old and likely to break in the future. 
+
+And so, with these challenges we began working. I say we because we were a team consisting of me, my friend Shalev and one reservist. I early on thought that we should do the upgrade of the computers just by porting the software and drivers. At some point I understood that this is not going to work. I later on found out that for one thing in particular the software support is up-to windows NT 4.0. This meant that we couldn't do the switch to a new computer and a new solution was to be found. My friend suggested using a Virtual Machine to which I agreed would be a good idea to explore. While he was busy figuring out how to make the VM work, I began helping the reservist in fixing the station. 
+
+At first we began working on the plug figuring out all the correct wiring from the schematics we had available. In the same time we tried to understand how to make the card in the testing station show on it's display numbers. The number indicate the internal state the card is at. 1 through 9 are startup values where they show the state of the card as it is setting itself up. When it shows 0 it means that the card thinks that all of it's inner circuitry is working correctly. I at that time did not even know how to read the schematics to know which components are on the card let alone how everything is connected up. 
+
+So he taught me everything. The reservist is called Ronen Shilon, he taught me how to read the schematics, how to understand the American documentation and shared some wisdom on what were the most common failures they experienced. So I began helping. After I learned how to read the schematics, I began not only reading them but mapping signals that go through some chips and placing the most common signal names as ones that the chip is responsible for. Along with understanding the basic architecture the card was built in mind with. I read the documentation to find whether there were easier ways the Americans have left us with. I have found a couple but later they proved not as useful as I thought. 
+
+All this work essentially has eventually paid off, we made the card light up and show eventually the number 0 meaning it was operation and there were no major errors. We replaced the broken plug with a new one. Along with managing after quite some time to write to the address value 16 to the Video Generator. 
+
+But for some reason the station did not want to start up. So I looked into it. I saw that there was a communication issue the hub which splits the ethernet network between all the ethernet devices connected had gone bad. Replacing it with a new one did not seem to help. I then discovered I put a faulty one too. Going through a couple hubs I eventually stumbled upon one which worked. Replacing it worked flawlessly, I could use ping and eventually find the addresses were all correct and everything worked as expected. And yet the station showed another error "GPIB Controller". What? What is that? 
+
+The station contains a white GPIB-ENET controller which is responsible for translating from ethernet to GPIB and also server as a controller for the GPIB bus. This controller seemed to be working with lights turning up as you give it power and so see assumed it to be working. Trying eventually to replace it with a new one and yet nothing... the error stayed all the same. I looked at the printed documentation we had, I saw that this device should contain an IP Address. If this is the case of course switching it up does not work, it contains a different IP Address. Since I had no access to the code at that moment I tried to do everything but change the program. 
+
+The switching back and forth with the HUB and GPIB-ENET controller caused the computer which controls the HUD station to die. It couldn't recognize the ethernet card it had installed. This spurred 3 days of hellish trials where I worked like crazy trying to figure out what was the problem and to fix it. So I changed computers and yet it still didn't work. In the end we needed to both change the computer and for some reason kind of reset the controller which gets the commands from the computer on the station end. This made me learn how the station worked in it fullest. I spent time in understanding exactly how everything is made up and how every component is set up to get the final result. 
+
+Since the HUD station problem got resolved I will diverge your attention again to the Displays Test Station. The problem at this stage was burning the IP Address onto the GPIB-ENET Controller. So I looked and there seemed to be a program called IP-Assign which promises to do just that. Using this program resulted in an error. We hit a wall. The only program which can do this burning is broken and we can not fix it. And as per usual I looked into the documentation again and later the internet, I have found that all I need to do is just send a RARP packet to the controller 10 times. Using just this information I wanted to write an application for burning this IP onto the controller. 
+
+Because I was lacking in time and ability for I was base, I put it on hold. On the 14th of October 2023 I got full access to the code of the test station. This allowed me to change the IP which the station was looking for into one which I knew will work. **And aurica it worked!!!** the station responded and allowed us to do very basic operations. 3 days later I came back with the program which does the burning which I made myself. Just off of the instructions I listed above, I send 10 RARP packets with 10ms intervals between each-other. And it worked first try. 8 hours of making sure it will work have paid off immensely. 
+
+Around this stage after many head beatings to make things work, my friend made the VM finally work. Replacing the old white computers with black ones to create a new white computer spare. This helped us assure that the stations will work for years from today. 
+
+Another thing which I thought about was the fact that we still had only one HUB which worked for two stations. This was not an ideal situation. Eventually I convinced my Commander to buy a new cheep 30nis switch to create two fully working stations. 
+
+***===Couple weeks later===***
+
+The work intensity has plummeted immensely but the NAVIGATION pod test station has for some reason failed. I looked into it and it seemed to just want to recover from a bad state which I allowed it to do. This fixed the first problem. Two weeks later it again turned into a bad state which windows 10 recovery mode helped solve. These fixes are although small and insignificant but would cost the army real money to bring someone knowledgeable enough to fix. This should serve as a reminder of how bad can a institute get when it it built with rot to it. Instead of realizing the talent that comes through it's doors, the Army is willing to pay hefty money just not to change the way it is structured. 
+
+There is of-course more to say about that. The army is rotten to a degree, and it works in a completely inefficient manner which any sane person can see. And yet as a system it is blind to this. By imploring people who sit and pay the money to do so while not understanding anything about the situation on ground it creates a situation where we now have to pay a hefty price for maintenance and bad avionics. 
+
+---
+
+Around April there was a change to the structure of our Avionics Technician Team. The old structure was people who are responsible for some types of units were going to the airplane to fix their systems, then, go to the lab and fix the units that came from the airplane. This created a work environment where some expertise could be formed around the fixing of these systems. The new model tries unify work teams in terms of knowledge but separate them in terms of types of work. So, you now have people who are only going to the airplane and switch faulty units for good ones and others which fix faulty units back at the lab. The only ones who can form expertise are the ones at the lab. If you go to the airplane because of a problem, you will need to know how to fix everything contained in it. Just as a reminder in Israel as of today are men serve for 2.8 years while women serve 2 years. This means that people who end up in the air force have around 2 years to form expertise. This is not enough for the amount of systems they end up responsible for. 
+
+How do I know that this is not enough time? Well the test has been made many times all over again and again. This is not something new as it is a concept that has been tested in the air force for quite some time now. Many flights have already tested this formula and the general conclusion is over time the work done by gets worse. It has been reiterated to me for quite some time by all of the old commanders I had. They all say the same thing as they have seen the same script all over again happening to us.
+
 Notes: 
 
-There are a couple of things that I want to take note. Mainly about justice. It is hard to really say anything about right or wrong in war as all sides lose. The perspective that I now have is that war is usually justified by the situation. Regardless of outsiders perspective, those who participate in war have a good reason for it. They justify it with that reason and act accordingly. 
+There are a couple of things that I want to take note. 
+About justice: It is hard to really say anything about right or wrong in war as all sides lose. The perspective that I now have is that war is usually justified by the situation. Regardless of outsiders perspective, those who participate in war have a good reason for it. They justify it with that reason and act accordingly. 
+
+About institutes: Large institutes usually all have the same problem for if they don't have random noise disturb it's functions and cause some positive growth and change both to it's structure and it's organization it will rot. This rotting will go unnoticeable since to the outside it will show that things are alright. This is of course not the case but it matters not. This happened before to large institutions and it will happen again time and time again. So long as noise it not used to break bad habits, general decline with time is to be expected (the same bureaucracy which helped the army raise to it's greatness is the same that kills it today). 
+
+I talked to my old retired commander. He said that most of the problems we faced while trying to fix the now old F15I he already told the higherups. Today's problems which we face he has already alerted from! This is a completely insane. The way the system is ignorant to the asking and alerting from the inside. I am pretty sure the same has happened on October 7 where there were alerts from within but no action by the system. There seems to be a threshold for where when something doesn't conform to the norm it gets treated like noise. He continued to tell me that the way the system is structured is wrong on many levels. Well let us look for ourselves this is how the IAF is built: 
+
+The system is built up of commanders who just said they want to continue working for this "profession" and people who become officers. Officers don't have any knowledge of what they are managing. The underlying problem is that people of power have the capacity to make decisions without any underlying ground basis. If there is money it will get spent, if there is no money it won't. No real problems will get solved like that. Real needs will require long term thinking and cost-benefit analysis which they don't know how to make since they don't have the experience or knowledge required. 
+
+All of this creates a complete detachment from reality, allowing bad neglect to form over the years. If no external chaos leads to the shaking up of these people requiring them to act and fix internal problems, they don't act up. This is the most fundamental problem of a large beurocratic system, who's structure over time has created a monolithic beast with so much weight it almost can not move.
 
 
 

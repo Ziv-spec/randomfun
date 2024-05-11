@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Human over-optimization and Goodhart's law.md",
+                "file": "Zettelkasten/Code-Reuse.md",
                 "mode": "source",
                 "source": false
               }
@@ -85,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Human over-optimization and Goodhart's law.md",
+                "file": "Zettelkasten/Code-Reuse.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Human over-optimization and Goodhart's law.md",
+                "file": "Zettelkasten/Code-Reuse.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -137,7 +137,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Human over-optimization and Goodhart's law.md"
+                "file": "Zettelkasten/Code-Reuse.md"
               }
             }
           }
@@ -160,8 +160,26 @@
   },
   "active": "c7a4fd7d6ad8790e",
   "lastOpenFiles": [
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Untitled.canvas",
+    "Zettelkasten/Information Theory.md",
+    "Zettelkasten/Meaning.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/Notes On War.md",
+    "Zettelkasten/2024-05-11.md",
     "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Code-Reuse.md",
     "Zettelkasten/Cutting Weed.md",
-    "Zettelkasten/Human over-optimization and Goodhart's law.md"
+    "Zettelkasten/Complexity.md",
+    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/The Promise Of AI.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
+    "Zettelkasten/Investment.md",
+    "Zettelkasten/Links To Use.md",
+    "Zettelkasten/Understanding The Problem.md",
+    "Zettelkasten/Untitled.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/Avoiding Unnecessary Complexity.md"
   ]
 }
