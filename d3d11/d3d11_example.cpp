@@ -283,6 +283,8 @@ typedef struct {
 	Gamepad gamepads[4]; 
 } Game_Input;
 
+static Game_Input g_raw_input_state;
+
 
 // RAWINPUT implementation (should work on all windows pc's)
 
@@ -338,30 +340,39 @@ InputUpdate(LPARAM lparam) {
 	
 	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
 		OutputDebugString(TEXT("GetRawInputData does not return correct size !\n")); 
+		return 0;
 	}
 	
 	RAWINPUT* raw = (RAWINPUT*)lpb;
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
-		
-		if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0) printf("---\n%d %d \n", raw->data.mouse.lLastX, raw->data.mouse.lLastY); 
-		switch (raw->data.mouse.ulButtons) {
-			case RI_MOUSE_BUTTON_1_DOWN: printf("button1 down\n"); break;
-			case RI_MOUSE_BUTTON_1_UP:   printf("button1 up\n"); break;
-			case RI_MOUSE_BUTTON_2_DOWN: printf("button2 down\n"); break;
-			case RI_MOUSE_BUTTON_2_UP:   printf("button2 up\n"); break;
-			case RI_MOUSE_BUTTON_3_DOWN: printf("button3 down\n"); break;
-			case RI_MOUSE_BUTTON_3_UP:   printf("button3 up\n"); break;
-		}
+		Mouse mouse = g_raw_input_state.mouse;
+		mouse.px += raw->data.mouse.lLastX;
+		mouse.py += raw->data.mouse.lLastY;
 		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
-			int delta_m = (int)raw->data.mouse.usButtonData; 
-			printf("wheel: %d\n", delta_m);
+			mouse.wy += (int)raw->data.mouse.usButtonData;
 		}
 		
-	} 
+		int buttons = 0;
+		switch (raw->data.mouse.ulButtons) {
+			case RI_MOUSE_BUTTON_1_DOWN: buttons |= MouseLeftButton; break;
+			case RI_MOUSE_BUTTON_1_UP:   buttons &= ~MouseLeftButton; break;
+			case RI_MOUSE_BUTTON_2_DOWN: buttons |= MouseRightButton; break;
+			case RI_MOUSE_BUTTON_2_UP:   buttons &= ~MouseRightButton; break;
+			case RI_MOUSE_BUTTON_3_DOWN: buttons |= MouseMiddleButton; break;
+			case RI_MOUSE_BUTTON_3_UP:   buttons &= ~MouseMiddleButton; break;
+		}
+		mouse.buttons = (Mouse_Buttons)buttons;
+		g_raw_input_state.mouse = mouse;
+		} 
 	
 	delete[] lpb; 
 	
 	return 1;
+}
+
+static Game_Input
+InputGetState() {
+	return g_raw_input_state;
 }
 
 static void
@@ -1584,7 +1595,7 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
             ctx->hot = handle; 
             output.hovered = 1;
         }
-
+ 
         // widget is active?
         if ((behaviour & UI_CLICKABLE) && 
                 ctx->active == UI_INVALID_WIDGET && 
@@ -2075,9 +2086,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			DispatchMessageA(&msg);
 		}
 		
+		Game_Input input = InputGetState();
 		
-		Game_Input input = {0}; 
 #ifdef USE_GAMEINPUT
+		Game_Input input = {0}; 
 		poll_gameinput(&input); 
 
 		for (int i = 0; i < ArrayLength(input.gamepads); i++) {
@@ -2259,9 +2271,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.px = mouse_pos[0];
 		input.mouse.py = height-mouse_pos[1];
 		
-		printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
+		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
 		
-		UIButton(&ui, 400, 10, 100, 100);
+		bool active = UIButton(&ui, 400, 10, 100, 100);
+		if(active) {
+		printf("UIButton pressed\n");
+		}
+		
 		
 		val++;
 		

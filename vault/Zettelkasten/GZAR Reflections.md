@@ -75,7 +75,7 @@ of factors. But, this fact alone stands true regardless of reason.
 
 #### The hardness of testing
 I have yet to find a compelling option for testing the language in a nice and scalable manner. Simple asserts and checks of "correctness" have proven a bad option in terms of scale. For any case you will need a test O(n). But what about the combination of features and their interactions? And the complex transformations that might happen in the IR to optimize code yet still require correctness. 
-This proves to me that testing is hard. At least scaling testing is hard. And I might require a further 
+This proves to me that testing is hard. At least scaling testing is hard. And I might require a further investigation for better ways to test my code. 
 
 
 ---
