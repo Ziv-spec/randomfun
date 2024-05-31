@@ -52,7 +52,7 @@ typedef int b32;
 // Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
 // https://ameye.dev/notes/rendering-outlines/                       - 5 ways to draw an outline
-// https://ameye.dev/notes/stylized-water-shader/                    - stylized water shader
+// https://ameye.dev/notes/stylized-water-shader/                     - stylized water shader
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
@@ -342,8 +342,11 @@ InputUpdate(LPARAM lparam) {
 	
 	RAWINPUT* raw = (RAWINPUT*)lpb;
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
-		
-		if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0) printf("---\n%d %d \n", raw->data.mouse.lLastX, raw->data.mouse.lLastY); 
+
+/* 		
+		if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0) printf("---\n%d %d \n", raw->data.mouse.lLastX, raw->data.mouse.lLastY);
+		 */
+
 		switch (raw->data.mouse.ulButtons) {
 			case RI_MOUSE_BUTTON_1_DOWN: printf("button1 down\n"); break;
 			case RI_MOUSE_BUTTON_1_UP:   printf("button1 up\n"); break;
@@ -354,7 +357,7 @@ InputUpdate(LPARAM lparam) {
 		}
 		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
 			int delta_m = (int)raw->data.mouse.usButtonData; 
-			printf("wheel: %d\n", delta_m);
+			//printf("wheel: %d\n", delta_m);
 		}
 		
 	} 
@@ -1584,7 +1587,12 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
             ctx->hot = handle; 
             output.hovered = 1;
         }
-
+		
+		
+		if ((mouse.buttons & MouseLeftButton)) {
+			printf("yo \n");
+		}
+		
         // widget is active?
         if ((behaviour & UI_CLICKABLE) && 
                 ctx->active == UI_INVALID_WIDGET && 
@@ -1616,6 +1624,8 @@ UIButton(UI_Context *ctx, int x, int y, int w, int h) {
     // Drawing 
     Color color = output.hovered ? LIGHTRED : RED;
     color = output.clicked ? LIGHTERRED : color;
+	
+	//printf("button draw\n");
 	
 	 DrawBox(ctx->draw_ctx, box, color);
 
@@ -2259,10 +2269,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.px = mouse_pos[0];
 		input.mouse.py = height-mouse_pos[1];
 		
-		printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
+		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
 		
-		UIButton(&ui, 400, 10, 100, 100);
-		
+		bool clicked = UIButton(&ui, 400, 10, 100, 100);
+		if (clicked) {
+			printf("button clicked\n");
+		}
 		val++;
 		
 		
