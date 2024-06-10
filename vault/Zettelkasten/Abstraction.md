@@ -10,7 +10,7 @@ mapping dilemma
 mapping problems[^4]
 mapping conflicts 
 
-#### Leaking complexity
+#### Leaky Abstractions
 
 
 
