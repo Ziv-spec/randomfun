@@ -13,25 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Degeneracy And Redundancy.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          }
-        ]
-      },
-      {
-        "id": "0d8b715fb30220fd",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "c7a4fd7d6ad8790e",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Zettelkasten/Meaning.md",
+                "file": "Zettelkasten/Links To Use.md",
                 "mode": "source",
                 "source": false
               }
@@ -103,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Degeneracy And Redundancy.md",
+                "file": "Zettelkasten/Links To Use.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -120,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Degeneracy And Redundancy.md",
+                "file": "Zettelkasten/Links To Use.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -155,7 +137,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Degeneracy And Redundancy.md"
+                "file": "Zettelkasten/Links To Use.md"
               }
             }
           }
@@ -178,27 +160,28 @@
   },
   "active": "169d467fb5ff0c08",
   "lastOpenFiles": [
-    "Zettelkasten/Meaning.md",
-    "Zettelkasten/Degeneracy And Redundancy.md",
-    "Zettelkasten/Meaning.md~",
+    "Zettelkasten/software-design.md",
     "Zettelkasten/Links To Use.md",
     "Zettelkasten/Complexity.md",
-    "Zettelkasten/Cutting Weed.md",
-    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/Meaning.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/Understanding The Problem.md",
     "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
     "Zettelkasten/Notes On War.md",
-    "Zettelkasten/The Promise Of AI.md",
-    "Zettelkasten/Understanding The Problem.md",
-    "Zettelkasten/Abstraction.md",
-    "Zettelkasten/Avoiding Unnecessary Complexity.md",
-    "Zettelkasten/2024-05-11.md",
-    "Zettelkasten/Information Theory.md",
     "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/Information Theory.md",
+    "Zettelkasten/Code-Reuse.md",
+    "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Cutting Weed.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/Degeneracy And Redundancy.md",
+    "Zettelkasten/Meaning.md~",
+    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/The Promise Of AI.md",
+    "Zettelkasten/2024-05-11.md",
     "Zettelkasten/Kraft-McMillan inequality.md",
     "Zettelkasten/Investment.md",
-    "Zettelkasten/Code-Reuse.md",
     "Untitled.canvas",
-    "Zettelkasten/Memory Management Trade-Offs.md",
     "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
     "Zettelkasten/Untitled.md"
   ]
