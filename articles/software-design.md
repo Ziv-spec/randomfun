@@ -86,7 +86,6 @@ the endless growth of complexity of software. For some this complexity is manife
 size and resource utilization is high due to its nature, for most I would say, this is not the case. Complexity also harms the cost of maintenance. Adobe has made maintaining and adding features it's software a technical nightmare. Old 
 bugs and crashes haunt Adobe Premiere to this day[^1] with no saving grace in sight. 
 
-some
 
 [^1]: adobe link to people talknig about how much it suck but it also can't change
 
