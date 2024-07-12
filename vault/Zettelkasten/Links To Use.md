@@ -86,6 +86,38 @@ Latex setup - https://castel.dev/post/lecture-notes-1/
 
 
 
+https://www.semianalysis.com/ 
+Semianalysis is a great place for anything hardware analysis related. It contains very detailed explanations for key technology breakthroughs and general advancement. 
+
+https://jsomers.net/
+Great journalist which reads a ton and has amazing in my opinion articles, many of which are worth a read. 
+
+
+https://jsomers.net/e-coli-chemotaxis/
+
+The world is complex and biological systems have so much complexity even at their lowest levels, they can be seen as intelligent from the bottom up. The mechanizems which create this complex behaviour and how it makes life what it is is explored.
+
+http://www.incompleteideas.net/IncIdeas/BitterLesson.html
+
+The bitter lesson that we have learned from many years of AI research is that techniques which utilize compute will inevitably win. Search techniques for chess, Machine Learning for AI and more, allow for good scaling with compute. Since Moors law has been with us so far, compute has increased at a rate far beyond any other industry or software technique, for general techniques which utilize this property of increase of compute will generally last and scale better than specific techniques or algorithms. 
+
+https://jsomers.net/blog/more-people-should-write
+
+this is something that I have also noticed about myself. 
+When I write I have something in mind that changes the way I think about 
+some stuff I read, and experience. It allows me to have the ideas collide together, 
+challenge some assuptions I held or belifs I had. In general it also propells me to 
+challenge myself into writing more and more often than not. As the benefits have 
+crystalized better after reading this passage. 
+
+https://jsomers.net/blog/deliberate-practice
+
+Deliberate practice has been the main reason which I attribute to the increase in my typing speed and guitar playing skills. I can spend less time doing the thing in a more deliberate active fassion and I notice the results end-up being generally better. This is ofcourse something which has been noticed by others. Chess for example is one thing which as noted by the author of the article above has had a sort revolution when computers have entered the schene. With the introduction of computers chess had a pathway for analyzing each and every move you take easily, these feedback loops allow for more active practice which intern, make chess players of today significantly better then their predecessors. 
+
+
+
+
+
 #### GOOGLE WTF
 Query: 
 
