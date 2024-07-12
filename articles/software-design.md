@@ -44,6 +44,17 @@ Compression is strangely connected to intelligence. With the advance of modern m
 
 Some are great proponents of this idea and have laied out a prize. The Hutter prize is led by...
 
+# History of our kind
+
+For years now humans have been building larger and larger structures yet, this advancement is a recent event in humans large history. The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development, likely halting potential human progress materialized by the lack of investments or planning in permanent structures and smaller population. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since, plants are are major growing carbon sink, and what benefits plants also benefits all types of life on earth. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, plants experienced a period of growth and health. These macro changes on have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development. 
+
+> If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
+
+Nomadic groups moved into agricultural settlements, even though food stability was fragile to changing weather, it demanded more time, energy and new skills[^4]. With the agricultural advancement, population increased. Agriculture during good times created a surplus of food, which evidently let to an population increase and therefore increase in the consumption of the surplus, keeping population balanced. With growth of the human resource there came more complex social structures. Complex societies of those times were still relatively simple in modern terms. Leadership in the simplest societies tended to be minimal. It is personal and charismatic, and exists only for special purposes. Hierarchical control is not institutionalized, but is limited to definite spheres of activity at specific times, and rests substantially on persuasion (Service 1962; Fried 1967). This is in dark contrast to our current institutionalized and legalized reality. Trainer summarizes it best:
+
+> The citizens of modern complex societies usually do not realize that we are an anomaly of history. Throughout the several million years that recognizable humans are known to have lived, the common political unit was the small, autonomous community, acting independently, and largely self-sufficient. Robert Carneiro has estimated that 99.8 percent of human history has been dominated by these autonomous local communities (1978; 219). It has only been within the last 6000 years that something unusual has emerged: the hierarchical, organized, interdependent states that are the major reference for our contemporary political experience. [see: Joseph Trainer, The Collapse Of Complex Societies pp 24]
+
+Although for most of our history human societies stayed relatively simple, general advancement of designing and building large projects has prevailed. From gobekli teppe, the pyramids, to today's large constructions like the Burjh Kalipha innovations in design and technology allowed us to breakthrough past limits. With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity.
 
 # Complexity
 
@@ -58,7 +69,11 @@ Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta
 For many engineering diciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many compoentns have been standardized. 
 
 
-
+[^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
+[^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
+[^3]: The Origin of the State: Land Productivity or Appropriability? by Joram Mayshar, Omer Moav, and Luigi Pascali
+[^4]: Sapiens - Yuval Harari
+[^5]: https://gwern.net/doc/sociology/2022-mayshar.pdf
 
 
 [^1]: https://kristoff.it/blog/simple-not-just-easy/
