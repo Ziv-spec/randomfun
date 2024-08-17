@@ -1,20 +1,35 @@
 
 Article on system design. This should include the following: 
 
-Essential properties of desining systems which will unchange. 
+Essential properties of designing systems which will not change. 
 Handling Complexity of systems 
 Handling Invisibility of code 
 Handling Cost of building and using systems
 Handling Changeability and evolution of systems 
 Handling Conformity to interfaces, features and more 
-- History (how we got to today)
-- Meaning 
+Handling Designers bad culture and trade-offs (during bad times)
+
+
+NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and jet I have not found that it is useful for much yet. It does not serve the articles but hinders it. Both in my time and in effort writing it first. I believe it deserves a separate article which will be more fun to write.
+- History
+    As a species we got here today in a marvelous way which we should remember is a miracle. Held together by the social structure, and effected by the local, global states of the industrial revolution.
+    The global economical structure we are inside of, means that there are things which we are effected by regardless if we want or don't want. Values of people change, times change, and as the saying goes "Hard times create strong men, strong men create good times, good times create weak men, and weak men create hard times". This saying I believe is a major creator of bad design, bad rules which people follow and low quality goals which they try to achieve. In much the same way Goodharth's law which is crucial in understanding how human over-optimization causes bad things, and how randomness helps mitigate it's bad effects. 
+
+
+- Meaning  (This is something that I need to think about quite a bit more)
+    The essence of everything that we build is it's meaning. If we know where meanings comes from we can look for it. We can see it more clearly and allow us to express our design with more intention and vividness than we would have been able to. This is a precursor to complexity and compression both which rely heavily on the meaning the systems carry.
 - Complexity
+    Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
 - Compression
+    Compression is the art of distilling information and therefore meaning. Compression as we explore it can be seen as a useful mechanism for determining complexity, though you have to be careful in using it on superficial things like code length, which seemingly are correlated to complexity yet outliers exist, think of Conway's game of life where immense complexity is born out of a very simple program. There is a phase change where some things beyond some complexity make immense turns and the states they posses explodes. This type of behavior is normal and should not be ignored and instead used for our benefit. This is a powerful mode of thought which I will explore (think about language and how it uses simple meaningful words and rules, to capture a seemingly unlimited space of meanings we want to convey). The type of explosion of state is something I will have to name and capture it's intent. And maybe expand a bit later on. 
 - Abstraction 
-- Component-Reuse (Across many diciplines)
-- Invisability (Accidents, Unexpected Behavior)
+    This topic is one which should serve as a basis for most of my design principles since it is tackling one of the biggest problems engineers face worldwide. And I should spend much time thinking and writing about it as possible since I have much to say but I don't currently know how to say it.
+- Component-Reuse (Across many disciplines)
+    This is the continuation of abstraction and should be treated as such
+- Invisibility (Accidents, Unexpected Behavior)
+    We must remember that the things we create have real world effects, and safety of systems must be considered when designing them
 - Evolution (Changeability, OpenSource)
+    Any system we might build will eventually need to adapt to the new circumstances the world puts forth we must tackle this problem (as it should help understand how systems must be build to accommodate change)
 - Conformity (interfaces, features)
 - Education (Knowledge Fundamentals, Mentorship)
 - Institutional Decline (Effects on us)
@@ -73,14 +88,26 @@ In the recent times computers have risen, they quickly became integral to human 
 With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity.
 
 
+*The lead:*
+Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
 
-# Complexity
 
-Complexity. The term complexity is used when describing systems with non-trivial internal behaviour. It refers to systems whos parts interact in multiple ways leading to non-linear, random, emergent behaviour. Simple system therefore have parts which can be isolated from the rest, changes to one part does not lead to any effect on the others, no unexpected ramafications or unwanted side effects. Visually it can be equated to making bread. When making bread, bakeries usually braid their doe before cooking it. In doing so, doe lines interwind and end up looking more complex than the simple looking lines they came from. The more doe lines join, the more complex the final bread looks. It is important to notice that the bread now does not only look more complex but, if you try to remove a line of doe, it result in a much harder time. If before you could separate the lines by tearing them apart, now, you have to carefully consider how each line moves in relation to it's surroundings as it slips around, moving up and down, hopefully not tearing the rest of the doe apart.
+Let us consider the inherent properties of this irreducible essence of modern software systems: complexity, conformity, changeability, invisibility, and culture adaptability.
 
-When dealing with software it is clear that complexity is an essential property that we can not get around.
 
-> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound.
+Complexity. When we speak of [complexity](https://en.wikipedia.org/wiki/Complexity) in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how systems become more interwind in themselves, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects thus, no non-linear or emergent behavior.
+
+A simple analogy can be made when we look no further than the making of bread. In the process of making bread, the doe is usually split into smaller parts shaped into strips and braided before it is finally baked. Splitting the bread and braiding it is not required as bread can be baked braided just as well as a simple lump of doe. Notice how I said that doe has a simple shape while a braided doe does not. If you think about it for a moment, after braiding bread the doe strips interwind and after finishing, reversing this process becomes difficult. If you had put the two strips one next to the other pulling one causes no effect on the others, meanwhile, after braiding pulling a single strip without effects on all others is impossible, you would have to carefully consider how each line moves about it's surroundings as it slips around moving up and down, hopefully not tearing the rest of the doe apart.
+
+For many engineering disciplines complexity is created when 
+
+
+This makes complexity sound all bad, fundamentally making changes hard, and being a truly evil of any system. I would argue that although it does make changes hard, there are times at which there is nothing simpler and the complex solution works.
+
+Because complexity is such of fundamental, essential, rudiment, integral part of systems it is the main in 
+
+
+> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound. [see: Brooks, No Silver Bullet pp]
 
 Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor, 
 
@@ -210,3 +237,25 @@ Taleb believes the main reason for much of systems failure is caused by rare eve
 [^1]: Antifragile
 [^2]: The book GEB - Godel, Escher, Bach 
 [^3]: Brooks-NoSilverBullet
+
+
+
+
+
+The next topic is unrelated to the rest of the text. I just wanted a place to write my thoughts that I had for some time now. For this reason you should ignore this section until I remove it completely.
+
+# Economy 
+
+Learning about economy and money in general has been, and still is, quite the journey. Learning about money, what are markets, government intervention, political strife, patterns caused by the forces moving the markets and the history from which these patters are formed allows me to understand the world around me better. There is no new information here just accumulation of my own financial understanding.
+
+To make transactions happen in the past, people would trade commodities with other commodities. This made gauging prices hard, and trading in general not as accessible as could be. When money was invented, people could set a price for commodities such as food, utilities, and services using a universally accepted medium of exchange. In the case of the ancients it might have been wheat, gold or other precious metals, eventually making coins, paper money and digital money. The important thing here is that there is a universally agreed upon medium of exchange, even if when standing on it's own might be worthless. In the financial world there were 2 big inventions which changed the landscape forever. The invention of the banking system and investment institutions like Wall Street. The [origins of banking](https://firstutahbank.com/the-history-of-banking-from-ancient-times-to-now/) can be traced back to ancient Mesopotamia, around 2000 BC though, banking as we know it began around the 17th and the 19th centuries. With the invention of the banking system, the concept of money has extended. People could use something new called *credit* to pay for things they could not have been able to afford otherwise. The invention of credit allowed people and businesses to expand the scope of capital available to them greatly, allowing for greater economical expansions as money could be borrowed to facilitate the growing businesses needs. While the banking system allowed successful businesses to greatly expand their operations, it did not allow for great risk to be taken since it increased their risk for people defaulting on their loans (not paying back). For entrepreneurs who need capital to take big risks while expecting big gains the banking system could not provide the answer. For individuals the risk is also too high. Think of someone in the 19th century wanting to sail into the sea and find gold in another place. The risk taken here is immense as you could lose all of your large investment, although if successful, the reward would compensate you greatly for your risk. To minimize risk, the invention of shares with the rise of financial markets was invented.Now multiple people place their savings in entrepreneurs and risk takers to go and bring them profits. Shares of companies just represent parts of the whole, allowing many people to pour investment and reduce risk taken by any single individual.
+
+Today transactions happen by the use of money or credit to buy goods, services, and financial assets. The price of goods, services and financial assets is calculated by the total spending of money and credit divided by the total quantity of these goods. Because the credit is used like money and is usually calculated as money people make the mistake in thinking that it is money. Credit is in-fact a contract between two parties where one has debt which is a liability that eventually needs to be repaid, and the another has an asset (credit). When the debt+interest is repaid, the transaction finishes and both credit and debt disappear. Since debt has to be repaid, markets follow a cycle like pattern. First, when credit is made a economic boom with it's great times ensues. When it is time to repay the debt as interest go up, the economy slows, causing a economic bust. When borrowing you are borrowing from your future self as evident from this cycle like behavior. 
+
+There are 2 forces which influence the creation and removal of money in a major way. Interest rates and money printing. The central bank uses these forces to manipulate the creation and removal of money from the system.
+
+
+During hard time where money printing is in order it is interesting to note the fact that the ones who gain the most are the rich people since they accumulate wealth that goes up in value. The assets which go up in value make the rich richer and the poor poorer since they can not allow themselves to buy assets and thus enjoy the same riches. The problem is exacerbating with time and a trend which will continue until a great political strife will happen which will seek to redistribute wealth. This is a trend which takes decades if not normally centuries to materialize yet, it is something which as Ray Dalio notes is part of a longer cycle which we are a part of.
+
+
+
