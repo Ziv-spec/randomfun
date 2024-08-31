@@ -10,7 +10,7 @@ Handling Conformity to interfaces, features and more
 Handling Designers bad culture and trade-offs (during bad times)
 
 
-NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and jet I have not found that it is useful for much yet. It does not serve the articles but hinders it. Both in my time and in effort writing it first. I believe it deserves a separate article which will be more fun to write.
+NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and jet I have not found that it is useful for much yet. It does not serve the articles but hinders it. Both in my time and in effort writing it first. I believe it deserves a separate article which will be more fun to write. That said, there is an important component of economics and history which I will have to explore just not as thoroughly as I initially wanted.
 - History
     As a species we got here today in a marvelous way which we should remember is a miracle. Held together by the social structure, and effected by the local, global states of the industrial revolution.
     The global economical structure we are inside of, means that there are things which we are effected by regardless if we want or don't want. Values of people change, times change, and as the saying goes "Hard times create strong men, strong men create good times, good times create weak men, and weak men create hard times". This saying I believe is a major creator of bad design, bad rules which people follow and low quality goals which they try to achieve. In much the same way Goodharth's law which is crucial in understanding how human over-optimization causes bad things, and how randomness helps mitigate it's bad effects. 
@@ -33,6 +33,77 @@ NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and je
 - Conformity (interfaces, features)
 - Education (Knowledge Fundamentals, Mentorship)
 - Institutional Decline (Effects on us)
+
+
+
+For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
+
+# History of our kind
+
+The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
+
+> If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
+
+As time went on nomadic groups moved into agricultural settlements. This shift marked the agricultural revolution of the time. Humans began spending a large portion of their time and effort onto cultivating a small food variety (wheat, corn, rice, potatoes, millet). Although we know that humans shifted from gathering their food to growing it, the choice at least for those times seems illogical. Cultivating wheat is no easy matter. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. Yuval Harari in his popular book Sapiens shows us the perspective of the wheat at the time. For wheat a fragile plant had become a growing empire taking over the world by frenzy with fields and fields made out entirely out of wheat. Utilizing dumb humans to expand beyond what it would ever be able on it's own. How were we fooled? What did it offer in return? By growing their food, humans had a larger surplus. This of course does not last for long as demand increases in the form of a larger population. Wheat allowed population to increase from a hundred to hundreds and even thousands yet keeping the population dirt poor for long [see: Yuval Harari, Sapiens pp. 87-89 (Hebrew version)]. 
+
+> Human history as a whole has been characterized by a seemingly inexorable trend toward higher levels of complexity, specialization, and sociopolitical control, processing of greater quantities of energy and information, formation of ever larger settlements, and development of more complex and capable technologies. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 3]
+
+With the population increasing at a steady pace, societies steadily got more complex. Complexity as I will now define, has a similarity to general complexity, simply flavored in a social context. Much like what Trainter did I will define complexity using two key terms, inequality and heterogeneity. Inequality refers to the differentiation of ranking, or unequal access to resources. Heterogeneity is the number of distinct parts to a society. Simpler societies had steadily decreased inequality as they increased in heterogeneity. 
+
+Complex societies of those times were still relatively simple in modern terms. Leadership in the simplest societies tended to be minimal. It is personal and charismatic, and exists only for special purposes. Hierarchical control is not institutionalized, but is limited to definite spheres of activity at specific times, and rests substantially on persuasion [see: Service 1962; Fried 1967, Political Systems – An Introduction to Anthropology]. This stands in dark contrast to our current institutionalized and legalized reality where states rule. Trainter touches upon this uniqueness after reviewing simple societies throughout history, in his book "The Collapse Of Complex Societies".
+
+> The citizens of modern complex societies usually do not realize that we are an anomaly of history. Throughout the several million years that recognizable humans are known to have lived, the common political unit was the small, autonomous community, acting independently, and largely self-sufficient. Robert Carneiro has estimated that 99.8 percent of human history has been dominated by these autonomous local communities (1978; 219). It has only been within the last 6000 years that something unusual has emerged: the hierarchical, organized, interdependent states that are the major reference for our contemporary political experience. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 24]
+
+
+rewrite and rethink: - "
+From ancient construction of Gobekli Tepe, to the Great Pyramids, and today's large marvels like the Burj Khalifa, seemingly magical constructions were enabled by constant innovation in design and technology.
+
+In the recent times computers have risen, they quickly became integral to human life. We rely on this piece of sand to help us communicate, cook, learn, design, build, play, heal and so much more almost anything one can imagine a computer can help him do it better. The fundamental reason for why computers have become ubiquitous is their miraculous ability in doing computation. Much in the same way cars assist humans in going further distances faster and unlocking opportunities otherwise deemed impossible, computers allow us to make computations faster changing all aspects of modern life.
+
+With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity. "
+
+
+[^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
+[^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
+[^3]: The Origin of the State: Land Productivity or Appropriability? by Joram Mayshar, Omer Moav, and Luigi Pascali
+[^4]: Sapiens - Yuval Harari
+[^5]: https://gwern.net/doc/sociology/2022-mayshar.pdf
+[^6]: https://www.nasa.gov/technology/carbon-dioxide-fertilization-greening-earth-study-finds/ 
+[^7]: https://warwick.ac.uk/fac/soc/economics/staff/omoav/mmp_15_nov_2020.pdf
+
+
+
+*The lead:*
+Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
+
+----
+# Beginning - (Complexity)
+
+Let us consider the inherent properties of this irreducible essence of modern software systems: complexity, conformity, changeability, invisibility, and culture adaptability.
+
+Complexity. When we speak of [complexity](https://en.wikipedia.org/wiki/Complexity) in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how interwind the systems we care about are, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects.
+
+A simple analogy can be made when we look no further than the making of bread. In the process of making bread, the doe is usually split into smaller parts shaped into strips and braided before it is finally baked. Splitting the bread and braiding it is not required as bread can be baked braided just as well as a simple lump of doe. Notice how I said that doe has a simple shape while a braided doe does not. If you think about it for a moment, after braiding bread the doe strips interwind and after finishing, reversing this process becomes difficult. If you had put the two strips one next to the other pulling one causes no effect on the others, meanwhile, after braiding pulling a single strip without effects on all others is impossible, you would have to carefully consider how each line moves about it's surroundings as it slips around moving up and down, hopefully not tearing the rest of the doe apart.
+
+This makes complexity sound all bad as making changes becomes hard and understanding of it becomes significantly harder. I would argue that although it does make changes hard, there are times at which there is nothing simpler and the complex solution works.
+
+Because complexity is such of fundamental, essential, rudiment, integral part of systems it is the main in 
+
+
+> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound. [see: Brooks, No Silver Bullet pp]
+
+Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor, 
+
+For many engineering diciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many compoentns have been standardized. 
+
+
+
+
+[^1]: https://kristoff.it/blog/simple-not-just-easy/
+[^2]: https://www.youtube.com/watch?v=LKtk3HCgTa8
+
+https://en.wikipedia.org/wiki/Kolmogorov_complexity
+
 
 # Meaning
 
@@ -63,73 +134,7 @@ Some are great proponents of this idea and have laied out a prize. The Hutter pr
 
 
 
-For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
 
-# History of our kind
-
-The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
-
-> If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
-
-As time went on nomadic groups moved into agricultural settlements. This shift marked the agricultural revolution of the time. Humans began spending a large portion of their time and effort onto cultivating a small food variety (wheat, corn, rice, potatoes, millet). Although we know that humans shifted from gathering their food to growing it, the choice at least for those times seems illogical. Cultivating wheat is no easy matter. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. Yuval Harari in his popular book Sapiens shows us the perspective of the wheat at the time. For wheat a fragile plant had become a growing empire taking over the world by frenzy with fields and fields made out entirely out of wheat. Utilizing dumb humans to expand beyond what it would ever be able on it's own. How were we fooled? What did it offer in return? By growing their food, humans had a larger surplus. This of course does not last for long as demand increases in the form of a larger population. Wheat allowed population to increase from a hundred to hundreds and even thousands yet keeping the population dirt poor for long [see: Yuval Harari, Sapiens pp. 87-89 (Hebrew version)]. 
-
-> Human history as a whole has been characterized by a seemingly inexorable trend toward higher levels of complexity, specialization, and sociopolitical control, processing of greater quantities of energy and information, formation of ever larger settlements, and development of more complex and capable technologies. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 3]
-
-With the population increasing at a steady pace, societies steadily got more complex. Complexity as I will now define, has a similarity to general complexity, simply flavored in a social context. Much like what Trainter did I will define complexity using two key terms, inequality and heterogeneity. Inequality refers to the differentiation of ranking, or unequal access to resources. Heterogeneity is the number of distinct parts to a society. Simpler societies had steadily decreased inequality as they increased in heterogeneity. 
-
-Complex societies of those times were still relatively simple in modern terms. Leadership in the simplest societies tended to be minimal. It is personal and charismatic, and exists only for special purposes. Hierarchical control is not institutionalized, but is limited to definite spheres of activity at specific times, and rests substantially on persuasion [see: Service 1962; Fried 1967, Political Systems – An Introduction to Anthropology]. This stands in dark contrast to our current institutionalized and legalized reality where states rule. Trainter touches upon this uniqueness after reviewing simple societies throughout history, in his book "The Collapse Of Complex Societies".
-
-> The citizens of modern complex societies usually do not realize that we are an anomaly of history. Throughout the several million years that recognizable humans are known to have lived, the common political unit was the small, autonomous community, acting independently, and largely self-sufficient. Robert Carneiro has estimated that 99.8 percent of human history has been dominated by these autonomous local communities (1978; 219). It has only been within the last 6000 years that something unusual has emerged: the hierarchical, organized, interdependent states that are the major reference for our contemporary political experience. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 24]
-
-From ancient construction of Gobekli Tepe, to the Great Pyramids, and today's large marvels like the Burj Khalifa, seemingly magical constructions were enabled by constant innovation in design and technology.
-
-In the recent times computers have risen, they quickly became integral to human life. We rely on this piece of sand to help us communicate, cook, learn, design, build, play, heal and so much more almost anything one can imagine a computer can help him do it better. The fundamental reason for why computers have become ubiquitous is their miraculous ability in doing computation. Much in the same way cars assist humans in going further distances faster and unlocking opportunities otherwise deemed impossible, computers allow us to make computations faster changing all aspects of modern life.
-
-With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity.
-
-
-*The lead:*
-Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
-
-
-Let us consider the inherent properties of this irreducible essence of modern software systems: complexity, conformity, changeability, invisibility, and culture adaptability.
-
-
-Complexity. When we speak of [complexity](https://en.wikipedia.org/wiki/Complexity) in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how systems become more interwind in themselves, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects thus, no non-linear or emergent behavior.
-
-A simple analogy can be made when we look no further than the making of bread. In the process of making bread, the doe is usually split into smaller parts shaped into strips and braided before it is finally baked. Splitting the bread and braiding it is not required as bread can be baked braided just as well as a simple lump of doe. Notice how I said that doe has a simple shape while a braided doe does not. If you think about it for a moment, after braiding bread the doe strips interwind and after finishing, reversing this process becomes difficult. If you had put the two strips one next to the other pulling one causes no effect on the others, meanwhile, after braiding pulling a single strip without effects on all others is impossible, you would have to carefully consider how each line moves about it's surroundings as it slips around moving up and down, hopefully not tearing the rest of the doe apart.
-
-For many engineering disciplines complexity is created when 
-
-
-This makes complexity sound all bad, fundamentally making changes hard, and being a truly evil of any system. I would argue that although it does make changes hard, there are times at which there is nothing simpler and the complex solution works.
-
-Because complexity is such of fundamental, essential, rudiment, integral part of systems it is the main in 
-
-
-> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound. [see: Brooks, No Silver Bullet pp]
-
-Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor, 
-
-For many engineering diciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many compoentns have been standardized. 
-
-
-[^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
-[^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
-[^3]: The Origin of the State: Land Productivity or Appropriability? by Joram Mayshar, Omer Moav, and Luigi Pascali
-[^4]: Sapiens - Yuval Harari
-[^5]: https://gwern.net/doc/sociology/2022-mayshar.pdf
-[^6]: https://www.nasa.gov/technology/carbon-dioxide-fertilization-greening-earth-study-finds/ 
-[^7]: https://warwick.ac.uk/fac/soc/economics/staff/omoav/mmp_15_nov_2020.pdf
-
-
-
-
-
-[^1]: https://kristoff.it/blog/simple-not-just-easy/
-[^2]: https://www.youtube.com/watch?v=LKtk3HCgTa8
-
-https://en.wikipedia.org/wiki/Kolmogorov_complexity
 
 
 As the number of internal states goes up, our mental ability to comprehend all states goes down, and this non-trivial behaviour which leads to an explosion of states
@@ -246,7 +251,7 @@ The next topic is unrelated to the rest of the text. I just wanted a place to wr
 
 # Economy 
 
-Learning about economy and money in general has been, and still is, quite the journey. Learning about money, what are markets, government intervention, political strife, patterns caused by the forces moving the markets and the history from which these patters are formed allows me to understand the world around me better. There is no new information here just accumulation of my own financial understanding.
+Learning about economy and money in general has been, and still is, quite the journey. Learning about money, what are markets, government intervention, political strife, patterns caused by the forces moving the markets and the history from which these patters are formed allows me to understand the world around me better. There is no new information here just accumulation of my own financial understanding, and some thoughts that I have which are not interesting by themselves.
 
 To make transactions happen in the past, people would trade commodities with other commodities. This made gauging prices hard, and trading in general not as accessible as could be. When money was invented, people could set a price for commodities such as food, utilities, and services using a universally accepted medium of exchange. In the case of the ancients it might have been wheat, gold or other precious metals, eventually making coins, paper money and digital money. The important thing here is that there is a universally agreed upon medium of exchange, even if when standing on it's own might be worthless. In the financial world there were 2 big inventions which changed the landscape forever. The invention of the banking system and investment institutions like Wall Street. The [origins of banking](https://firstutahbank.com/the-history-of-banking-from-ancient-times-to-now/) can be traced back to ancient Mesopotamia, around 2000 BC though, banking as we know it began around the 17th and the 19th centuries. With the invention of the banking system, the concept of money has extended. People could use something new called *credit* to pay for things they could not have been able to afford otherwise. The invention of credit allowed people and businesses to expand the scope of capital available to them greatly, allowing for greater economical expansions as money could be borrowed to facilitate the growing businesses needs. While the banking system allowed successful businesses to greatly expand their operations, it did not allow for great risk to be taken since it increased their risk for people defaulting on their loans (not paying back). For entrepreneurs who need capital to take big risks while expecting big gains the banking system could not provide the answer. For individuals the risk is also too high. Think of someone in the 19th century wanting to sail into the sea and find gold in another place. The risk taken here is immense as you could lose all of your large investment, although if successful, the reward would compensate you greatly for your risk. To minimize risk, the invention of shares with the rise of financial markets was invented.Now multiple people place their savings in entrepreneurs and risk takers to go and bring them profits. Shares of companies just represent parts of the whole, allowing many people to pour investment and reduce risk taken by any single individual.
 
