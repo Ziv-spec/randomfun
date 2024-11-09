@@ -12,10 +12,7 @@ Handling Designers bad culture and trade-offs (during bad times)
 
 NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and jet I have not found that it is useful for much yet. It does not serve the articles but hinders it. Both in my time and in effort writing it first. I believe it deserves a separate article which will be more fun to write. That said, there is an important component of economics and history which I will have to explore just not as thoroughly as I initially wanted.
 - History
-    As a species we got here today in a marvelous way which we should remember is a miracle. Held together by the social structure, and effected by the local, global states of the industrial revolution.
-    The global economical structure we are inside of, means that there are things which we are effected by regardless if we want or don't want. Values of people change, times change, and as the saying goes "Hard times create strong men, strong men create good times, good times create weak men, and weak men create hard times". This saying I believe is a major creator of bad design, bad rules which people follow and low quality goals which they try to achieve. In much the same way Goodharth's law which is crucial in understanding how human over-optimization causes bad things, and how randomness helps mitigate it's bad effects. 
-
-
+    As a species we got here today in a marvelous way which we should remember is a miracle. Held together by the social structure, and effected by the local, global states of the industrial revolution. Like all biological creatures we know of humans came from the great biological soup of molecules inside our home called earth. While all other creatures had better defenses like shields to protect them or offensive ways of attacking using fangs or venom, humans came on top using a more lethal weapon under the name "Intelligence". We with our squishy minds have came and changed the world. We can move faster using cars, move more weight using machines, and form a hive mind of telecommunication network of sharing of knowledge and experience. The squishy things advancement knows no bounds. We live in a global hive mind where values of people change, times change, and as the saying goes "Hard times create strong men, strong men create good times, good times create weak men, and weak men create hard times". This saying I believe is a major creator of bad design, bad rules which people follow and low quality goals which they try to achieve. In much the same way Goodharth's law which is crucial in understanding how human over-optimization causes bad things, and how randomness helps mitigate it's bad effects. 
 - Meaning  (This is something that I need to think about quite a bit more)
     The essence of everything that we build is it's meaning. If we know where meanings comes from we can look for it. We can see it more clearly and allow us to express our design with more intention and vividness than we would have been able to. This is a precursor to complexity and compression both which rely heavily on the meaning the systems carry.
 - Complexity
@@ -170,8 +167,6 @@ One more approach would be to accept more inputs than are needed for a single pr
 
 
 
-
-
 ## Software complexity
 
 ===== checkpoint
@@ -249,6 +244,8 @@ When I began programming I had only the concern of making things work. Later at 
 # Safety 
 
 One thing that I was never taught or thought about was the safety of program. Until I read great article The Coming Software Apocalypse showcasing how the proliferation of software and how it quickly seeped through the cracks of everyday safety systems. From the elevator to managing water, cars, medical equipment and almost all critical systems today, software is at the bedrock of society. This placed large safety concerns since bugs in software are invisible. 
+
+NOTES: We shall explore the problem of software safety using examples of real world cases: 
 
 # Antifragile
 
