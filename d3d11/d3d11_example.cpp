@@ -367,14 +367,13 @@ InputUpdate(LPARAM lparam) {
 		mouse.buttons = (Mouse_Buttons)buttons;
 		g_raw_input_state.mouse = mouse;
 		} 
+	}
 	
 	delete[] lpb; 
-	
 	return 1;
 }
 
-static Game_Input
-InputGetState() {
+static Game_Input InputGetState() {
 	return g_raw_input_state;
 }
 
@@ -1598,16 +1597,6 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
             ctx->hot = handle; 
             output.hovered = 1;
         }
-<<<<<<< HEAD
-		
-		
-		if ((mouse.buttons & MouseLeftButton)) {
-			printf("yo \n");
-		}
-		
-=======
- 
->>>>>>> 171c73ac8a60818ebbef68541d2185e7df99fb93
         // widget is active?
         if ((behaviour & UI_CLICKABLE) && 
                 ctx->active == UI_INVALID_WIDGET && 
@@ -2286,16 +2275,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.py = height-mouse_pos[1];
 		
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-<<<<<<< HEAD
-=======
-		
-		bool active = UIButton(&ui, 400, 10, 100, 100);
-		if(active) {
-		printf("UIButton pressed\n");
-		}
-		
->>>>>>> 171c73ac8a60818ebbef68541d2185e7df99fb93
-		
+
 		bool clicked = UIButton(&ui, 400, 10, 100, 100);
 		if (clicked) {
 			printf("button clicked\n");
