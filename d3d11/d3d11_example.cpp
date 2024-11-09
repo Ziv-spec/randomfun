@@ -345,14 +345,17 @@ InputUpdate(LPARAM lparam) {
 	
 	RAWINPUT* raw = (RAWINPUT*)lpb;
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
+		
+		Mouse mouse = g_raw_input_state.mouse;
 		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
 			int delta_m = (int)raw->data.mouse.usButtonData; 
 			//printf("wheel: %d\n", delta_m);
-		Mouse mouse = g_raw_input_state.mouse;
-		mouse.px += raw->data.mouse.lLastX;
+			
+			mouse.px += raw->data.mouse.lLastX;
 		mouse.py += raw->data.mouse.lLastY;
 		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
 			mouse.wy += (int)raw->data.mouse.usButtonData;
+		}
 		}
 		
 		int buttons = 0;
@@ -363,12 +366,13 @@ InputUpdate(LPARAM lparam) {
 			case RI_MOUSE_BUTTON_2_UP:   buttons &= ~MouseRightButton; break;
 			case RI_MOUSE_BUTTON_3_DOWN: buttons |= MouseMiddleButton; break;
 			case RI_MOUSE_BUTTON_3_UP:   buttons &= ~MouseMiddleButton; break;
-		}
+			}
+			
 		mouse.buttons = (Mouse_Buttons)buttons;
 		g_raw_input_state.mouse = mouse;
-		} 
-	
+
 	delete[] lpb; 
+	}
 	
 	return 1;
 }
@@ -1586,7 +1590,8 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
 	UI_Output output;
     Mouse mouse = ctx->input->mouse;
     UI_Widget_Handle handle = ctx->last; 
-
+	
+	
     // Find if mouse is inside UI hit-box
     if (box.minx <= mouse.px && 
             mouse.px <= box.maxx && 
@@ -1598,16 +1603,7 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
             ctx->hot = handle; 
             output.hovered = 1;
         }
-<<<<<<< HEAD
 		
-		
-		if ((mouse.buttons & MouseLeftButton)) {
-			printf("yo \n");
-		}
-		
-=======
- 
->>>>>>> 171c73ac8a60818ebbef68541d2185e7df99fb93
         // widget is active?
         if ((behaviour & UI_CLICKABLE) && 
                 ctx->active == UI_INVALID_WIDGET && 
@@ -1615,7 +1611,7 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
                 (mouse.buttons & MouseLeftButton)) {
             ctx->active = handle; 
             output.clicked = 1;
-        }
+			}
 
         // widget slider behaviour
         if ((behaviour & UI_SLIDERABLE)) {
@@ -2271,11 +2267,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		 // 
 
 		static int val = 10;
-		
+
         DrawBox(&ctx, { val, 10, 100+val, 100 }, RED);
 		DrawBox(&ctx, { 110, 10, 200, 200 }, LIGHTRED);
 		DrawBox(&ctx, { 210, 10, 300, 300 }, LIGHTRED);
-		
+
 		UI_Context ui = { }; 
 		ui.hot = UI_INVALID_WIDGET;
 		ui.active = UI_INVALID_WIDGET;
@@ -2286,15 +2282,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.py = height-mouse_pos[1];
 		
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-<<<<<<< HEAD
-=======
-		
-		bool active = UIButton(&ui, 400, 10, 100, 100);
-		if(active) {
-		printf("UIButton pressed\n");
-		}
-		
->>>>>>> 171c73ac8a60818ebbef68541d2185e7df99fb93
 		
 		bool clicked = UIButton(&ui, 400, 10, 100, 100);
 		if (clicked) {
