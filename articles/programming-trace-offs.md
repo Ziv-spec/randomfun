@@ -68,7 +68,6 @@ In hindsight I should have thought critically before accepting their imparted kn
 
 > Some of my friends agree the programming profession hasn’t matured yet because it’s at a pre-scientific stage of its existence. I claim many of us are subconsciously subscribing to traditional sources of knowledge that have proven to be unreliable, and as far as I can tell NASA has done well to guard themselves against them
 > 
-> 
 >    — [Abner Coimbre](https://observer.com/2017/07/a-look-into-nasa-coding-philosophy-kennedy-space-center-programming/)
 > 
 
