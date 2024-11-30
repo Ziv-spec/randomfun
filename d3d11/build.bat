@@ -32,7 +32,7 @@ if "%1" equ "debug" (
   set FXC=/O0
 ) else (
   set CL_FLAGS=/GL /O1 /GS-
-  set LINK_FLAGS=%LINK_FLAGS% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib ucrt.lib /subsystem:windows
+  set LINK_FLAGS=%LINK_FLAGS% /LTCG /OPT:REF /OPT:ICF libvcruntime.lib /subsystem:windows
   set FXC=/O3
 ) 
 
@@ -46,6 +46,6 @@ rc.exe /nologo /fo enet.res ../resources/enet.rc
 
 REM cl ../main.c ../enet.res /Feui.exe /FC /W3 /WX /MP %CL_FLAGS% /nologo /link  /INCREMENTAL:NO %LINK_FLAGS% /FIXED /merge:_RDATA=.rdata
 
-cl ../d3d11_example.cpp enet.res  /nologo /FC /W3 /WX %CL_FLAGS% /link /INCREMENTAL:NO %LINK_FLAGS%
+cl ../d3d11_example.cpp enet.res  /nologo /FC /W3 /WX %CL_FLAGS% /link /INCREMENTAL:NO %LINK_FLAGS% /FIXED /merge:_RDATA=.rdata
 
 popd
