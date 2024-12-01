@@ -19,6 +19,10 @@ I am scared yes. But time heals all wounds and I am no longer afraid. This seems
 
 Humans tend to forget just how crazy tech has become lately. How little do we know of the things we create, and how scary it would be to someone just a couple hundred years ago to see this flying aircraft quickly disappearing into the sky with a loud sound trying to catch up. How terrifying are the guns, bombs, and other new tech is to a people even just a century ago, let alone a thousand years ago. 
 
+--
+
+I have also seen movies of bombings of people in war. It is hard to fully appreciate how much tech has advanced. New imagining airplanes are capable of capturing you and your hands moving to such accuracy I don't know how anybody in war would not go mental if they saw themselves from the air with such accuracy. Think about it, if you decided you were going out on walk, opening the door about to go outside, you look around and see nothing and hear almost nothing too, you step outside walk a couple meters and you suddenly find a bomb landing within a single meter from you killing you in a split second. Ofcourse the fact of the matter is that even if nations are capable of such things they usually will not do so without reason yet, I believe that there is a great reason to suspect that future wars will be just like this. Monitoring people will become so so much easier to the degree which you will no longer have anywhere to hide the world is becoming a tiny place. Small enough, tech can capture it all inside the hivemind like network called the internet and have more than enough room to capture more. Destroying places like homes towers and anything built or not built by humans, just drop a bomb on it. 
+
 
 ---
 # References

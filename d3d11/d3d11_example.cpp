@@ -370,17 +370,9 @@ InputUpdate(LPARAM lparam) {
 			
 		mouse.buttons = (Mouse_Buttons)buttons;
 		g_raw_input_state.mouse = mouse;
-<<<<<<< HEAD
 		} 
-	}
-	
 	delete[] lpb; 
-=======
-
-	delete[] lpb; 
-	}
 	
->>>>>>> 1b6d7bcf090a344262724d5d192c9992a5f138c0
 	return 1;
 }
 
@@ -785,67 +777,14 @@ CameraMove(Camera *c, float x, float y, float z) {
 
 
 //~
-// Win32 API
-//
-
-static HWND 
-CreateWin32Window() {
-	
-	HINSTANCE instance_handle = GetModuleHandleW(NULL);
-	
-	WNDCLASSEXA window_class = {0};
-	window_class.cbSize = sizeof(window_class);
-	window_class.lpfnWndProc = WinProc;
-	window_class.hInstance = instance_handle ;
-	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
-	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.lpszClassName = "d3d11 example";
-	
-	ATOM atom = RegisterClassExA(&window_class); 
-	Assert(atom && "Could not register class"); 
-	
-	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW, 
-					  window_class.lpszClassName, 
-					  APP_TITLE, 
-					  WS_OVERLAPPEDWINDOW,
-					  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
-					  NULL, NULL, window_class.hInstance, NULL);
-	Assert(window && "Failed to create a window"); 
-	
-	return window;
-}
-
-//~
 // D3D11 Renderer
 // 
 
-
-// API 
-#define D3D11_BUFFER_SIZE       0x100
-#define D3D11_PIXELSHADER_SIZE  0x100
-#define D3D11_VERTEXSHADER_SIZE 0x100
-#define D3D11_LAYOUT_SIZE       0x100
-
-typedef struct { int x; } R_Buffer; 
-typedef struct { int x; } R_PixelShader; 
-typedef struct { int x; } R_VertexShader; 
-
-typedef enum { 
-	// two bits
-	BF_USAGE_IMMUTABLE = 1 << 0,
-	BF_USAGE_DYNAMIC   = 1 << 1,
-	// two bits
-	BF_CPU_ACESS_WRITE = 1 << 2,
-	BF_CPU_ACESS_READ  = 1 << 3, 
-	// three bits
-	BF_VERTEX_BUFFER   = 1 << 4,
-	BF_INDEX_BUFFER    = 1 << 5,
-	BF_CONSTNAT_BUFFER = (1 << 4) | (1 << 5),
-} Buffer_Flag;
-
-typedef struct {
-	int aaaaa;
-} Renderer_Command;
+struct Vertex {
+	float pos[3];
+	float norm[3];
+	float uv[2];
+};
 
 typedef struct {
 	HWND window;
@@ -859,254 +798,10 @@ typedef struct {
 	ID3D11DepthStencilView *zbuffer;
 	ID3D11Texture2D *zbuffer_texture; 
 	ID3D11RasterizerState1* rasterizer_cull_back;
-	
-	
-	// Data uploaded to the GPU already would get reused through 
-	// handles to the data (essentially this will be the user faceing info)
-	struct { 
-		R_Buffer handle;
-		ID3D11Buffer *buf;
-	} buffers[D3D11_BUFFER_SIZE];
-	size_t buffer_count;
-	
-	struct { 
-		R_VertexShader handle;
-		ID3D11InputLayout *layout;
-		ID3D11VertexShader *vs;
-	} vertex_shaders[D3D11_VERTEXSHADER_SIZE];
-	size_t vertex_shader_count;
-	
-	struct { 
-		R_PixelShader handle;
-		ID3D11PixelShader *ps;
-	} pixel_shaders[D3D11_PIXELSHADER_SIZE];
-	size_t pixel_shader_count;
-	
-	} Renderer;
-
-// Initialization and DeInitialization
-static void RendererCreate(Renderer *r, HWND window); 
-static void RendererDestroy(Renderer *r);
-static void RendererResize(Renderer *r, unsigned int width, unsigned int height); 
-
-
-// Resource Aquasition (Sending data to GPU)
-static R_Buffer RendererCreateBuffer(Renderer *r, const void *data, u32 size, u16 flags); 
-static ID3D11Buffer *RendererGetBufferFromHandle(Renderer *r, R_Buffer handle);
-
-static R_VertexShader RendererCreateVertexShader(Renderer *r, const char *hlsl, D3D11_INPUT_ELEMENT_DESC format[], // TODO(ziv): This is d3d11 specific for a unified API generalize this 
-												 u8 flags); 
-
-static R_PixelShader RendererCreatePixelShader(Renderer *r, const char *hlsl, u8 flags); 
-
-// Drawing Functions
-static void RendererDraw(Renderer *r, R_Buffer vbuffer, R_VertexShader vs, R_PixelShader ps, R_Buffer cbuffer, u8 flags);
-
-
-
-// 
-// Implementation
-// 
-
-struct Vertex {
-	float pos[3];
-	float norm[3];
-	float uv[2];
-};
+} R_D3D11Context;
 
 static void 
-RendererCreate(Renderer *r, HWND window) {
-	
-	//
-	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
-	//
-	
-	HRESULT hr; 
-	ID3D11Device1 *device; 
-	ID3D11DeviceContext1*context;
-	{ 
-
-		UINT flags = 0; 
-		
-#if _DEBUG
-		// this enables VERY USEFUL debug messages in debugger output
-		flags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif 
-
-		D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
-
-		ID3D11Device* base_device;
-		ID3D11DeviceContext* base_context;
-		
-		hr = D3D11CreateDevice(NULL, // Default adapter
-				   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
-				   NULL, // Software renderer if specified to use CPU
-				   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
-				   featureLevels, ARRAYSIZE(featureLevels), 
-				   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
-		AssertHR(hr); 
-		
-		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
-		base_device->Release();
-		base_context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **)&context);
-		base_context->Release();
-	}
-	
-#if _DEBUG
-	// for debug builds enable VERY USEFUL debug break on API errors
-    {
-        ID3D11InfoQueue* info;
-        device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
-        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-        info->Release();
-    }
-	
-    // enable debug break for DXGI too
-    {
-        IDXGIInfoQueue* dxgi_info;
-        hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
-        AssertHR(hr);
-        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
-        dxgi_info->Release();
-    }
-
-    // after this there's no need to check for any errors on device functions manually
-    // so all HRESULT return  values in this code will be ignored
-    // debugger will break on errors anyway
-#endif
-
-	// Create D3D11 Swap Chain
-	IDXGISwapChain1* swap_chain;
-	{
-
-		IDXGIDevice1* dxgiDevice;
-		device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
-
-		IDXGIAdapter* dxgiAdapter;
-		dxgiDevice->GetAdapter(&dxgiAdapter);
-		dxgiDevice->Release();
-
-		IDXGIFactory2* dxgiFactory;
-		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
-		dxgiAdapter->Release(); 
-
-		//
-
-		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
-		swap_chain_desc.Width              = 0; // use window width
-		swap_chain_desc.Height             = 0; // use window height
-		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-		swap_chain_desc.Stereo             = FALSE;
-		swap_chain_desc.SampleDesc.Count   = 1;
-		swap_chain_desc.SampleDesc.Quality = 0;
-		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swap_chain_desc.BufferCount        = 2;
-		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
-		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
-		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swap_chain_desc.Flags              = 0;
-
-		dxgiFactory->CreateSwapChainForHwnd(device, window, &swap_chain_desc, NULL, NULL, &swap_chain);
-		dxgiFactory->Release();
-	}
-
-	// Create a Target View
-	ID3D11RenderTargetView *frame_buffer_view; 
-	{
-		ID3D11Texture2D* frame_buffer;
-		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
-
-		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
-		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
-		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-		
-		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
-		frame_buffer->Release();
-	}
-
-	// 
-	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
-	// 
-
-	// Create Depth Sentcil
-	ID3D11DepthStencilState* depth_stencil_state;
-	{
-		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
-		depth_stencil_desc.DepthEnable    = TRUE;
-		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
-
-		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
-	}
-
-	// Create Z-Buffer
-	ID3D11DepthStencilView *zbuffer;
-	ID3D11Texture2D *zbuffer_texture; 
-	{
-		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
-
-		depth_buffer_desc.Width = window_height;
-		depth_buffer_desc.Height = window_width;
-		depth_buffer_desc.MipLevels = 1;
-		depth_buffer_desc.ArraySize = 1;
-		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_buffer_desc.SampleDesc.Count = 1;
-		depth_buffer_desc.SampleDesc.Quality = 0;
-		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
-
-		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {}; 
-		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		depth_stencil_view_desc.Texture2D.MipSlice = 0; 
-		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
-	}
-
-	// Create a Rasterizer
-	ID3D11RasterizerState1* rasterizer_cull_back;
-	{
-		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
-		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
-		rasterizer_desc.CullMode = D3D11_CULL_BACK;
-
-		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
-
-		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
-		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
-		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
-	}
-
-	// Set all d3d11 com objects
-	r->window = window;
-	r->device = device; 
-	r->context = context; 
-	r->swap_chain = swap_chain; 
-	r->frame_buffer_view = frame_buffer_view; 
-	r->depth_stencil_state = depth_stencil_state; 
-	r->zbuffer = zbuffer; 
-	r->zbuffer_texture = zbuffer_texture; 
-	r->rasterizer_cull_back = rasterizer_cull_back; 
-}
-
-static void 
-RendererDestroy(Renderer *r) {
-	r->device->Release();
-	r->context->Release();
-	r->swap_chain->Release();
-	r->frame_buffer_view->Release(); 
-	r->depth_stencil_state->Release();
-	r->zbuffer->Release();
-	r->zbuffer_texture->Release(); 
-	r->rasterizer_cull_back->Release();
-	
-	// TODO(ziv): Deallocate all user allocated resources
-}
-
-static void 
-RendererResize(Renderer *r, unsigned int width, unsigned int height) {
+RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 	Assert(r); 
 	
 	if (r->frame_buffer_view) {
@@ -1152,366 +847,19 @@ RendererResize(Renderer *r, unsigned int width, unsigned int height) {
 	
 }
 
-static R_Buffer 
-RendererCreateBuffer(Renderer *r, const void *data, u32 size, u16 flags) {
-	Assert((flags & 0xfc) && "Must supply the type of buffer and it's usage type");
-	
-	static D3D11_USAGE usage[] = {  D3D11_USAGE_DEFAULT, D3D11_USAGE_IMMUTABLE, D3D11_USAGE_DYNAMIC, };
-	static D3D11_BIND_FLAG bind[] = { D3D11_BIND_VERTEX_BUFFER, D3D11_BIND_INDEX_BUFFER, D3D11_BIND_CONSTANT_BUFFER, };
-	static D3D11_CPU_ACCESS_FLAG cpu_access[] = { (D3D11_CPU_ACCESS_FLAG)0, D3D11_CPU_ACCESS_WRITE, D3D11_CPU_ACCESS_READ };
-	
-	ID3D11Buffer *buffer;
-	{
-		D3D11_BUFFER_DESC descriptor = {}; 
-		descriptor.ByteWidth = (size + 0xf) & 0xffffff0;
-		descriptor.Usage = usage[(u8)flags & 0x3];
-		descriptor.BindFlags = bind[((u8)(flags >> 4) & 0x7)-1];
-		descriptor.CPUAccessFlags = cpu_access[((u8)flags >> 2) & 0x3];
-		
-		if (data) {
-		D3D11_SUBRESOURCE_DATA buffer_data  = { data };
-			r->device->CreateBuffer(&descriptor, &buffer_data, &buffer);
-		}
-		else {
-			r->device->CreateBuffer(&descriptor, NULL, &buffer);
-		}
-		
-	}
-	
-	// The user will use the resource through it's handle
-	// Format:    0000 0000 0000 kkkk iiii iiii iiii iiii
-	// i - index, k - kind
-	
-	Assert(r->buffer_count < D3D11_BUFFER_SIZE); 
-	
-	u32 idx = (u16)r->buffer_count;
-	u32 kind = flags >> 4;
-	R_Buffer handle = { (kind << 16) | (idx) };
-	
-	// Copy of the handle is used to know if data has changed
-	r->buffers[r->buffer_count++] = { handle, buffer };
-	
-	// TODO(ziv): Make allocation of new buffers smarter
-	// Currently I just allocate statically a buffer and 
-	// I don't deallocate or do anything to free resources
-	// Since the option of adding smarter allocation should 
-	// be easy and a smart move forward, implement a nice 
-	// system for allocation/deallocation of these slots
-	
-	return handle; 
-}
-
-static ID3D11Buffer *
-RendererGetBufferFromHandle(Renderer *r, R_Buffer handle) {
-	Assert(r);
-	Assert((handle.x >> 4) > 0 && "Invalid Buffer!!! Must contain a kind");
-	
-	int idx = handle.x & 0xffff; 
-	Assert(0 <= idx && idx <= D3D11_BUFFER_SIZE); 
-	
-	ID3D11Buffer *result = NULL; 
-	if (handle.x == r->buffers[idx].handle.x) {
-	result = r->buffers[idx].buf;
-	}
-	return result;
-}
-
-static R_VertexShader 
-RendererCreateVertexShader(Renderer *r, const char *hlsl, u32 length, const D3D11_INPUT_ELEMENT_DESC format[], u32 format_elem_count, u8 flags) {
-	Assert(r && hlsl && format && format_elem_count > 0); 
-	
-    HRESULT hr; 
-	ID3D11InputLayout  *layout = NULL;
-	ID3D11VertexShader *vshader = NULL; 
-	{
-		
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompile(hlsl, length, NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer(); 
-			OutputDebugStringA(message); 
-			Assert(!"Failed to compile pertex shader!");
-		}
-		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
-		
-		r->device->CreateInputLayout(format, format_elem_count, 
-									 vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
-		
-		vblob->Release();
-	}
-	
-	
-	
-	// TODO(ziv): Improve allocation and deallocation scheme here too 
-	u16 idx = (u16)r->vertex_shader_count;
-	R_VertexShader handle = { idx }; 
-	
-	r->vertex_shaders[r->vertex_shader_count++] = { handle, layout, vshader };
-	
-	return handle;
-}
-
-static ID3D11VertexShader*
-RendererGetVertexShaderFromHandle(Renderer *r, R_VertexShader handle) {
-	Assert(r);
-	
-	int idx = handle.x & 0xffff; 
-	Assert(0 <= idx && idx <= D3D11_VERTEXSHADER_SIZE); 
-	
-	ID3D11VertexShader *result = NULL; 
-	if (handle.x == r->vertex_shaders[idx].handle.x) {
-		result = r->vertex_shaders[idx].vs;
-	}
-	return result;
-}
-
-static ID3D11InputLayout*
-RendererGetLayoutFromHandle(Renderer *r, R_VertexShader handle) {
-	Assert(r);
-	
-	int idx = handle.x & 0xffff; 
-	Assert(0 <= idx && idx <= D3D11_VERTEXSHADER_SIZE); 
-	
-	ID3D11InputLayout  *result = NULL; 
-	if (handle.x == r->vertex_shaders[idx].handle.x) {
-		result = r->vertex_shaders[idx].layout;
-	}
-	return result;
-}
-
-static R_PixelShader 
-RendererCreatePixelShader(Renderer *r, const char *hlsl, u32 length, u8 flags) {
-	
-	HRESULT hr; 
-	ID3D11PixelShader *pshader;
-	{
-		
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *pblob;
-	hr = D3DCompile(hlsl, length, NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-	if (FAILED(hr)) {
-		const char *message = (const char *)error->GetBufferPointer(); 
-		OutputDebugStringA(message); 
-		Assert(!"Failed to compile pixel shader!");
-	}
-	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
-	pblob->Release(); 
-	}
-	
-	
-	// TODO(ziv): Improve allocation and deallocation scheme here too 
-	
-	u16 idx = (u16)r->pixel_shader_count;
-	R_PixelShader handle = { idx }; 
-	
-	r->pixel_shaders[r->pixel_shader_count++] = { handle, pshader };
-	
-	return handle;
-}
-
-static ID3D11PixelShader*
-RendererGetPixelShaderFromHandle(Renderer *r, R_PixelShader handle) {
-	Assert(r);
-	
-	int idx = handle.x & 0xffff; 
-	Assert(0 <= idx && idx <= D3D11_PIXELSHADER_SIZE); 
-	
-	ID3D11PixelShader *result = NULL; 
-	if (handle.x == r->pixel_shaders[idx].handle.x) {
-		result = r->pixel_shaders[idx].ps;
-	}
-	return result;
-}
-
-static void 
-RendererDraw(Renderer *r, R_Buffer vbuffer, R_VertexShader vs, R_PixelShader ps, R_Buffer cbuffer, u8 flags) {
-	Assert((vbuffer.x >> 16) == 1);
-	Assert((cbuffer.x >> 16) == 3);
-	
-	ID3D11Buffer *verticies = RendererGetBufferFromHandle(r, vbuffer);
-	ID3D11Buffer *constant_buffer = RendererGetBufferFromHandle(r, cbuffer);
-	ID3D11InputLayout *layout = RendererGetLayoutFromHandle(r, vs);
-	ID3D11VertexShader *vshader = RendererGetVertexShaderFromHandle(r, vs);
-	ID3D11PixelShader *pshader = RendererGetPixelShaderFromHandle(r, ps);
-	
-	RECT rect; 
-	GetClientRect(r->window, &rect);
-	LONG width = rect.right - rect.left;
-	LONG height = rect.bottom - rect.top;
-	
-	D3D11_VIEWPORT viewport = {0};
-	viewport.Width = (FLOAT)width; 
-	viewport.Height = (FLOAT)height;
-	viewport.MaxDepth = 1;
-	
-    // Input Assembler
-    r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    r->context->IASetInputLayout(layout);
-    const UINT stride = 2*sizeof(float); 
-    const UINT offset = 0;
-    r->context->IASetVertexBuffers(0, 1, &verticies, &stride, &offset);
-    
-    // Vertex Shader
-    r->context->VSSetShader(vshader, NULL, 0);
-    
-    // Pixel Shader
-    r->context->PSSetShader(pshader, NULL, 0);
-    r->context->PSSetConstantBuffers(0, 1, &constant_buffer); 
-    
-    // Rasterizer
-    r->context->RSSetViewports(1, &viewport);
-    
-    // Output Merger
-    r->context->OMSetRenderTargets(1, &r->frame_buffer_view, 0);
-    
-    r->context->Draw(4,0);
-	
-}
-
-
-/*
-typedef enum {
-	RTF_SRGB      = 1 << 0, 
-	RTF_IMMUTABLE = 1 << 1, 
-} R_Texture_Flags;
-
-typedef struct {
-	unsigned int width; 
-	unsigned int height;
-	ID3D11ShaderResourceView *tex;
-} R_Texture; 
-
-
-static R_Texture 
-RendererGetTexture(Renderer *r, const char *bytes, unsigned int width, unsigned int height, unsigned char flags) {
-	// Upload the texture to the GPU and keep the resource around
-	ID3D11ShaderResourceView *texture_view;
-	
-	// TODO(ziv): Allow user to use mipmapping with the texture
-	D3D11_TEXTURE2D_DESC texture_desc = {};
-	texture_desc.Width              = width;
-	texture_desc.Height             = height;
-	texture_desc.MipLevels          = 1;
-	texture_desc.ArraySize          = 1;
-	texture_desc.Format             = (flags & RTF_SRGB) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : (DXGI_FORMAT)0;
-	texture_desc.SampleDesc.Count   = 1;
-	texture_desc.Usage              = (flags & RTF_IMMUTABLE) ? D3D11_USAGE_IMMUTABLE : (D3D11_USAGE)0;
-	texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-	
-	D3D11_SUBRESOURCE_DATA texture_data = {};
-	texture_data.pSysMem = bytes;
-	texture_data.SysMemPitch = 4*width; // TODO(ziv): Stop assuming all textures are SRGB
-	
-	ID3D11Texture2D* texture;
-	r->device->CreateTexture2D(&texture_desc, &texture_data, &texture);
-	r->device->CreateShaderResourceView(texture, NULL, &texture_view);
-	texture->Release();
-	
-	R_Texture result = { width, height, texture_view };
-	return result;
-}
-
-static void
-RendererDestroyTexture(R_Texture *t) {
-	t->tex->Release(); 
-}
-*/
-
-
-
-
-
-
-
 
 typedef struct { int minx, miny, maxx, maxy; } Box; 
 typedef struct { float r, g, b, a; } Color;
 typedef struct { Box box, Color; } DrawQuadCommand; 
 static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
-static Color LIGHTERRED = { 1, .3f, .3f, 1};
-
-typedef struct { 
-	Renderer *renderer; 
-	
-	// For Quad Rendering
-	R_VertexShader vshader; 
-	R_PixelShader pshader; 
-	R_Buffer vertex_buffer; 
-	R_Buffer constant_buffer;
-	
-} Draw_Context; 
 
 static void 
-DrawBegin(Draw_Context *ctx, Renderer *r) { 
-    
-    float sz = .5;
-    float verticies[] = {
-		-1, -1,  -1, 1,
-		1, -1,   1, 1,
-    };
-	
-    static char hlsl[] = 
-        "#line " STR(__LINE__)                                "\n"
-        "                                                      \n"
-        "float4 vs_main(float2 p : Position) : SV_Position {   \n" 
-        "    return float4(p, 0., 1.);                         \n"
-        "}                                                     \n"
-        "                                                      \n" 
-        "cbuffer DrawColor {                                   \n" 
-        "    float4 color;                                     \n" 
-        "};                                                    \n" 
-        "                                                      \n" 
-        "float4 ps_main(float4 p : SV_Position) : SV_Target {  \n" 
-        "    return color;                                     \n"
-        "}                                                     \n";
-	
-	R_Buffer vbuffer = RendererCreateBuffer(r, verticies, sizeof(verticies), BF_VERTEX_BUFFER | BF_USAGE_DYNAMIC | BF_CPU_ACESS_WRITE);
-	R_Buffer cbuffer = RendererCreateBuffer(r, &RED, sizeof(Color), BF_CONSTNAT_BUFFER | BF_USAGE_DYNAMIC | BF_CPU_ACESS_WRITE);
-	
-	// Vertex Shader Fromat Descriptor
-	const D3D11_INPUT_ELEMENT_DESC format[] = {
-		{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	
-	R_VertexShader vs = RendererCreateVertexShader(r, hlsl, sizeof(hlsl), format, ARRAYSIZE(format), 0);
-	R_PixelShader ps = RendererCreatePixelShader(r, hlsl, sizeof(hlsl), 0);
-	
-	// TODO(ziv): This should change for sure
-	ctx->renderer = r;
-	ctx->vshader = vs; 
-	ctx->pshader = ps; 
-	ctx->vertex_buffer = vbuffer;
-	ctx->constant_buffer = cbuffer;
-	
-	}
-    
-static void 
-DrawEnd(Draw_Context *ctx) {
-    // Take all common commands and draw instanced
-    // RendererDrawInstanced()
-	
-}
-
-static void 
-DrawBox(Draw_Context *ctx, Box box, Color color) { 
+DrawBox(R_D3D11Context *ctx, Box box, Color color) { 
     // Post a drawquad command
 	
 	RECT rect; 
-	GetClientRect(ctx->renderer->window, &rect);
+	GetClientRect(ctx->window, &rect);
 	float width = (float)(rect.right - rect.left);
 	float height = (float)(rect.bottom - rect.top);
 	
@@ -1530,25 +878,122 @@ DrawBox(Draw_Context *ctx, Box box, Color color) {
 		maxx, miny, maxx, maxy, 
     };
 	
-	// TODO(ziv): Make a renderer wrapping for this changing of buffer data dynamically.
-	ID3D11Buffer *vbuffer = RendererGetBufferFromHandle(ctx->renderer, ctx->vertex_buffer); 
-	ID3D11Buffer *cbuffer = RendererGetBufferFromHandle(ctx->renderer, ctx->constant_buffer);
-	Renderer *r = ctx->renderer;
+	// Vertex Shader Fromat Descriptor
+	const D3D11_INPUT_ELEMENT_DESC format[] = {
+		{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
 	
+    static char hlsl[] = 
+        "#line " STR(__LINE__)                                "\n"
+        "                                                      \n"
+        "float4 vs_main(float2 p : Position) : SV_Position {   \n" 
+        "    return float4(p, 0., 1.);                         \n"
+        "}                                                     \n"
+        "                                                      \n" 
+        "cbuffer DrawColor {                                   \n" 
+        "    float4 color;                                     \n" 
+        "};                                                    \n" 
+        "                                                      \n" 
+        "float4 ps_main(float4 p : SV_Position) : SV_Target {  \n" 
+        "    return color;                                     \n"
+        "}                                                     \n";
+	
+	
+	
+	ID3D11Buffer *vbuffer;
+	{
+		D3D11_BUFFER_DESC descriptor = {}; 
+		descriptor.ByteWidth = sizeof(verticies);
+		descriptor.Usage = D3D11_USAGE_DEFAULT;
+		descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		
+			D3D11_SUBRESOURCE_DATA buffer_data  = { verticies };
+			ctx->device->CreateBuffer(&descriptor, &buffer_data, &vbuffer);
+		}
+	
+	ID3D11Buffer *cbuffer;
+	{
+		D3D11_BUFFER_DESC descriptor = {}; 
+		descriptor.ByteWidth = sizeof(Color) & 0xffffff0;
+		descriptor.Usage = D3D11_USAGE_DEFAULT;
+		descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		//descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		
+		D3D11_SUBRESOURCE_DATA buffer_data  = { &color };
+			ctx->device->CreateBuffer(&descriptor, &buffer_data, &cbuffer);
+	}
+	
+/* 	
 	D3D11_MAPPED_SUBRESOURCE mapped;
-	r->context->Map((ID3D11Resource *)vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-	memcpy(mapped.pData, &verticies, sizeof(verticies)); 
-	r->context->Unmap((ID3D11Resource *)vbuffer, 0);
-	
 		r->context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 		memcpy(mapped.pData, &color, sizeof(Color)); 
 	r->context->Unmap((ID3D11Resource *)cbuffer, 0);
+	 */
+
+	HRESULT hr; 
+	ID3D11InputLayout  *layout = NULL;
+	ID3D11VertexShader *vshader = NULL; 
+	{
+		
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *vblob;
+		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile pertex shader!");
+		}
+		ctx->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
+		
+		ctx->device->CreateInputLayout(format, ArrayLength(format), 
+									 vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
+		
+		vblob->Release();
+	}
 	
-	RendererDraw(ctx->renderer, 
-				 ctx->vertex_buffer, 
-				 ctx->vshader, 
-				 ctx->pshader, 
-				 ctx->constant_buffer, 0); 
+		ID3D11PixelShader *pshader;
+		{
+			
+			UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+			flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+			flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+			ID3DBlob *error;
+			ID3DBlob *pblob;
+			hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+			if (FAILED(hr)) {
+				const char *message = (const char *)error->GetBufferPointer(); 
+				OutputDebugStringA(message); 
+				Assert(!"Failed to compile pixel shader!");
+			}
+			ctx->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
+			pblob->Release(); 
+		}
+	
+	D3D11_VIEWPORT viewport = {0};
+	viewport.Width = (FLOAT)width; 
+	viewport.Height = (FLOAT)height;
+	viewport.MaxDepth = 1;
+	
+	const UINT stride = 2*sizeof(float); 
+    const UINT offset = 0;
+    ctx->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    ctx->context->IASetInputLayout(layout);
+    ctx->context->IASetVertexBuffers(0, 1, &vbuffer, &stride, &offset);
+    ctx->context->VSSetShader(vshader, NULL, 0);
+    ctx->context->PSSetShader(pshader, NULL, 0);
+    ctx->context->PSSetConstantBuffers(0, 1, &cbuffer); 
+    ctx->context->RSSetViewports(1, &viewport);
+    ctx->context->OMSetRenderTargets(1, &ctx->frame_buffer_view, 0);
+    ctx->context->Draw(4,0);
 }
 
 
@@ -1581,7 +1026,7 @@ typedef int UI_Widget_Handle;
 typedef struct {
 	Game_Input *input;
 	
-	Draw_Context *draw_ctx;
+	R_D3D11Context *r;
 	
     //UI_Widget widgets[WIDGETS_COUNT];
     UI_Widget_Handle last;
@@ -1609,10 +1054,6 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
             ctx->hot = handle; 
             output.hovered = 1;
         }
-<<<<<<< HEAD
-=======
-		
->>>>>>> 1b6d7bcf090a344262724d5d192c9992a5f138c0
         // widget is active?
         if ((behaviour & UI_CLICKABLE) && 
                 ctx->active == UI_INVALID_WIDGET && 
@@ -1643,11 +1084,11 @@ UIButton(UI_Context *ctx, int x, int y, int w, int h) {
 
     // Drawing 
     Color color = output.hovered ? LIGHTRED : RED;
-    color = output.clicked ? LIGHTERRED : color;
+    color = output.clicked ? RED : color;
 	
 	//printf("button draw\n");
 	
-	 DrawBox(ctx->draw_ctx, box, color);
+	 DrawBox(ctx->r, box, color);
 
 	return output.clicked;
 }
@@ -1853,20 +1294,209 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 	
-	// Typical WIN32 Window creation
-	HWND window = CreateWin32Window();
+	//~
+	// Win32 API Window Creation
+	//
 	
-	// Renderer Initialization
-	Renderer r = {0};
-	RendererCreate(&r, window);
+	HINSTANCE instance_handle = GetModuleHandleW(NULL);
+	
+	WNDCLASSEXA window_class = {0};
+	window_class.cbSize = sizeof(window_class);
+	window_class.lpfnWndProc = WinProc;
+	window_class.hInstance = instance_handle ;
+	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
+	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+	window_class.lpszClassName = "d3d11 example";
+	
+	ATOM atom = RegisterClassExA(&window_class); 
+	Assert(atom && "Could not register class"); 
+	
+	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW, 
+								  window_class.lpszClassName, 
+								  APP_TITLE, 
+								  WS_OVERLAPPEDWINDOW,
+								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height, 
+								  NULL, NULL, window_class.hInstance, NULL);
+	Assert(window && "Failed to create a window"); 
+	
+	// 
+	// Init RAWINPUT 
+	//
 	
 	InputInitialize(window);
 	
-
-	// Initialize drawing library for Quad rendering
-	Draw_Context ctx = {0};
-	DrawBegin(&ctx, &r); 
-
+	//
+	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
+	//
+	
+	HRESULT hr; 
+	ID3D11Device1 *device; 
+	ID3D11DeviceContext1*context;
+	{ 
+		
+		UINT flags = 0; 
+		
+#if _DEBUG
+		// this enables VERY USEFUL debug messages in debugger output
+		flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif 
+		
+		D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+		
+		ID3D11Device* base_device;
+		ID3D11DeviceContext* base_context;
+		
+		hr = D3D11CreateDevice(NULL, // Default adapter
+							   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
+							   NULL, // Software renderer if specified to use CPU
+							   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT, 
+							   featureLevels, ARRAYSIZE(featureLevels), 
+							   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
+		AssertHR(hr); 
+		
+		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
+		base_device->Release();
+		base_context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **)&context);
+		base_context->Release();
+	}
+	
+#if _DEBUG
+	// for debug builds enable VERY USEFUL debug break on API errors
+    {
+        ID3D11InfoQueue* info;
+        device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
+        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
+        info->Release();
+    }
+	
+    // enable debug break for DXGI too
+    {
+        IDXGIInfoQueue* dxgi_info;
+        hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
+        AssertHR(hr);
+        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+        dxgi_info->Release();
+    }
+	
+    // after this there's no need to check for any errors on device functions manually
+    // so all HRESULT return  values in this code will be ignored
+    // debugger will break on errors anyway
+#endif
+	
+	// Create D3D11 Swap Chain
+	IDXGISwapChain1* swap_chain;
+	{
+		
+		IDXGIDevice1* dxgiDevice;
+		device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
+		
+		IDXGIAdapter* dxgiAdapter;
+		dxgiDevice->GetAdapter(&dxgiAdapter);
+		dxgiDevice->Release();
+		
+		IDXGIFactory2* dxgiFactory;
+		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
+		dxgiAdapter->Release(); 
+		
+		//
+		
+		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
+		swap_chain_desc.Width              = 0; // use window width
+		swap_chain_desc.Height             = 0; // use window height
+		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+		swap_chain_desc.Stereo             = FALSE;
+		swap_chain_desc.SampleDesc.Count   = 1;
+		swap_chain_desc.SampleDesc.Quality = 0;
+		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc.BufferCount        = 2;
+		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
+		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
+		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
+		swap_chain_desc.Flags              = 0;
+		
+		dxgiFactory->CreateSwapChainForHwnd(device, window, &swap_chain_desc, NULL, NULL, &swap_chain);
+		dxgiFactory->Release();
+	}
+	
+	// Create a Target View
+	ID3D11RenderTargetView *frame_buffer_view; 
+	{
+		ID3D11Texture2D* frame_buffer;
+		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
+		
+		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
+		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
+		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		
+		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
+		frame_buffer->Release();
+	}
+	
+	// 
+	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
+	// 
+	
+	// Create Depth Sentcil
+	ID3D11DepthStencilState* depth_stencil_state;
+	{
+		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
+		depth_stencil_desc.DepthEnable    = TRUE;
+		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
+		
+		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+	}
+	
+	// Create Z-Buffer
+	ID3D11DepthStencilView *zbuffer;
+	ID3D11Texture2D *zbuffer_texture; 
+	{
+		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+		
+		depth_buffer_desc.Width = window_height;
+		depth_buffer_desc.Height = window_width;
+		depth_buffer_desc.MipLevels = 1;
+		depth_buffer_desc.ArraySize = 1;
+		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_buffer_desc.SampleDesc.Count = 1;
+		depth_buffer_desc.SampleDesc.Quality = 0;
+		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
+		
+		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {}; 
+		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depth_stencil_view_desc.Texture2D.MipSlice = 0; 
+		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
+	}
+	
+	// Create a Rasterizer
+	ID3D11RasterizerState1* rasterizer_cull_back;
+	{
+		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
+		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
+		rasterizer_desc.CullMode = D3D11_CULL_BACK;
+		
+		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
+		
+		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
+		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
+		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
+	}
+	
+	R_D3D11Context r = {
+		window, device, context, swap_chain, frame_buffer_view, 
+		depth_stencil_state, zbuffer, zbuffer_texture, rasterizer_cull_back
+	};
+	 
+	
+	
+	
+	
+	
 	
 	
 	
@@ -1874,7 +1504,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Model Data
 	//
 	
-	HRESULT hr; 
 	char model_path[] = "../resources/cube.obj";
 	
 	size_t verticies_count, indicies_count; 
@@ -2105,6 +1734,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			DispatchMessageA(&msg);
 		}
 		
+		// Handle window resize
+		RECT rect; 
+		GetClientRect(window, &rect);
+		LONG width = rect.right - rect.left;
+		LONG height = rect.bottom - rect.top;
+		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
+			RendererD3D11Resize(&r, width, height); 
+			
+			// TODO(ziv): Remove viewport from here
+			viewport.Width = (FLOAT)width; 
+			viewport.Height = (FLOAT)height;
+			c.aspect_ratio = viewport.Width/viewport.Height;
+		}
+		
+		// Get Input From User
 		Game_Input input = InputGetState();
 		
 #ifdef USE_GAMEINPUT
@@ -2119,23 +1763,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		mouse_pos[0] = (int)input.mouse.px; 
 		mouse_pos[1] = (int)input.mouse.py; 
 #endif 
-
-		//
-		// Handle window resize
-		//
-		
-		RECT rect; 
-		GetClientRect(window, &rect);
-		LONG width = rect.right - rect.left;
-		LONG height = rect.bottom - rect.top;
-		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
-			RendererResize(&r, width, height); 
-			
-			// TODO(ziv): Remove viewport from here
-			viewport.Width = (FLOAT)width; 
-			viewport.Height = (FLOAT)height;
-			c.aspect_ratio = viewport.Width/viewport.Height;
-		}
 		
 		
 		//
@@ -2239,7 +1866,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r.context->Unmap((ID3D11Resource *)ps_constant_buffer, 0);
 		}
 		
-		
+		// Draw Entity
+		{
 		r.context->ClearRenderTargetView(r.frame_buffer_view, background_color);
 		r.context->ClearDepthStencilView(r.zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 		
@@ -2270,38 +1898,39 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r.context->OMSetRenderTargets(1, &r.frame_buffer_view, r.zbuffer);
 		
 		r.context->DrawIndexed((UINT)indicies_count, 0, 0); 
-		
+		}
 		
 		// NOTE(ziv): Testing for UI & API purposes
 		 // 
 
 		static int val = 10;
-
-        DrawBox(&ctx, { val, 10, 100+val, 100 }, RED);
-		DrawBox(&ctx, { 110, 10, 200, 200 }, LIGHTRED);
-		DrawBox(&ctx, { 210, 10, 300, 300 }, LIGHTRED);
-
-		UI_Context ui = { }; 
-		ui.hot = UI_INVALID_WIDGET;
-		ui.active = UI_INVALID_WIDGET;
-		ui.draw_ctx = &ctx;
-		ui.input = &input;
-		
-		input.mouse.px = mouse_pos[0];
-		input.mouse.py = height-mouse_pos[1];
 		
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-<<<<<<< HEAD
 
-=======
-		
->>>>>>> 1b6d7bcf090a344262724d5d192c9992a5f138c0
-		bool clicked = UIButton(&ui, 400, 10, 100, 100);
-		if (clicked) {
-			printf("button clicked\n");
-		}
 		val++;
 		
+		DrawBox(&r, { val, 10, 100+val, 100 }, RED);
+				DrawBox(&r, { val, 10, 100+val, 100 }, RED);
+				DrawBox(&r, { 110, 10, 200, 200 }, LIGHTRED);
+				DrawBox(&r, { 210, 10, 300, 300 }, LIGHTRED);
+		 
+		
+				UI_Context ui = { }; 
+				ui.hot = UI_INVALID_WIDGET;
+				ui.active = UI_INVALID_WIDGET;
+				ui.r = &r;
+				ui.input = &input;
+				
+				input.mouse.px = mouse_pos[0];
+				input.mouse.py = height-mouse_pos[1];
+				
+				//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
+				
+				bool clicked = UIButton(&ui, 400, 10, 100, 100);
+				if (clicked) {
+					printf("button clicked\n");
+				}
+				val++;
 		
 		
 		// ===== RendererEndFrame
@@ -2317,8 +1946,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	release_resources:
-	
-	DrawEnd(&ctx);
 	
 	InputShutdown(); // rawinput
 	
@@ -2336,7 +1963,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	pshader->Release();
 	vshader->Release();
 	
-	RendererDestroy(&r);
+	r.device->Release();
+	r.context->Release();
+	r.swap_chain->Release();
+	r.frame_buffer_view->Release(); 
+	r.depth_stencil_state->Release();
+	r.zbuffer->Release();
+	r.zbuffer_texture->Release(); 
+	r.rasterizer_cull_back->Release();
+	
 	
 	return 0; 
 }
