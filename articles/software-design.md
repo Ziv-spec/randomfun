@@ -1,23 +1,119 @@
 
 Article on system design. This should include the following: 
 
-Essential properties of desining systems which will unchange. 
+Essential properties of designing systems which will not change. 
 Handling Complexity of systems 
 Handling Invisibility of code 
 Handling Cost of building and using systems
 Handling Changeability and evolution of systems 
 Handling Conformity to interfaces, features and more 
-- History (how we got to today)
-- Meaning 
+Handling Designers bad culture and trade-offs (during bad times)
+
+
+NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and jet I have not found that it is useful for much yet. It does not serve the articles but hinders it. Both in my time and in effort writing it first. I believe it deserves a separate article which will be more fun to write. That said, there is an important component of economics and history which I will have to explore just not as thoroughly as I initially wanted.
+- History
+    As a species we got here today in a marvelous way which we should remember is a miracle. Held together by the social structure, and effected by the local, global states of the industrial revolution. Like all biological creatures we know of humans came from the great biological soup of molecules inside our home called earth. While all other creatures had better defenses like shields to protect them or offensive ways of attacking using fangs or venom, humans came on top using a more lethal weapon under the name "Intelligence". We with our squishy minds have came and changed the world. We can move faster using cars, move more weight using machines, and form a hive mind of telecommunication network of sharing of knowledge and experience. The squishy things advancement knows no bounds. We live in a global hive mind where values of people change, times change, and as the saying goes "Hard times create strong men, strong men create good times, good times create weak men, and weak men create hard times". This saying I believe is a major creator of bad design, bad rules which people follow and low quality goals which they try to achieve. In much the same way Goodharth's law which is crucial in understanding how human over-optimization causes bad things, and how randomness helps mitigate it's bad effects. 
+- Meaning  (This is something that I need to think about quite a bit more)
+    The essence of everything that we build is it's meaning. If we know where meanings comes from we can look for it. We can see it more clearly and allow us to express our design with more intention and vividness than we would have been able to. This is a precursor to complexity and compression both which rely heavily on the meaning the systems carry.
 - Complexity
+    Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
 - Compression
+    Compression is the art of distilling information and therefore meaning. Compression as we explore it can be seen as a useful mechanism for determining complexity, though you have to be careful in using it on superficial things like code length, which seemingly are correlated to complexity yet outliers exist, think of Conway's game of life where immense complexity is born out of a very simple program. There is a phase change where some things beyond some complexity make immense turns and the states they posses explodes. This type of behavior is normal and should not be ignored and instead used for our benefit. This is a powerful mode of thought which I will explore (think about language and how it uses simple meaningful words and rules, to capture a seemingly unlimited space of meanings we want to convey). The type of explosion of state is something I will have to name and capture it's intent. And maybe expand a bit later on. 
 - Abstraction 
-- Component-Reuse (Across many diciplines)
-- Invisability (Accidents, Unexpected Behavior)
+    This topic is one which should serve as a basis for most of my design principles since it is tackling one of the biggest problems engineers face worldwide. And I should spend much time thinking and writing about it as possible since I have much to say but I don't currently know how to say it.
+- Component-Reuse (Across many disciplines)
+    This is the continuation of abstraction and should be treated as such
+- Invisibility (Accidents, Unexpected Behavior)
+    We must remember that the things we create have real world effects, and safety of systems must be considered when designing them
 - Evolution (Changeability, OpenSource)
+    Any system we might build will eventually need to adapt to the new circumstances the world puts forth we must tackle this problem (as it should help understand how systems must be build to accommodate change)
 - Conformity (interfaces, features)
 - Education (Knowledge Fundamentals, Mentorship)
 - Institutional Decline (Effects on us)
+
+
+
+For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
+
+# History of our kind
+
+The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
+
+> If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
+
+As time went on nomadic groups moved into agricultural settlements. This shift marked the agricultural revolution of the time. Humans began spending a large portion of their time and effort onto cultivating a small food variety (wheat, corn, rice, potatoes, millet). Although we know that humans shifted from gathering their food to growing it, the choice at least for those times seems illogical. Cultivating wheat is no easy matter. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. Yuval Harari in his popular book Sapiens shows us the perspective of the wheat at the time. For wheat a fragile plant had become a growing empire taking over the world by frenzy with fields and fields made out entirely out of wheat. Utilizing dumb humans to expand beyond what it would ever be able on it's own. How were we fooled? What did it offer in return? By growing their food, humans had a larger surplus of the food they were so keen on eating; for humans are greedy in demand, growing their population and narrowing their buffers, humans had to keep growing more, as there was never enough food to feed all the new faces and less food meant certain death. Wheat allowed population to increase from a hundred to hundreds and even thousands using this moving wheel, yet keeping the population dirt poor for long [see: Yuval Harari, Sapiens pp. 87-89 (Hebrew version)]. 
+
+> Human history as a whole has been characterized by a seemingly inexorable trend toward higher levels of complexity, specialization, and sociopolitical control, processing of greater quantities of energy and information, formation of ever larger settlements, and development of more complex and capable technologies. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 3]
+
+With the population increasing at a steady pace, societies steadily got more complex. Complexity as I will now define, has a similarity to general complexity, simply flavored in a social context. Much like what Trainter did I will define complexity using two key terms, inequality and heterogeneity. Inequality refers to the differentiation of ranking, or unequal access to resources. Heterogeneity is the number of distinct parts to a society. Simpler societies had steadily decreased inequality as they increased in heterogeneity. 
+
+Complex societies of those times were still relatively simple in modern terms. Leadership in the simplest societies tended to be minimal. It is personal and charismatic, and exists only for special purposes. Hierarchical control is not institutionalized, but is limited to definite spheres of activity at specific times, and rests substantially on persuasion [see: Service 1962; Fried 1967, Political Systems – An Introduction to Anthropology]. This stands in dark contrast to our current institutionalized and legalized reality where states rule. Trainter touches upon this uniqueness after reviewing simple societies throughout history, in his book "The Collapse Of Complex Societies".
+
+> The citizens of modern complex societies usually do not realize that we are an anomaly of history. Throughout the several million years that recognizable humans are known to have lived, the common political unit was the small, autonomous community, acting independently, and largely self-sufficient. Robert Carneiro has estimated that 99.8 percent of human history has been dominated by these autonomous local communities (1978; 219). It has only been within the last 6000 years that something unusual has emerged: the hierarchical, organized, interdependent states that are the major reference for our contemporary political experience. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 24]
+
+
+rewrite and rethink: - "
+From ancient construction of Gobekli Tepe, to the Great Pyramids, and today's large marvels like the Burj Khalifa, seemingly magical constructions were enabled by constant innovation in design and technology.
+
+
+[^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
+[^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
+[^3]: The Origin of the State: Land Productivity or Appropriability? by Joram Mayshar, Omer Moav, and Luigi Pascali
+[^4]: Sapiens - Yuval Harari
+[^5]: https://gwern.net/doc/sociology/2022-mayshar.pdf
+[^6]: https://www.nasa.gov/technology/carbon-dioxide-fertilization-greening-earth-study-finds/ 
+[^7]: https://warwick.ac.uk/fac/soc/economics/staff/omoav/mmp_15_nov_2020.pdf
+
+
+
+In the recent times computers have risen they quickly became integral to human life. We rely on carefully manufactured pieces of sand to help us do almost anything imaginable. Forming a cloud of tiny devices surrounding us; tiny superpowers we can use. We communicate long distances with our phones, make online purchases on our computers, entertain ourselves using our TV, research using computer models and so much more. Much in the same way cars assist humans in going further distances faster and unlocking opportunities otherwise deemed impossible computers allow us to make computations faster, augmenting all aspects of modern life.
+
+With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity. "
+
+
+
+
+*The lead:*
+Complexity is a measure for how intertwined is a system. Complexity is bad for a system when it does not capture it's essence, yet it is good when it helps drive intent of a system forward by capturing the whole space of possibilities we might want. Now what do I mean by that? 
+
+----
+# Beginning - (Complexity)
+
+Let us consider the inherent properties of this irreducible essence of modern software systems: complexity, conformity, changeability, invisibility, and culture adaptability.
+
+Complexity. When we speak of [complexity](https://en.wikipedia.org/wiki/Complexity) in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how interwind the systems we care about are, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects.
+
+A simple analogy can be made when we look no further than the making of bread. In the process of making bread, the doe is usually split into smaller parts shaped into strips and braided before it is finally baked. Splitting the bread and braiding it is not required as bread can be baked braided just as well as a simple lump of doe. Notice how I said that doe has a simple shape while a braided doe does not. If you think about it for a moment, after braiding bread the doe strips interwind and after finishing, reversing this process becomes difficult. If you had put the two strips one next to the other pulling one causes no effect on the others, meanwhile, after braiding pulling a single strip without effects on all others is impossible, you would have to carefully consider how each line moves about it's surroundings as it slips around moving up and down, hopefully not tearing the rest of the doe apart.
+
+The ideal system we build should have complex behavior with a simple intelligible implementation, allowing us to benefit from the behavior we want avoiding the downsides of a complex system. To create such program you would have to compress all of the behavior you want and translate it into the shortest program which is capable of satisfying it. 
+
+This is hard to achieve since any parts similar will be made into one and marks complexity to be an essential property of software systems.
+
+> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound. [see: Brooks, No Silver Bullet pp]
+
+
+
+For this reason when designing and building a system we should look to simplify the complex behavior into a implementation. For doing this there are three approaches we will explore:
+
+- simplifying requirements 
+- splitting requirements into smaller parts
+- increase requirements to capture more behavior than you need
+
+
+For many engineering diciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many compoentns have been standardized. 
+
+
+Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor. When building software you can't notice when the program has become significantly more complex. Most programmers use line count as a measure for complexity but it is only a partial measure. A 10,000 line program which does nothing but print 1 is less complex than a 10,000 line game. The simple fact that software complexity can not be meaningfully measured using a high quality property means that programmers can't know what to look for. What more is even if we have a metric like loc (lins of code) it's effectiveness deminishes over time because of goodhart's law. Tinygrad is a great example for how goodarths law effects metric based programming. Even if we count the lines in a vertical fashion in the tinygrad project horizontal space has become extremely important to utilize and dense. To a large degree this is a way that people optimize for line count while not doing the actual job of simplifying. It's a easy escape. This is what we want to avoid, and can't seem to be able to unless, of course, someone can see through this trickery and strive for the goal of simplicity. Chasing metrics is not the solution, what we need is a new culture.
+
+
+
+
+
+[^1]: https://kristoff.it/blog/simple-not-just-easy/
+[^2]: https://www.youtube.com/watch?v=LKtk3HCgTa8
+
+https://en.wikipedia.org/wiki/Kolmogorov_complexity
+
 
 # Meaning
 
@@ -47,6 +143,7 @@ Compression is strangely connected to intelligence. With the advance of modern m
 Some are great proponents of this idea and have laied out a prize. The Hutter prize is led by...
 
 
+<<<<<<< HEAD
 
 For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
 
@@ -115,11 +212,29 @@ Think of the economic market we live in. Each person is making seemingly simple 
 
 There are popular approaches for thinking about complex systems. The holistic approach says that you must look at the whole in-order to understand how it works. The reductionistic approach says that you can break the system into parts until the system is understandable. These approaches try to approximate the general system by ignoring the details. This seems to be a natural human behaviour. We are not capable of reasoning about all of the details while looking at the bit picture, for this reason we just ignore them. Sometimes the details leak through our abstracted view of the system which break our understanding. 
 
-Biological systems seem to contain endless amounts of complexity inside their inner workings and yet they are capable of changing and adapting better than any system we humans can design.
+Biological systems seem to contain endless amounts of complexity inside their inner workings and yet they are capable of changing and adapting better than any system we humans can design. This is going to be a very large premise into the idea that we can learn from biological systems and try to achieve their positive characteristics.
+
+
+Another aspect which GEB book has touched upon is how the brain compresses the information which it holds. It seems like symbols that we use to convey meaning though are connected in many ways. Think of the word home which is connected to a building and a place to live in and your home and so on. There are infinite ways to connect between symbols and our brains seem to give weight to the connection importance. The weight assigned to the connection between two symbols will determine the likelihood of the brain to make a connection between the two symbols. You can think of it like a path of least resistance is formed for strong connections of symbols which is what forms opinion and knowledge in our brains. That said, weak connections with enough conviction can become stronger and strong connections weaker. The space of possible connections is never lost and instead is morphing to accommodate changes knowledge and update it's belief system. This is part of what I believe makes the brain so strong and anti-fragile with respect to knowledge acquisition and retention. 
+
+This makes me think that if we can make some program where the space of possible solutions to the problem is large. We can have a dynamic weight system for solving it. For example if a plain needs a auto-pilot control system which has full control over an air-craft. We would like the output space of possible outcomes to not be too constraint. Think of a unexpected plain loss of engines and or extreme situation which the plain has not expected before. Humans have the ability to adapt to this situation with their ability of understanding the situation they are at and can think of a plan to get out of the situation. Machines on the other hand do not have such general capacity. To correct for this reality we would have to create a system which is capable of solving more paths than we plan the plain on taking. The space of possible maneuvers can be seen as the entire space, and we won't subtract the space and instead apply a weighting to the paths we would want to take. With of course the common paths having strong weights which lead to their solutions; uncommon paths with weak links should be saved for a time where unexpected things are in need of resolution. Constant updating should occur to strengthen and weaken links according to the result which we see from the data we get back. 
+
+This system should create a highly dynamic path resolution algorithm which is also very very large in it's memory footprint. But for what it's worth, there might be some merit to this exploration of the theoretical in practice. This is something which I would have to look for myself, and report the results for in the future. Do common machine learning tactics work in a good enough manner to solve this type of problem or do we want a completely different approach. This is something which concerns safety of many passengers and if we decide to take it how to avoid accidents while developing? There are so many of these questions of operation which I can't think of fast enough while type on and on. Though this is the case I still firmly believe that there is some merit to this exploration if only to think of how such systems which don't compromise the space of solutions and instead assign weights to it and follow the path of least resistance to reach the resolution it would like to take.
+
+--- (rethink the following it is kind of shit): 
+One more approach would be to accept more inputs than are needed for a single problem. If you are familiar with programming, you might have heard of operator overloading. This is a simple concept to follow. Think of operations that you can do to mathematical primitives like addition of two natural numbers; subtraction of rational numbers and so on. The language supports overloading the same operator which you would use to primitive types onto different types. The programmer can choose to add two Pizza structures if he so wishes and make an addition operator which would "add" two Pizzas. This feature allows for the acceptance of different input into the same known code paths. For example if you would like to have a function which does some permutation on some data that you feed it and returns some results in integers, you may also want the same functionality be done on floating point numbers instead. You can use a generic type and feed it whichever type you want and expect a correctness of behavior be retained.
+
+
 
 ## Software complexity
 
-Today software can be characterized by it's never ending complexity. Software seems to know no bounds when it comes to features. Features are what sell software and they are to be included at any price. Some of this price is 
+===== checkpoint
+Today software can be characterized by it's never ending complexity; projects know no bounds with ever growing requirements. Constantly changing feature additions, changing interfaces, and different people with skill sets that differ 
+
+When searching of whom to blame, the current economy stands tall shining over all others. In much the same way as computers today have become complex entities, software seems to take large strides towards ever growing complexity in their design. The psychology of this phenomena I believe to be quite simplistic. When given the option, people rather have a fast complex chip than a slow simple one; simplicity and good design don't sell. Since people would rather pay for features than bug fixes, this all leads the culture we have to day which promotes the faster building of software entities, ever large requirement list, and lowering the cost of initial building of said entities. In a workplace which doesn't promote and pay for high quality people to build design good software you will not find quality; in a culture which doesn't promote the creation of simple stable software, these qualities will stay absent from what people produce. 
+
+Project Oberon by Nikolaus Writh, has been an attempt at fixing years and years of neglect.
+
 the endless growth of complexity of software. For some this complexity is manifested through bloat. Applications that take gigabytes of storage space to install, and hog available resources. While for some applications much of its 
 size and resource utilization is high due to its nature, for most I would say, this is not the case. Complexity also harms the cost of maintenance. Adobe has made maintaining and adding features it's software a technical nightmare. Old 
 bugs and crashes haunt Adobe Premiere to this day[^1] with no saving grace in sight. 
@@ -189,6 +304,8 @@ When I began programming I had only the concern of making things work. Later at 
 
 One thing that I was never taught or thought about was the safety of program. Until I read great article The Coming Software Apocalypse showcasing how the proliferation of software and how it quickly seeped through the cracks of everyday safety systems. From the elevator to managing water, cars, medical equipment and almost all critical systems today, software is at the bedrock of society. This placed large safety concerns since bugs in software are invisible. 
 
+NOTES: We shall explore the problem of software safety using examples of real world cases: 
+
 # Antifragile
 
 This quality has many uses when you understand how it is isomorphic to so many things in this world. Taleb coined this terms and in his book through the various examples and many other things this quality and how to think about it in context to all other things. This is what makes it so impactful, it is the fact that it speaks volumes about general systems, and makes isomorphic statements about them. Through analysing biological systems, the good properties which the exhibit are ones which some of our systems would love to have. Understanding anti-fragility is crucial to having this view on the world on general systems. 
@@ -210,3 +327,25 @@ Taleb believes the main reason for much of systems failure is caused by rare eve
 [^1]: Antifragile
 [^2]: The book GEB - Godel, Escher, Bach 
 [^3]: Brooks-NoSilverBullet
+
+
+
+
+
+The next topic is unrelated to the rest of the text. I just wanted a place to write my thoughts that I had for some time now. For this reason you should ignore this section until I remove it completely.
+
+# Economy 
+
+Learning about economy and money in general has been, and still is, quite the journey. Learning about money, what are markets, government intervention, political strife, patterns caused by the forces moving the markets and the history from which these patters are formed allows me to understand the world around me better. There is no new information here just accumulation of my own financial understanding, and some thoughts that I have which are not interesting by themselves.
+
+To make transactions happen in the past, people would trade commodities with other commodities. This made gauging prices hard, and trading in general not as accessible as could be. When money was invented, people could set a price for commodities such as food, utilities, and services using a universally accepted medium of exchange. In the case of the ancients it might have been wheat, gold or other precious metals, eventually making coins, paper money and digital money. The important thing here is that there is a universally agreed upon medium of exchange, even if when standing on it's own might be worthless. In the financial world there were 2 big inventions which changed the landscape forever. The invention of the banking system and investment institutions like Wall Street. The [origins of banking](https://firstutahbank.com/the-history-of-banking-from-ancient-times-to-now/) can be traced back to ancient Mesopotamia, around 2000 BC though, banking as we know it began around the 17th and the 19th centuries. With the invention of the banking system, the concept of money has extended. People could use something new called *credit* to pay for things they could not have been able to afford otherwise. The invention of credit allowed people and businesses to expand the scope of capital available to them greatly, allowing for greater economical expansions as money could be borrowed to facilitate the growing businesses needs. While the banking system allowed successful businesses to greatly expand their operations, it did not allow for great risk to be taken since it increased their risk for people defaulting on their loans (not paying back). For entrepreneurs who need capital to take big risks while expecting big gains the banking system could not provide the answer. For individuals the risk is also too high. Think of someone in the 19th century wanting to sail into the sea and find gold in another place. The risk taken here is immense as you could lose all of your large investment, although if successful, the reward would compensate you greatly for your risk. To minimize risk, the invention of shares with the rise of financial markets was invented.Now multiple people place their savings in entrepreneurs and risk takers to go and bring them profits. Shares of companies just represent parts of the whole, allowing many people to pour investment and reduce risk taken by any single individual.
+
+Today transactions happen by the use of money or credit to buy goods, services, and financial assets. The price of goods, services and financial assets is calculated by the total spending of money and credit divided by the total quantity of these goods. Because the credit is used like money and is usually calculated as money people make the mistake in thinking that it is money. Credit is in-fact a contract between two parties where one has debt which is a liability that eventually needs to be repaid, and the another has an asset (credit). When the debt+interest is repaid, the transaction finishes and both credit and debt disappear. Since debt has to be repaid, markets follow a cycle like pattern. First, when credit is made a economic boom with it's great times ensues. When it is time to repay the debt as interest go up, the economy slows, causing a economic bust. When borrowing you are borrowing from your future self as evident from this cycle like behavior. 
+
+There are 2 forces which influence the creation and removal of money in a major way. Interest rates and money printing. The central bank uses these forces to manipulate the creation and removal of money from the system.
+
+
+During hard time where money printing is in order it is interesting to note the fact that the ones who gain the most are the rich people since they accumulate wealth that goes up in value. The assets which go up in value make the rich richer and the poor poorer since they can not allow themselves to buy assets and thus enjoy the same riches. The problem is exacerbating with time and a trend which will continue until a great political strife will happen which will seek to redistribute wealth. This is a trend which takes decades if not normally centuries to materialize yet, it is something which as Ray Dalio notes is part of a longer cycle which we are a part of.
+
+
+

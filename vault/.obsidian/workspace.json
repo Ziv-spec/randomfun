@@ -25,7 +25,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Notes On War.md",
                 "mode": "source",
                 "source": false
               }
@@ -98,7 +98,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Notes On War.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -115,7 +115,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Zettelkasten/Links To Use.md",
+                "file": "Zettelkasten/Notes On War.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -150,7 +150,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Zettelkasten/Links To Use.md"
+                "file": "Zettelkasten/Notes On War.md"
               }
             }
           }
@@ -173,10 +173,10 @@
   },
   "active": "9a6b81a7dbec24fc",
   "lastOpenFiles": [
-    "Zettelkasten/Degeneracy And Redundancy.md",
-    "Zettelkasten/Notes On War.md",
-    "Zettelkasten/Kraft-McMillan inequality.md",
     "Zettelkasten/Links To Use.md",
+    "Zettelkasten/Notes On War.md",
+    "Zettelkasten/Degeneracy And Redundancy.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
     "Zettelkasten/Information Theory.md",
     "Zettelkasten/Investment.md",
     "Zettelkasten/software-design.md",
