@@ -98,12 +98,7 @@ The roads were filled with cars for a cemetery was near and likely had many peop
 
 Since there were no casualties the result was quite positive. But of course that was one of the reasons for the planned move of removing almost everyone from base. Otherwise we might have suffered significant casualties.
 
-
 ---
 # References
 
 None
-
-
-
- 
