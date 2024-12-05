@@ -27,6 +27,8 @@
 static int window_width = 800;
 static int window_height = 600;
 
+#define DRAW_WIDGETS_SINGLE 0
+
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
 #define ArrayLength(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -81,10 +83,9 @@ typedef int b32;
 * [ ] Update on Resize for fluid screen resize handling
 			* [ ] Pixelated look
 
-@IMPORTANT  These have a higher importance level right now
-* [ ] Create a "Renderer" seperating d3d11
-* [ ] Create a "Drawing" library using the renderer for effient simple object rendering
 */
+
+// Pulled out Resizing, Timing
 
 
 static void FatalError(const char* message)
@@ -226,6 +227,25 @@ get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 	return rx * ry * rz * scale_xyz * translate_xyz;
 #endif 
 }
+
+
+double g_inv_freq;
+
+static void
+TimeInit() {
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq); 
+	g_inv_freq = 1/(double)freq.QuadPart;
+}
+
+
+static double
+Time() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return (double)time.QuadPart * g_inv_freq;
+}
+
 
 
 //~
@@ -798,6 +818,8 @@ typedef struct {
 	ID3D11DepthStencilView *zbuffer;
 	ID3D11Texture2D *zbuffer_texture; 
 	ID3D11RasterizerState1* rasterizer_cull_back;
+	
+	D3D11_VIEWPORT *viewport;
 } R_D3D11Context;
 
 static void 
@@ -812,9 +834,10 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 		r->zbuffer_texture->Release(); 
 		r->zbuffer->Release(); 
 	}
+			
 	
-	HRESULT hr;
 	if (width != 0 && height != 0) {
+		HRESULT hr;
 		hr = r->swap_chain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
 		if (FAILED(hr)) FatalError("Failed to resize the swap chain!");
 		
@@ -845,161 +868,24 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 		r->device->CreateDepthStencilView(r->zbuffer_texture, &depth_stencil_view_desc, &r->zbuffer);
 	}
 	
+	r->viewport->Width = (FLOAT)width; 
+	r->viewport->Height = (FLOAT)height;
 }
 
 
 typedef struct { int minx, miny, maxx, maxy; } Box; 
 typedef struct { float r, g, b, a; } Color;
-typedef struct { Box box, Color; } DrawQuadCommand; 
 static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
-
-static void 
-DrawBox(R_D3D11Context *ctx, Box box, Color color) { 
-    // Post a drawquad command
-	
-	RECT rect; 
-	GetClientRect(ctx->window, &rect);
-	float width = (float)(rect.right - rect.left);
-	float height = (float)(rect.bottom - rect.top);
-	
-	// Don't draw if the box is not only the screen
-	if (!(0 < box.maxx && 0 < box.maxy && box.minx < width && box.miny < height)) {
-		return;
-	}
-	
-	float minx = (2*box.minx / width) -1; 
-	float miny = (2*box.miny / height)-1;
-	float maxx = (2*box.maxx / width) -1; 
-	float maxy = (2*box.maxy / height)-1;
-	
-	float verticies[] = {
-		minx, miny, minx, maxy, 
-		maxx, miny, maxx, maxy, 
-    };
-	
-	// Vertex Shader Fromat Descriptor
-	const D3D11_INPUT_ELEMENT_DESC format[] = {
-		{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	
-    static char hlsl[] = 
-        "#line " STR(__LINE__)                                "\n"
-        "                                                      \n"
-        "float4 vs_main(float2 p : Position) : SV_Position {   \n" 
-        "    return float4(p, 0., 1.);                         \n"
-        "}                                                     \n"
-        "                                                      \n" 
-        "cbuffer DrawColor {                                   \n" 
-        "    float4 color;                                     \n" 
-        "};                                                    \n" 
-        "                                                      \n" 
-        "float4 ps_main(float4 p : SV_Position) : SV_Target {  \n" 
-        "    return color;                                     \n"
-        "}                                                     \n";
-	
-	
-	
-	ID3D11Buffer *vbuffer;
-	{
-		D3D11_BUFFER_DESC descriptor = {}; 
-		descriptor.ByteWidth = sizeof(verticies);
-		descriptor.Usage = D3D11_USAGE_DEFAULT;
-		descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		
-			D3D11_SUBRESOURCE_DATA buffer_data  = { verticies };
-			ctx->device->CreateBuffer(&descriptor, &buffer_data, &vbuffer);
-		}
-	
-	ID3D11Buffer *cbuffer;
-	{
-		D3D11_BUFFER_DESC descriptor = {}; 
-		descriptor.ByteWidth = sizeof(Color) & 0xffffff0;
-		descriptor.Usage = D3D11_USAGE_DEFAULT;
-		descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		//descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		
-		D3D11_SUBRESOURCE_DATA buffer_data  = { &color };
-			ctx->device->CreateBuffer(&descriptor, &buffer_data, &cbuffer);
-	}
-	
-/* 	
-	D3D11_MAPPED_SUBRESOURCE mapped;
-		r->context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, &color, sizeof(Color)); 
-	r->context->Unmap((ID3D11Resource *)cbuffer, 0);
-	 */
-
-	HRESULT hr; 
-	ID3D11InputLayout  *layout = NULL;
-	ID3D11VertexShader *vshader = NULL; 
-	{
-		
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer(); 
-			OutputDebugStringA(message); 
-			Assert(!"Failed to compile pertex shader!");
-		}
-		ctx->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
-		
-		ctx->device->CreateInputLayout(format, ArrayLength(format), 
-									 vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
-		
-		vblob->Release();
-	}
-	
-		ID3D11PixelShader *pshader;
-		{
-			
-			UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-			flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-			flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-			ID3DBlob *error;
-			ID3DBlob *pblob;
-			hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-			if (FAILED(hr)) {
-				const char *message = (const char *)error->GetBufferPointer(); 
-				OutputDebugStringA(message); 
-				Assert(!"Failed to compile pixel shader!");
-			}
-			ctx->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
-			pblob->Release(); 
-		}
-	
-	D3D11_VIEWPORT viewport = {0};
-	viewport.Width = (FLOAT)width; 
-	viewport.Height = (FLOAT)height;
-	viewport.MaxDepth = 1;
-	
-	const UINT stride = 2*sizeof(float); 
-    const UINT offset = 0;
-    ctx->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    ctx->context->IASetInputLayout(layout);
-    ctx->context->IASetVertexBuffers(0, 1, &vbuffer, &stride, &offset);
-    ctx->context->VSSetShader(vshader, NULL, 0);
-    ctx->context->PSSetShader(pshader, NULL, 0);
-    ctx->context->PSSetConstantBuffers(0, 1, &cbuffer); 
-    ctx->context->RSSetViewports(1, &viewport);
-    ctx->context->OMSetRenderTargets(1, &ctx->frame_buffer_view, 0);
-    ctx->context->Draw(4,0);
-}
-
 
 //~
 // UI
 // 
+
+// The UI system work in the following manner: 
+// Core API on which handles all behaviour, layout, core drawing
+// Wrappers around that core API which are the default widgets themselves
+// Extensions to the core API that have custom drawing and layout scheme
 
 typedef enum {
 	UI_HOVERABLE = 1,   // can be hovered
@@ -1022,23 +908,360 @@ typedef struct {
 typedef int UI_Widget_Handle; 
 
 #define WIDGETS_COUNT 0x400
+#define TEMP_BOX_COUNT 0x10
 
 typedef struct {
 	Game_Input *input;
 	
 	R_D3D11Context *r;
 	
+	// for drawing boxs: 
+	Box boxs[TEMP_BOX_COUNT];
+	Color colors[TEMP_BOX_COUNT];
+	int boxs_idx;
+	
+	ID3D11Buffer *buffers[3];
+		ID3D11InputLayout  *layout;
+		ID3D11VertexShader *vshader;
+		ID3D11PixelShader *pshader;
+	ID3D11ShaderResourceView *srv[2];
+	
+	
     //UI_Widget widgets[WIDGETS_COUNT];
     UI_Widget_Handle last;
     UI_Widget_Handle hot, active; 
 } UI_Context; 
 
+static void 
+UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
+	ui->input = input; 
+	ui->r = r;
+	
+	
+#if DRAW_WIDGETS_SINGLE
+	float verticies[] = {
+		-1, -1, -1, 1, 
+		1, -1,   1, 1, 
+    };
+	
+	ID3D11Buffer *vbuffer;
+	{
+		D3D11_BUFFER_DESC descriptor = {}; 
+		descriptor.ByteWidth = sizeof(verticies);
+		descriptor.Usage = D3D11_USAGE_DYNAMIC;
+		descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; 
+		
+		D3D11_SUBRESOURCE_DATA buffer_data  = { verticies };
+		r->device->CreateBuffer(&descriptor, &buffer_data, &vbuffer);
+	}
+	
+	ID3D11Buffer *cbuffer;
+	{
+		D3D11_BUFFER_DESC descriptor = {}; 
+		descriptor.ByteWidth = sizeof(Color) & 0xffffff0;
+		descriptor.Usage = D3D11_USAGE_DYNAMIC;
+		descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		
+		r->device->CreateBuffer(&descriptor, NULL, &cbuffer);
+	}
+	
+	
+	
+	// Vertex Shader Fromat Descriptor
+	const D3D11_INPUT_ELEMENT_DESC format[] = {
+		{ "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	
+	
+	
+	
+    static char hlsl[] = 
+        "#line " STR(__LINE__)                                "\n"
+        "                                                      \n"
+        "float4 vs_main(float2 p : Position) : SV_Position {   \n" 
+        "    return float4(p, 0., 1.);                         \n"
+        "}                                                     \n"
+        "                                                      \n" 
+        "cbuffer DrawColor {                                   \n" 
+        "    float4 color;                                     \n" 
+        "};                                                    \n" 
+        "                                                      \n" 
+        "float4 ps_main(float4 p : SV_Position) : SV_Target {  \n" 
+        "    return color;                                     \n"
+        "}                                                     \n";
+	
+	
+	
+	
+	HRESULT hr; 
+	ID3D11InputLayout  *layout = NULL;
+	ID3D11VertexShader *vshader = NULL; 
+	ID3D11PixelShader *pshader = NULL;
+	{
+		
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *vblob;
+		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile pertex shader!");
+		}
+		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
+		
+		r->device->CreateInputLayout(format, ArrayLength(format), 
+									 vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
+		
+		ID3DBlob *pblob;
+		hr = D3DCompile(hlsl, sizeof(hlsl), NULL, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile pixel shader!");
+		}
+		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
+		
+		vblob->Release();
+		pblob->Release(); 
+	}
+	
+	
+	ui->buffers[0] = vbuffer;
+	ui->buffers[1] = cbuffer;
+	ui->pshader = pshader; 
+	ui->vshader = vshader; 
+	ui->layout = layout;
+	
+#else 
+	
+	
+	// Instanced widget drawing
+	
+	ID3D11Buffer *widgets_buffer; // structurd buffer 
+	 ID3D11ShaderResourceView* widgets_resource_view;
+	{
+		D3D11_BUFFER_DESC desc = {0}; 
+		desc.ByteWidth = TEMP_BOX_COUNT*sizeof(Box); 
+		desc.Usage = D3D11_USAGE_DYNAMIC; 
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE; 
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; 
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; 
+		desc.StructureByteStride = sizeof(Box);
+		r->device->CreateBuffer(&desc, NULL, &widgets_buffer);
+		
+		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0}; 
+		rv_desc.Format = DXGI_FORMAT_UNKNOWN; 
+		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER; 
+		rv_desc.Buffer.NumElements = TEMP_BOX_COUNT; 
+		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
+	}
+	
+	ID3D11Buffer *color_buffer; // structurd buffer 
+	ID3D11ShaderResourceView* color_resource_view;
+	{
+		D3D11_BUFFER_DESC desc = {0}; 
+		desc.ByteWidth = TEMP_BOX_COUNT*sizeof(Color); 
+		desc.Usage = D3D11_USAGE_DYNAMIC; 
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE; 
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; 
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; 
+		desc.StructureByteStride = sizeof(Color);
+		r->device->CreateBuffer(&desc, NULL, &color_buffer);
+		
+		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0}; 
+		rv_desc.Format = DXGI_FORMAT_UNKNOWN; 
+		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER; 
+		rv_desc.Buffer.NumElements = TEMP_BOX_COUNT; 
+		r->device->CreateShaderResourceView(color_buffer, &rv_desc, &color_resource_view);
+	}
+	
+	
+	
+	
+	float widgets_constants[4] = { 
+		1.f/(float)window_width, 
+		1.f/(float)window_height
+	};
+	ID3D11Buffer *cbuffer; 
+	{
+		
+		D3D11_BUFFER_DESC desc = {0}; 
+		desc.ByteWidth = sizeof(widgets_constants);
+		desc.Usage = D3D11_USAGE_IMMUTABLE; 
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
+		r->device->CreateBuffer(&desc, &data, &cbuffer); 
+	}
+	
+	
+	
+	HRESULT hr; 
+	ID3D11VertexShader *vshader = NULL; 
+	ID3D11PixelShader *pshader = NULL;
+	{
+		
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *vblob;
+		hr = D3DCompileFromFile(L"../widgets.hlsl", NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile vertex shader!");
+		}
+		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
+		
+		ID3DBlob *pblob;
+		hr = D3DCompileFromFile(L"../widgets.hlsl", NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer(); 
+			OutputDebugStringA(message); 
+			Assert(!"Failed to compile pixel shader!");
+		}
+		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
+		
+		vblob->Release();
+		pblob->Release(); 
+	}
+	
+	
+	ui->buffers[0] = widgets_buffer;
+	ui->buffers[2] = color_buffer;
+	ui->buffers[1] = cbuffer;
+	ui->pshader = pshader; 
+	ui->vshader = vshader; 
+	ui->srv[0]= widgets_resource_view; 
+	ui->srv[1] = color_resource_view;
+	
+	#endif 
+	
+	
+	return;
+}
+
+static void 
+UIDrawWidget(UI_Context *ui, Box box, Color color) { 
+	Assert(ui && ui->r);
+	R_D3D11Context *r = ui->r;
+	
+	// Don't draw if the box is not only the screen
+	if (!(0 < box.maxx && 0 < box.maxy && box.minx < window_width && box.miny < window_height)) {
+		return;
+	}
+	
+	float minx = (2*box.minx / (float)window_width) -1; 
+	float miny = (2*box.miny / (float)window_height)-1;
+	float maxx = (2*box.maxx / (float)window_width) -1; 
+	float maxy = (2*box.maxy / (float)window_height)-1;
+	
+	float verticies[] = {
+		minx, miny, minx, maxy, 
+		maxx, miny, maxx, maxy, 
+    };
+	
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	r->context->Map((ID3D11Resource *)ui->buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	memcpy(mapped.pData, &verticies, sizeof(verticies)); 
+	r->context->Unmap((ID3D11Resource *)ui->buffers[0], 0);
+	
+	r->context->Map((ID3D11Resource *)ui->buffers[1], 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	memcpy(mapped.pData, &color, sizeof(Color)  & 0xffffff0); 
+	r->context->Unmap((ID3D11Resource *)ui->buffers[1], 0);
+	
+	
+	D3D11_VIEWPORT viewport = {0};
+	viewport.Width = (FLOAT)window_width; 
+	viewport.Height = (FLOAT)window_height;
+	viewport.MaxDepth = 1;
+	
+	const UINT stride = 2*sizeof(float); 
+    const UINT offset = 0;
+    r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    r->context->IASetInputLayout(ui->layout);
+    r->context->IASetVertexBuffers(0, 1, &ui->buffers[0], &stride, &offset);
+    r->context->VSSetShader(ui->vshader, NULL, 0);
+    r->context->PSSetShader(ui->pshader, NULL, 0);
+    r->context->PSSetConstantBuffers(0, 1, &ui->buffers[1]); 
+    r->context->RSSetViewports(1, &viewport);
+    r->context->OMSetRenderTargets(1, &r->frame_buffer_view, 0);
+    r->context->Draw(4,0);
+
+}
+
 #define UI_INVALID_WIDGET -1
+
+static void
+UIBegin(UI_Context *ui) {
+	ui->hot = UI_INVALID_WIDGET;
+	ui->active = UI_INVALID_WIDGET;
+	memset(ui->boxs, 0, TEMP_BOX_COUNT *sizeof(Box));
+	ui->boxs_idx = 0;
+	ui->last = 0;
+}
+
+static void
+UIEnd(UI_Context *ui) {
+	
+#if DRAW_WIDGETS_SINGLE
+	for (int i = 0; i < TEMP_BOX_COUNT; i++) { 
+		UIDrawWidget(ui, ui->boxs[i], ui->colors[i]);
+	}
+#else 
+	
+	Assert(ui && ui->r);
+	R_D3D11Context *r = ui->r;
+	
+	
+	D3D11_MAPPED_SUBRESOURCE widget_mapped;
+	r->context->Map(ui->buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &widget_mapped);
+	memcpy(widget_mapped.pData, &ui->boxs, ui->boxs_idx*sizeof(Box));
+	r->context->Unmap(ui->buffers[0], 0);
+	
+	D3D11_MAPPED_SUBRESOURCE color_mapped;
+	r->context->Map(ui->buffers[2], 0, D3D11_MAP_WRITE_DISCARD, 0, &color_mapped);
+	memcpy(color_mapped.pData, &ui->colors, ui->boxs_idx*sizeof(Color));
+	r->context->Unmap(ui->buffers[2], 0);
+
+	D3D11_VIEWPORT viewport = {0};
+	viewport.Width = (FLOAT)window_width; 
+	viewport.Height = (FLOAT)window_height;
+	viewport.MaxDepth = 1;
+	
+	r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
+	
+	r->context->VSSetShader(ui->vshader, NULL, 0);
+	r->context->VSSetShaderResources(0, 2, ui->srv);
+	r->context->VSSetConstantBuffers(0, 1, &ui->buffers[1]);
+	
+	r->context->RSSetViewports(1, &viewport);
+	
+	r->context->PSSetShader(ui->pshader, NULL, 0);
+	
+	r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+	r->context->DrawInstanced(4, ui->boxs_idx, 0, 0); // 4 vertices per instance, each instance is a sprite
+	#endif
+
+}
+
+
 
 static UI_Output
 UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
 	
-	UI_Output output;
+	UI_Output output = {0};
     Mouse mouse = ctx->input->mouse;
     UI_Widget_Handle handle = ctx->last; 
 	
@@ -1076,27 +1299,29 @@ UIBuildWidget(UI_Context *ctx, Box box, u16 behaviour) {
 }
 
 static bool
-UIButton(UI_Context *ctx, int x, int y, int w, int h) {
+UIButton(UI_Context *ui, int x, int y, int w, int h) {
     
 	// Input handling
 	Box box = { x, y, x+w, y+h };
-	UI_Output output = UIBuildWidget(ctx, box, UI_HOVERABLE | UI_CLICKABLE); 
+	UI_Output output = UIBuildWidget(ui, box, UI_HOVERABLE | UI_CLICKABLE); 
 
-    // Drawing 
-    Color color = output.hovered ? LIGHTRED : RED;
+    // Drawing
+	
+	Color color;
+    color = output.hovered ? LIGHTRED : RED;
     color = output.clicked ? RED : color;
 	
-	//printf("button draw\n");
+	Assert(ui->boxs_idx >= 0);
+	ui->boxs[ui->boxs_idx] = box;
+	ui->colors[ui->boxs_idx++] = color;
 	
-	 DrawBox(ctx->r, box, color);
-
 	return output.clicked;
 }
 
 
 //~
 // Object File Loader 
-// 
+	// 
 
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
@@ -1497,9 +1722,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	
-	
-	
-	
 	//~
 	// Model Data
 	//
@@ -1663,7 +1885,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 
 	ShowWindow(window, SW_SHOW);
-
+	
+	
+	
 	//~
 	// Main Game Loop
 	//
@@ -1673,6 +1897,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	viewport.Width = (FLOAT)window_width; 
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
+	
+	r.viewport = &viewport;
 	
 	
 	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
@@ -1698,21 +1924,23 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Record the area in which the cursor can move. 
 	GetClipCursor(&rcOldClip); 
 	// Get the dimensions of the application's window. 
-	GetWindowRect(window, &rcClip); 
-
+	GetWindowRect(window, &rcClip);
 
 	// more things that I need I guess...
-	LARGE_INTEGER freq, start_frame, end_frame;
-	QueryPerformanceFrequency(&freq); 
-	QueryPerformanceCounter(&start_frame); 
+	TimeInit();
+	double start_frame = Time(), end_frame;
 	int last_mouse_pos[2] = {window_width/2, window_height/2};
-	
 	
 	// Camera 
 	Camera c = {0};
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
+	
+	Game_Input input = {0};
+	UI_Context ui = {0};
+	UIInit(&ui, &r, &input);
+	
 	
 #ifdef USE_GAMEINPUT
 	initialize_input();
@@ -1739,18 +1967,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
 		LONG height = rect.bottom - rect.top;
-		if (width != (LONG)viewport.Width || height != (LONG)viewport.Height) {
-			RendererD3D11Resize(&r, width, height); 
-			
-			// TODO(ziv): Remove viewport from here
-			viewport.Width = (FLOAT)width; 
-			viewport.Height = (FLOAT)height;
-			c.aspect_ratio = viewport.Width/viewport.Height;
+		if (width != window_width || height != window_height) {
+			window_width = width; window_height = height;
+			RendererD3D11Resize(&r, width, height);
+			c.aspect_ratio = (float)width/(float)height;
 		}
 		
 		// Get Input From User
-		Game_Input input = InputGetState();
-		
+		input = InputGetState();
 #ifdef USE_GAMEINPUT
 		Game_Input input = {0}; 
 		poll_gameinput(&input); 
@@ -1759,7 +1983,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			Gamepad gamepad = input.gamepads[i];
 			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
 		}
-
 		mouse_pos[0] = (int)input.mouse.px; 
 		mouse_pos[1] = (int)input.mouse.py; 
 #endif 
@@ -1796,23 +2019,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Update Game State
 		//
 		
-		QueryPerformanceCounter(&end_frame);
-		float dt =  (float)((double)(end_frame.QuadPart - start_frame.QuadPart) / (double)freq.QuadPart);
-		
-		// Update Camera
-		float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
-		float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
 		
 		float speed = 5;
+		end_frame = Time();
+		float dt = (float)(end_frame - start_frame); 
+		float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
+		float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
 		
 		for (int i = 0; i < 4; i++) {
 			dx += input.gamepads[i].right_thumbstick_x*speed;
 			dy += input.gamepads[i].right_thumbstick_y*speed;
 		}
 		
-		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));; 
+		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
 		c.pitch = float_clamp(c.pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f); 
-			
 		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed); 
 		CameraBuild(&c); 
 
@@ -1824,11 +2044,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		
-		// 
+		//~ 
 		// Render Game
 		//
-		
-		// ===== RendererBeginFrame
 		
 		// Update model-view matrix
 		{
@@ -1854,7 +2072,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r.context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 			memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf)); 
 			r.context->Unmap((ID3D11Resource *)cbuffer, 0);
-			
+
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf; 
 			ps_cbuf.point_light_position = lightposition - translate_vector;
@@ -1903,42 +2121,40 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// NOTE(ziv): Testing for UI & API purposes
 		 // 
 
-		static int val = 10;
-		
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-
-		val++;
 		
+/* 
+		static int val = 10;
+		val++;
+
 		DrawBox(&r, { val, 10, 100+val, 100 }, RED);
 				DrawBox(&r, { val, 10, 100+val, 100 }, RED);
 				DrawBox(&r, { 110, 10, 200, 200 }, LIGHTRED);
 				DrawBox(&r, { 210, 10, 300, 300 }, LIGHTRED);
-		 
 		
-				UI_Context ui = { }; 
-				ui.hot = UI_INVALID_WIDGET;
-				ui.active = UI_INVALID_WIDGET;
-				ui.r = &r;
-				ui.input = &input;
-				
-				input.mouse.px = mouse_pos[0];
-				input.mouse.py = height-mouse_pos[1];
+ */
+		input.mouse.px = mouse_pos[0];
+		input.mouse.py = height-mouse_pos[1];
 				
 				//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-				
-				bool clicked = UIButton(&ui, 400, 10, 100, 100);
-				if (clicked) {
-					printf("button clicked\n");
-				}
-				val++;
 		
+		
+		UIBegin(&ui);
+		bool clicked = UIButton(&ui, 400, 10, 100, 100);
+        if (clicked) {
+            printf("button clicked\n");
+		}
+		
+        clicked = UIButton(&ui, 100, 10, 100, 100);
+		if (clicked) {
+			printf("button clicked\n");
+		}
+		 UIEnd(&ui);
 		
 		// ===== RendererEndFrame
 		
 		// present the backbuffer to the screen
-		r.swap_chain->Present(1, 0);
-		
-		
+		r.swap_chain->Present(1, 0); // Using here VSYNC
 		// end of frame
 		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1]; 
 		start_frame = end_frame; // update time for dt calc
@@ -1971,7 +2187,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	r.zbuffer->Release();
 	r.zbuffer_texture->Release(); 
 	r.rasterizer_cull_back->Release();
-	
 	
 	return 0; 
 }
