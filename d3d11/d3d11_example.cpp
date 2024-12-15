@@ -28,6 +28,7 @@
 // default starting width and height for the window
 static int window_width = 800;
 static int window_height = 600;
+static unsigned int resized_dirty;
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -918,14 +919,15 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 		depth_stencil_view_desc.Texture2D.MipSlice = 0;
 		r->device->CreateDepthStencilView(r->zbuffer_texture, &depth_stencil_view_desc, &r->zbuffer);
 	}
-
+	
+	resized_dirty = 1;
 	r->viewport->Width = (FLOAT)width;
 	r->viewport->Height = (FLOAT)height;
 }
 
 
 //~
-// UI
+// UI Core
 //
 
 // The UI system work in the following manner:
@@ -945,16 +947,15 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 typedef struct { float r, g, b, a; } Color;
 static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
+static Color DARKRED = { .6f, .1f, .1f, 1};
 
 typedef enum {
 	UI_CLICKABLE  = 1 << 0,  // can be clicked
     UI_SLIDERABLE = 1 << 1,  // slider property (also allows for mouse movement)
     UI_INPUTABLE  = 1 << 3,  // accepts keyboard input
-    UI_DRAWRECT   = 1 << 4,
+	UI_DRAWBOX    = 1 << 4,
     UI_DRAWTEXT   = 1 << 5,
-	UI_DRAWBOX    = 1 << 6,
-	UI_DRAWBORDER = 1 << 7,
-	
+	UI_DRAWBORDER = 1 << 6, 
 } UI_Flags;
 
 typedef struct {
@@ -1017,8 +1018,12 @@ struct UI_Widget {
 
 typedef int UI_Widget_Handle;
 
+typedef struct UIDrawBox { // a draw box that I send to the gpu to draw
+	Rect rect; 
+	u32 flags;
+} UIDrawBox; 
+
 #define WIDGETS_COUNT 0x100
-#define TEMP_BOX_COUNT 0x10
 
 typedef struct {
 	Game_Input *input;
@@ -1026,8 +1031,7 @@ typedef struct {
 	R_D3D11Context *r;
 
 	// for drawing boxs:
-	Rect boxs[TEMP_BOX_COUNT];
-	Color colors[TEMP_BOX_COUNT];
+	UIDrawBox boxs[WIDGETS_COUNT];
 	int boxs_idx;
 
 	ID3D11Buffer *buffers[3];
@@ -1046,6 +1050,7 @@ typedef struct {
 } UI_Context;
 
 
+
 static void
 UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->input = input;
@@ -1058,39 +1063,21 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ID3D11ShaderResourceView* widgets_resource_view;
 	{
 		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = TEMP_BOX_COUNT*sizeof(Rect);
+		desc.ByteWidth = WIDGETS_COUNT*sizeof(ui->boxs[0]);
 		desc.Usage = D3D11_USAGE_DYNAMIC;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(Rect);
+		desc.StructureByteStride = sizeof(ui->boxs[0]);
 		r->device->CreateBuffer(&desc, NULL, &widgets_buffer);
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
 		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
 		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		rv_desc.Buffer.NumElements = TEMP_BOX_COUNT;
+		rv_desc.Buffer.NumElements = WIDGETS_COUNT;
 		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
 	}
 
-	ID3D11Buffer *color_buffer; // structurd buffer
-	ID3D11ShaderResourceView* color_resource_view;
-	{
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = TEMP_BOX_COUNT*sizeof(Color);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(Color);
-		r->device->CreateBuffer(&desc, NULL, &color_buffer);
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
-		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		rv_desc.Buffer.NumElements = TEMP_BOX_COUNT;
-		r->device->CreateShaderResourceView(color_buffer, &rv_desc, &color_resource_view);
-	}
 
 
 	float widgets_constants[4] = {
@@ -1102,8 +1089,9 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 
 		D3D11_BUFFER_DESC desc = {0};
 		desc.ByteWidth = sizeof(widgets_constants);
-		desc.Usage = D3D11_USAGE_IMMUTABLE;
+		desc.Usage = D3D11_USAGE_DYNAMIC;
 		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
 		r->device->CreateBuffer(&desc, &data, &cbuffer);
 	}
@@ -1146,35 +1134,20 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 
 
 	ui->buffers[0] = widgets_buffer;
-	ui->buffers[2] = color_buffer;
 	ui->buffers[1] = cbuffer;
 	ui->pshader = pshader;
 	ui->vshader = vshader;
 	ui->srv[0]= widgets_resource_view;
-	ui->srv[1] = color_resource_view;
 
 	return;
 }
 
-#define UI_INVALID_WIDGET -1
-
 static void
 UIBegin(UI_Context *ui) {
-	memset(ui->boxs, 0, TEMP_BOX_COUNT *sizeof(Rect));
+	memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
 	ui->boxs_idx = 0;
 	//ui->last = 0;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1244,7 +1217,11 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
-		ui->boxs[ui->boxs_idx++] = head->rect;
+		if (head->flags >= UI_DRAWBOX) { // has something to draw
+		ui->boxs[ui->boxs_idx].rect = head->rect;
+			ui->boxs[ui->boxs_idx].flags= head->flags;
+			ui->boxs_idx++;
+		}
 		
 		if (head->child) {
 				UIBuildLayoutFinalRect(ui, head->child);
@@ -1255,59 +1232,40 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 }
 
 
-
-
-
-
-
 static void
 UIEnd(UI_Context *ui) {
 
     Assert(0 < ui->last); // there must be more than one widget to layout
-
-	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) {
-		UIBuildLayout(ui, axis);
-	}
+	Assert(ui && ui->r);
 	
+// layout
+	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(ui, axis); }
 	UIBuildLayoutFinalRect(ui, &ui->widgets[0]);
 	
+	// darwing
 	
-	for (int i = 0; i < ui->boxs_idx; i++) {
-		ui->colors[i] = RED;
-		if (&ui->widgets[i] == ui->hot) {
-			ui->colors[i] = LIGHTRED;
-		}
-	}
-
-    // The game plan:
-    //
-    // Traverse all the graph find out which widgets are in need of
-    // children values and calc sizing values along the way.
-    // Then use only that list which you have to go to all these parent
-    // and figure out their final sizing.
-    //
-    // After you have all hte final sizings and relative positions
-    // you calculate final rectangles for all the widgets that require
-    // them. (layout will get excluded)
-
-	
-	
-	
-
-
-	Assert(ui && ui->r);
 	R_D3D11Context *r = ui->r;
 
 	D3D11_MAPPED_SUBRESOURCE widget_mapped;
 	r->context->Map(ui->buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &widget_mapped);
-	memcpy(widget_mapped.pData, &ui->boxs, ui->boxs_idx*sizeof(Rect));
+	memcpy(widget_mapped.pData, &ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0]));
 	r->context->Unmap(ui->buffers[0], 0);
-
-	D3D11_MAPPED_SUBRESOURCE color_mapped;
-	r->context->Map(ui->buffers[2], 0, D3D11_MAP_WRITE_DISCARD, 0, &color_mapped);
-	memcpy(color_mapped.pData, &ui->colors, ui->boxs_idx*sizeof(Color));
-	r->context->Unmap(ui->buffers[2], 0);
-
+	
+	// if reisized update this
+	if (resized_dirty) {
+		
+		float widgets_constants[4] = {
+			1.f/(float)window_width,
+			1.f/(float)window_height
+		};
+		
+		D3D11_MAPPED_SUBRESOURCE cbuffer_mapped;
+		r->context->Map(ui->buffers[1], 0, D3D11_MAP_WRITE_DISCARD, 0, &cbuffer_mapped);
+		memcpy(cbuffer_mapped.pData, widgets_constants, sizeof(widgets_constants));
+		r->context->Unmap(ui->buffers[1], 0);
+		
+		
+	}
 	r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
 r->context->VSSetShader(ui->vshader, NULL, 0);
 	r->context->VSSetShaderResources(0, 2, ui->srv);
@@ -1318,13 +1276,6 @@ r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 	r->context->DrawInstanced(4, ui->boxs_idx, 0, 0);
 	
 }
-
-
-
-
-
-
-
 
 
 static UI_Widget *
@@ -1340,21 +1291,6 @@ UIGetWidget(UI_Context *ui) {
         return NULL;
     }
 }
-
-static b32
-UISetWidget(UI_Context *ui, UI_Widget *w, int idx) {
-    if (0 <= idx && idx < WIDGETS_COUNT) {
-        ui->widgets[idx] = *w;
-    }
-    else {
-        Assert(!"While setting a widget index provided is out of bounds");
-        return 0;
-    }
-
-    return 1;
-}
-
-
 
 static b32
 UIStrCmp(char *s1, char *s2) {
@@ -1464,6 +1400,9 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
             ui->active = widget;
             output.clicked = 1;
         }
+		else {
+			ui->active = NULL;
+		}
 
         // widget slider widget->flags
         if ((widget->flags & UI_SLIDERABLE)) {
@@ -1478,6 +1417,8 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 	return output;
 
 }
+
+//~ UI Builder Code
 
 static UI_Widget *
 UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, char *text, u32 flags) {
@@ -2172,8 +2113,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
-
+		
+		
 		// Handle window resize
+		resized_dirty = 0;
+		
 		RECT rect;
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
@@ -2183,7 +2127,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererD3D11Resize(&r, width, height);
 			c.aspect_ratio = (float)width/(float)height;
 		}
-
+			
+			
+		
 		// Get Input From User
 		input = InputGetState();
 #ifdef USE_GAMEINPUT
