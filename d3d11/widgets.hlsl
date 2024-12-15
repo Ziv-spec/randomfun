@@ -7,7 +7,7 @@ cbuffer constants : register(b0) {
 };
 
 struct widget { 
-	int4 b;
+	float4 b;
 }; 
 
 StructuredBuffer<widget> widgets : register(t0);
@@ -21,7 +21,7 @@ struct INPUT {
 
 INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 
-	int4 b = widgets[widgetid].b;
+	float4 b = widgets[widgetid].b;
 	uint2 i = { vertexid & 2, (vertexid << 1 & 2) + 1 };
 	
 	//0  0 1
