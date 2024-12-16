@@ -1,12 +1,11 @@
 
-#define FAT_PIXEL_SIZE 2
+#define FAT_PIXEL_SIZE 1
 
 cbuffer constants : register(b0)
 {
     float2 rn_screensize;
     float2 r_atlassize;
 }
-
 
 //~
 
@@ -34,11 +33,11 @@ SamplerState             pointsampler : register(s0);
 //~
 
 
-pixel vs(uint spriteid : SV_INSTANCEID, uint vertexid : SV_VERTEXID)
+pixel vs_main(uint spriteid : SV_INSTANCEID, uint vertexid : SV_VERTEXID)
 {
     sprite spr = spritebuffer[spriteid];
 
-    float4 pos = float4(spr.screenpos, spr.screenpos + spr.size); // * FAT_PIXEL_SIZE;
+    float4 pos = float4(spr.screenpos, spr.screenpos + spr.size * FAT_PIXEL_SIZE);
     float4 tex = float4(spr.atlaspos,  spr.atlaspos  + spr.size);
 
     uint2 i = { vertexid & 2, (vertexid << 1 & 2) ^ 3 };
@@ -51,8 +50,9 @@ pixel vs(uint spriteid : SV_INSTANCEID, uint vertexid : SV_VERTEXID)
     return p;
 }
 
-float4 ps(pixel p) : SV_TARGET
+float4 ps_main(pixel p) : SV_TARGET
 {
+
     float4 color = atlastexture.Sample(pointsampler, p.uv);
 
     if (color.a == 0) discard;

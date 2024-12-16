@@ -28,7 +28,7 @@
 // default starting width and height for the window
 static int window_width = 800;
 static int window_height = 600;
-static unsigned int resized_dirty;
+#define MAX_SPRITES 4096
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -83,6 +83,18 @@ typedef int     b32;
 * [ ] Mouse screen to world projection
 * [ ] Update on Resize for fluid screen resize handling?
 * [ ] Pixelated look
+
+// ==================== Goals for today ========================
+// [ ] theme - uploaded to gpu once, rendered using it
+// [ ] finally make the push-pop utilities for higherarchy building
+// [ ] use text as id (meaning I need more than just the text itself, I also would need loc..)
+// [ ] make widget allocator smarter
+//
+// [ ] font rendering (text displayed on screen) 
+//  [x] make font stay same size on resize
+//  [x] buttons draw their font
+//  [ ] resizeable font
+// [ ] restucture and make better input handling?
 */
 
 static void FatalError(const char* message)
@@ -94,12 +106,13 @@ static void FatalError(const char* message)
 //
 // Font
 //
+
 #define CHARACTER_COUNT   95
 
 #define ATLAS_WIDTH      475
 #define ATLAS_HEIGHT       7
 
-static UINT atlas[] = {
+const static UINT atlas[] = {
 	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff,
 	0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
 	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff,
@@ -137,13 +150,21 @@ static UINT atlas[] = {
 	0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
 };
 
+typedef struct int2 {
+	int x, y;
+} int2;
+
+typedef struct Sprite {
+	int2 screen_pos, size, atlas_pos;
+} Sprite;
+
 static void
 TextSize(char *text, float *width, float *height) {
 	// TODO(ziv): implement dynamic font size?
 	u32 len = 0;
 	while (*text++) len++;
-	if (width) *width  = (float)(len * ATLAS_WIDTH / CHARACTER_COUNT);
-	if (height) *height = (float)(len * ATLAS_HEIGHT);
+	if (width) *width  = (float)(len * (ATLAS_WIDTH / CHARACTER_COUNT + 1));
+	if (height) *height = (float)(ATLAS_HEIGHT);
 }
 
 
@@ -872,7 +893,198 @@ typedef struct {
 	ID3D11RasterizerState1* rasterizer_cull_back;
 
 	D3D11_VIEWPORT *viewport;
+	
+	b32 dirty; // something changed this frame in the renderer
+	
 } R_D3D11Context;
+
+static void
+RendererInit(R_D3D11Context *r, HWND window) {
+	
+	//
+	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
+	//
+	
+	HRESULT hr;
+	ID3D11Device1 *device;
+	ID3D11DeviceContext1*context;
+	{
+		
+		UINT flags = 0;
+		
+#if _DEBUG
+		// this enables VERY USEFUL debug messages in debugger output
+		flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+		
+		D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+		
+		ID3D11Device* base_device;
+		ID3D11DeviceContext* base_context;
+		
+		hr = D3D11CreateDevice(NULL, // Default adapter
+							   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
+							   NULL, // Software renderer if specified to use CPU
+							   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+							   featureLevels, ARRAYSIZE(featureLevels),
+							   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
+		AssertHR(hr);
+		
+		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
+		base_device->Release();
+		base_context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **)&context);
+		base_context->Release();
+	}
+	
+#if _DEBUG
+	// for debug builds enable VERY USEFUL debug break on API errors
+    {
+        ID3D11InfoQueue* info;
+        device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
+        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
+        info->Release();
+    }
+	
+    // enable debug break for DXGI too
+    {
+        IDXGIInfoQueue* dxgi_info;
+        hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
+        AssertHR(hr);
+        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+        dxgi_info->Release();
+    }
+	
+    // after this there's no need to check for any errors on device functions manually
+    // so all HRESULT return  values in this code will be ignored
+    // debugger will break on errors anyway
+#endif
+	
+	// Create D3D11 Swap Chain
+	IDXGISwapChain1* swap_chain;
+	{
+		
+		IDXGIDevice1* dxgiDevice;
+		device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
+		
+		IDXGIAdapter* dxgiAdapter;
+		dxgiDevice->GetAdapter(&dxgiAdapter);
+		dxgiDevice->Release();
+		
+		IDXGIFactory2* dxgiFactory;
+		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
+		dxgiAdapter->Release();
+		
+		//
+		
+		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
+		swap_chain_desc.Width              = 0; // use window width
+		swap_chain_desc.Height             = 0; // use window height
+		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+		swap_chain_desc.Stereo             = FALSE;
+		swap_chain_desc.SampleDesc.Count   = 1;
+		swap_chain_desc.SampleDesc.Quality = 0;
+		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc.BufferCount        = 2;
+		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
+		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
+		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
+		swap_chain_desc.Flags              = 0;
+		
+		dxgiFactory->CreateSwapChainForHwnd(device, window, &swap_chain_desc, NULL, NULL, &swap_chain);
+		dxgiFactory->Release();
+	}
+	
+	// Create a Target View
+	ID3D11RenderTargetView *frame_buffer_view;
+	{
+		ID3D11Texture2D* frame_buffer;
+		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
+		
+		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
+		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
+		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		
+		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
+		frame_buffer->Release();
+	}
+	
+	//
+	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
+	//
+	
+	// Create Depth Sentcil
+	ID3D11DepthStencilState* depth_stencil_state;
+	{
+		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
+		depth_stencil_desc.DepthEnable    = TRUE;
+		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
+		
+		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+	}
+	
+	// Create Z-Buffer
+	ID3D11DepthStencilView *zbuffer;
+	ID3D11Texture2D *zbuffer_texture;
+	{
+		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+		
+		depth_buffer_desc.Width = window_height;
+		depth_buffer_desc.Height = window_width;
+		depth_buffer_desc.MipLevels = 1;
+		depth_buffer_desc.ArraySize = 1;
+		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_buffer_desc.SampleDesc.Count = 1;
+		depth_buffer_desc.SampleDesc.Quality = 0;
+		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
+		
+		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
+		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depth_stencil_view_desc.Texture2D.MipSlice = 0;
+		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
+	}
+	
+	// Create a Rasterizer
+	ID3D11RasterizerState1* rasterizer_cull_back;
+	{
+		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
+		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
+		rasterizer_desc.CullMode = D3D11_CULL_BACK;
+		
+		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
+		
+		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
+		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
+		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
+	}
+	
+	r->window = window; 
+		r->device = device; 
+		r->context = context;
+	r->swap_chain = swap_chain;
+	r->frame_buffer_view = frame_buffer_view;
+	r->depth_stencil_state = depth_stencil_state;
+	r->zbuffer = zbuffer;
+	r->zbuffer_texture = zbuffer_texture;
+	r->rasterizer_cull_back = rasterizer_cull_back;
+}
+
+static void
+RendererDeInit(R_D3D11Context *r) {
+	r->device->Release();
+	r->context->Release();
+	r->swap_chain->Release();
+	r->frame_buffer_view->Release();
+	r->depth_stencil_state->Release();
+	r->zbuffer->Release();
+	r->zbuffer_texture->Release();
+	r->rasterizer_cull_back->Release();
+}
 
 static void
 RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
@@ -920,9 +1132,62 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 		r->device->CreateDepthStencilView(r->zbuffer_texture, &depth_stencil_view_desc, &r->zbuffer);
 	}
 	
-	resized_dirty = 1;
+	r->dirty = 1;
 	r->viewport->Width = (FLOAT)width;
 	r->viewport->Height = (FLOAT)height;
+}
+
+static void
+RendererD3D11GetShaders(R_D3D11Context *r,
+						ID3D11VertexShader **vshader, wchar_t *vs_file,
+						ID3D11PixelShader **pshader, wchar_t *ps_file,
+						ID3D11InputLayout **layout, 
+						const D3D11_INPUT_ELEMENT_DESC vs_format_desc[], 
+						unsigned int format_desc_length) {
+	HRESULT hr;
+	// Create Vertex And Pixel Shaders
+        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error;
+		ID3DBlob *vblob;
+		hr = D3DCompileFromFile(vs_file, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer();
+			OutputDebugStringA(message);
+			Assert(!"Failed to compile vertex shader!");
+		}
+		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
+		
+		if (vs_format_desc && format_desc_length > 0) {
+		r->device->CreateInputLayout(vs_format_desc, format_desc_length,
+									vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
+		}
+		
+		ID3DBlob *pblob;
+		hr = D3DCompileFromFile(ps_file, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+		if (FAILED(hr)) {
+			const char *message = (const char *)error->GetBufferPointer();
+			OutputDebugStringA(message);
+			Assert(!"Failed to compile pixel shader!");
+		}
+		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
+		
+		vblob->Release();
+	pblob->Release();
+	
+}
+
+static void
+RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, unsigned int data_size) {
+	Assert(r && buff && data && data_size); 
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	r->context->Map((ID3D11Resource *)buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	memcpy(mapped.pData, data, data_size);
+	r->context->Unmap((ID3D11Resource *)buff, 0);
 }
 
 
@@ -943,6 +1208,7 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 //
 // The building of the graph and interaction with it happens on the same function yet the interaction with the graph happens on the next frame.
 //
+
 
 typedef struct { float r, g, b, a; } Color;
 static Color RED      = { 1, 0, 0, 1 };
@@ -1025,153 +1291,72 @@ typedef struct UIDrawBox { // a draw box that I send to the gpu to draw
 
 #define WIDGETS_COUNT 0x100
 
+typedef struct s s;
+
 typedef struct {
 	Game_Input *input;
-
-	R_D3D11Context *r;
-
-	// for drawing boxs:
+	
+	//
+	// UI Graph
+	//
+	
+	// NOTE(ziv): widget[0] will default to the first widget built
+    UI_Widget widgets[WIDGETS_COUNT];
+	UI_Widget *head_widget;
+	UI_Widget_Handle last;
+    UI_Widget *hot, *active;
+	
+	//
+	// UI Drawing
+	//
+	
 	UIDrawBox boxs[WIDGETS_COUNT];
 	int boxs_idx;
-
-	ID3D11Buffer *buffers[3];
-    ID3D11InputLayout  *layout;
+	
+	R_D3D11Context *r;
+	// widgets
+	struct {
+	ID3D11Buffer *buffers[2];
+    ID3D11VertexShader *vshader;
+    ID3D11PixelShader *pshader;
+		ID3D11ShaderResourceView *srv[1];
+	} widget;
+	// font
+	struct {
+	ID3D11Buffer *buffers[2];
     ID3D11VertexShader *vshader;
     ID3D11PixelShader *pshader;
 	ID3D11ShaderResourceView *srv[2];
-
-	// NOTE(ziv): widget[0] will default to the first widget built
-    UI_Widget widgets[WIDGETS_COUNT];
-
-	UI_Widget *head_widget;
-
-	UI_Widget_Handle last;
-    UI_Widget *hot, *active;
+	ID3D11SamplerState* sampler; 
+	} font;
+	
+	Sprite sprites[MAX_SPRITES];
+	int sprite_count;
+	
 } UI_Context;
-
-
-
-static void
-UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
-	ui->input = input;
-	ui->r = r;
-	ui->head_widget = NULL;
-
-	// Instanced widget drawing
-
-	ID3D11Buffer *widgets_buffer; // structurd buffer
-	ID3D11ShaderResourceView* widgets_resource_view;
-	{
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = WIDGETS_COUNT*sizeof(ui->boxs[0]);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(ui->boxs[0]);
-		r->device->CreateBuffer(&desc, NULL, &widgets_buffer);
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
-		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		rv_desc.Buffer.NumElements = WIDGETS_COUNT;
-		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
-	}
-
-
-
-	float widgets_constants[4] = {
-		1.f/(float)window_width,
-		1.f/(float)window_height
-	};
-	ID3D11Buffer *cbuffer;
-	{
-
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = sizeof(widgets_constants);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
-		r->device->CreateBuffer(&desc, &data, &cbuffer);
-	}
-
-
-
-	HRESULT hr;
-	ID3D11VertexShader *vshader = NULL;
-	ID3D11PixelShader *pshader = NULL;
-	{
-
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompileFromFile(L"../widgets.hlsl", NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile vertex shader!");
-		}
-		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
-
-		ID3DBlob *pblob;
-		hr = D3DCompileFromFile(L"../widgets.hlsl", NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile pixel shader!");
-		}
-		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
-
-		vblob->Release();
-		pblob->Release();
-	}
-
-
-	ui->buffers[0] = widgets_buffer;
-	ui->buffers[1] = cbuffer;
-	ui->pshader = pshader;
-	ui->vshader = vshader;
-	ui->srv[0]= widgets_resource_view;
-
-	return;
-}
-
-static void
-UIBegin(UI_Context *ui) {
-	memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
-	ui->boxs_idx = 0;
-	//ui->last = 0;
-}
-
-
 
 static void
 UIBuildLayoutDown(UI_Widget *widget, int axis) {
-
+	
 	if (!widget) return;
-
-
+	
+	
 	// Figure out semantic sizing
 	UI_Layout *layout = &widget->layout;
 	switch (layout->semantic_size[axis].kind) {
 		case UI_SIZEKIND_NULL: break;
 		case UI_SIZEKIND_PIXELS: { widget->computed_size[axis] = layout->semantic_size[axis].value; } break;
 		case UI_SIZEKIND_TEXTCONTENT: {
-			if (axis == 0) { TextSize(widget->text, &widget->computed_size[axis], NULL); }
+			if (axis == 0) { TextSize(widget->text, &widget->computed_size[axis], NULL);}
 			else if (axis == 1) { TextSize(widget->text, NULL, &widget->computed_size[axis]); }
+			widget->computed_size[axis] += 10;
 		} break;
 		case UI_SIZEKIND_PERCENTOFPARENT: {
 			Assert(widget->parent);
 			// NOTE(ziv): I assume the value to already be present
 			widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
 		} break;
-
+		
 		case UI_SIZEKIND_CHILDRENSUM: FatalError("unimplemneted line 1367"); break;
 	}
 	
@@ -1181,17 +1366,15 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 		}
 	}
 	
-	
-	
 	if (!widget->child) {
 		return;
 	}
-
+	
 	UI_Widget *child = widget->child;
 	for (; child; child = child->next) {
 		UIBuildLayoutDown(child, axis);
 	}
-
+	
 }
 
 static UI_Widget *
@@ -1217,18 +1400,207 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
+		Sprite sprite = { (int)head->computed_rel_pos[0]+5, (int)head->computed_rel_pos[1]+5, ATLAS_WIDTH / CHARACTER_COUNT, ATLAS_HEIGHT}; // screen_pos, size
+		char *text = head->text;
+		while (*text) {
+			sprite.atlas_pos.x = (*text++ - ' ') * sprite.size.x ;
+		ui->sprites[ui->sprite_count++] = sprite;
+			sprite.screen_pos.x += sprite.size.x*1 + 1;
+		}
+		
 		if (head->flags >= UI_DRAWBOX) { // has something to draw
-		ui->boxs[ui->boxs_idx].rect = head->rect;
+			ui->boxs[ui->boxs_idx].rect = head->rect;
 			ui->boxs[ui->boxs_idx].flags= head->flags;
 			ui->boxs_idx++;
 		}
 		
 		if (head->child) {
-				UIBuildLayoutFinalRect(ui, head->child);
+			UIBuildLayoutFinalRect(ui, head->child);
 		}
 	}
 	
 	return;
+}
+
+static void
+UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
+	ui->input = input;
+	ui->r = r;
+	ui->head_widget = NULL;
+	
+	// 
+	// Widgets
+	//
+			
+		// Instanced widget drawing
+	ID3D11Buffer *widgets_buffer; // structurd buffer
+	ID3D11ShaderResourceView* widgets_resource_view;
+	{
+		D3D11_BUFFER_DESC desc = {0};
+		desc.ByteWidth = WIDGETS_COUNT*sizeof(ui->boxs[0]);
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		desc.StructureByteStride = sizeof(ui->boxs[0]);
+		r->device->CreateBuffer(&desc, NULL, &widgets_buffer);
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
+		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		rv_desc.Buffer.NumElements = WIDGETS_COUNT;
+		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
+	}
+
+	float widgets_constants[4] = {1.f/(float)window_width,1.f/(float)window_height,(float)window_height*1.f };
+	ID3D11Buffer *cbuffer;
+	{
+
+		D3D11_BUFFER_DESC desc = {0};
+		desc.ByteWidth = sizeof(widgets_constants);
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
+		r->device->CreateBuffer(&desc, &data, &cbuffer);
+	}
+	
+	ID3D11VertexShader *vshader = NULL;
+	ID3D11PixelShader *pshader = NULL;
+	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
+							&pshader, L"../widgets.hlsl",
+							NULL, NULL, 0);
+	
+	ui->widget.buffers[0] = widgets_buffer;
+	ui->widget.buffers[1] = cbuffer;
+	ui->widget.pshader = pshader;
+	ui->widget.vshader = vshader;
+	ui->widget.srv[0]= widgets_resource_view;
+	
+	//
+	// Font
+	//
+	
+	// Font Constant Buffer
+	ID3D11Buffer* font_constant_buffer;
+	{
+		// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
+		float font_constant_data[4] = {
+			2.0f / window_width,
+			-2.0f / window_height,
+			1.0f / ATLAS_WIDTH,
+			1.0f / ATLAS_HEIGHT
+		};
+		
+	D3D11_BUFFER_DESC constant_buffer_desc = {};
+	constant_buffer_desc.ByteWidth = sizeof(font_constant_data) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
+	constant_buffer_desc.Usage     = D3D11_USAGE_DYNAMIC; 
+		constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		constant_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	
+	D3D11_SUBRESOURCE_DATA font_data = { font_constant_data };
+	r->device->CreateBuffer(&constant_buffer_desc, &font_data, &font_constant_buffer);
+}
+
+// Texture Atlas
+ID3D11ShaderResourceView* atlas_resource_view;
+{
+    D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
+    texture_atlas_desc.Width             = ATLAS_WIDTH;
+    texture_atlas_desc.Height            = ATLAS_HEIGHT;
+    texture_atlas_desc.MipLevels         = 1;
+    texture_atlas_desc.ArraySize         = 1;
+    texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
+    texture_atlas_desc.SampleDesc.Count  = 1;
+    texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
+    texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
+	
+    D3D11_SUBRESOURCE_DATA atlas_data = {};
+    atlas_data.pSysMem     = atlas;
+    atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
+	
+    ID3D11Texture2D* atlas_texture;
+    r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
+	r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
+	atlas_texture->Release();
+}
+
+// Sprite Buffer
+ID3D11Buffer* sprite_buffer;
+ID3D11ShaderResourceView* sprite_resource_view;
+{
+    D3D11_BUFFER_DESC sprite_buffer_desc = {};
+    sprite_buffer_desc.ByteWidth           = MAX_SPRITES * sizeof(Sprite);
+    sprite_buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
+    sprite_buffer_desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+    sprite_buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+    sprite_buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // Structured Buffer contains elements of equal size. Inside the shader you can access members using an index
+    sprite_buffer_desc.StructureByteStride = sizeof(Sprite);
+    r->device->CreateBuffer(&sprite_buffer_desc, NULL, &sprite_buffer);
+	
+	// A shader resource view wraps textures in a format that the shaders can access them
+    D3D11_SHADER_RESOURCE_VIEW_DESC sprite_shader_resource_view_desc = {};
+    sprite_shader_resource_view_desc.Format             = DXGI_FORMAT_UNKNOWN;
+    sprite_shader_resource_view_desc.ViewDimension      = D3D11_SRV_DIMENSION_BUFFER; // indicates the resource is a buffer
+    sprite_shader_resource_view_desc.Buffer.NumElements = MAX_SPRITES;
+	r->device->CreateShaderResourceView(sprite_buffer, &sprite_shader_resource_view_desc, &sprite_resource_view);
+}
+
+// Point Sampler
+ID3D11SamplerState* font_sampler;
+{
+    D3D11_SAMPLER_DESC font_sampler_desc = {};
+    font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+    font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+    font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+    font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	
+    r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
+}
+
+// Vertex And Pixel Shaders
+ID3D11VertexShader* font_vshader;
+	ID3D11PixelShader* font_pshader;
+	RendererD3D11GetShaders(r, &font_vshader, L"../font.hlsl", 
+							&font_pshader, L"../font.hlsl", 
+							NULL, NULL, 0); 
+	
+	ui->font.pshader = font_pshader;
+	ui->font.vshader = font_vshader;
+	ui->font.sampler = font_sampler;
+	ui->font.buffers[0] = sprite_buffer;
+	ui->font.buffers[1] = font_constant_buffer;
+	ui->font.srv[0] = sprite_resource_view;
+	ui->font.srv[1] = atlas_resource_view;
+	
+	
+}
+
+static void 
+	UIDeInit(UI_Context *ui) {
+	ui->widget.vshader->Release(); 
+	ui->widget.pshader->Release(); 
+	ui->widget.buffers[0]->Release(); 
+	ui->widget.buffers[1]->Release(); 
+	ui->widget.srv[0]->Release(); 
+	
+ui->font.pshader->Release();
+ui->font.vshader->Release();
+	ui->font.sampler->Release();
+	ui->font.buffers[0]->Release();
+	ui->font.buffers[1]->Release();
+	ui->font.srv[0]->Release();
+	ui->font.srv[1]->Release();
+}
+
+
+static void
+UIBegin(UI_Context *ui) {
+	memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
+	ui->boxs_idx = 0;
+	//ui->last = 0;
+	ui->sprite_count = 0;
 }
 
 
@@ -1242,39 +1614,61 @@ UIEnd(UI_Context *ui) {
 	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(ui, axis); }
 	UIBuildLayoutFinalRect(ui, &ui->widgets[0]);
 	
+	//
 	// darwing
+	//
 	
 	R_D3D11Context *r = ui->r;
-
-	D3D11_MAPPED_SUBRESOURCE widget_mapped;
-	r->context->Map(ui->buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &widget_mapped);
-	memcpy(widget_mapped.pData, &ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0]));
-	r->context->Unmap(ui->buffers[0], 0);
 	
-	// if reisized update this
-	if (resized_dirty) {
+	// Draw Widgets
+	  {
+		RendererD3D11UpdateBuffer(r, ui->widget.buffers[0], ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0])); 
+		if (r->dirty) { // if reisized update window constants
+			float widgets_constants[4] = {1.f/(float)window_width,1.f/(float)window_height, (float)window_height*1.f};
+			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants));
+		}
 		
-		float widgets_constants[4] = {
-			1.f/(float)window_width,
-			1.f/(float)window_height
-		};
-		
-		D3D11_MAPPED_SUBRESOURCE cbuffer_mapped;
-		r->context->Map(ui->buffers[1], 0, D3D11_MAP_WRITE_DISCARD, 0, &cbuffer_mapped);
-		memcpy(cbuffer_mapped.pData, widgets_constants, sizeof(widgets_constants));
-		r->context->Unmap(ui->buffers[1], 0);
-		
-		
+		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
+		r->context->VSSetShader(ui->widget.vshader, NULL, 0);
+		r->context->VSSetShaderResources(0, 1, ui->widget.srv);
+		r->context->VSSetConstantBuffers(0, 1, &ui->widget.buffers[1]);
+		r->context->RSSetViewports(1, r->viewport);
+		r->context->PSSetShader(ui->widget.pshader, NULL, 0);
+		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+		r->context->DrawInstanced(4, ui->boxs_idx, 0, 0);
 	}
-	r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-r->context->VSSetShader(ui->vshader, NULL, 0);
-	r->context->VSSetShaderResources(0, 2, ui->srv);
-	r->context->VSSetConstantBuffers(0, 1, &ui->buffers[1]);
-r->context->RSSetViewports(1, r->viewport);
-r->context->PSSetShader(ui->pshader, NULL, 0);
-r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-	r->context->DrawInstanced(4, ui->boxs_idx, 0, 0);
 	
+	// Draw Font
+	#if 1
+	{
+		
+		if (r->dirty) {
+			// update constants buffer
+			float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
+			RendererD3D11UpdateBuffer(r, ui->font.buffers[1], font_constant_data, sizeof(font_constant_data)); 
+		}
+		
+		D3D11_MAPPED_SUBRESOURCE sprite_mapped;
+		r->context->Map(ui->font.buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &sprite_mapped);
+		memcpy(sprite_mapped.pData, ui->sprites, ui->sprite_count * sizeof(Sprite));
+		r->context->Unmap(ui->font.buffers[0], 0);
+		
+		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
+		
+		r->context->VSSetShader(ui->font.vshader, NULL, 0);
+		r->context->VSSetShaderResources(0, 1, &ui->font.srv[0]);
+		r->context->VSSetConstantBuffers(0, 1, &ui->font.buffers[1]);
+		
+		r->context->RSSetViewports(1, r->viewport);
+		
+		r->context->PSSetShader(ui->font.pshader, NULL, 0);
+		r->context->PSSetShaderResources(1, 1, &ui->font.srv[1]);
+		r->context->PSSetSamplers(0, 1, &ui->font.sampler);
+		
+		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+		r->context->DrawInstanced(4, ui->sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
+	}
+	#endif 
 }
 
 
@@ -1444,28 +1838,9 @@ UIButton(UI_Context *ui, UI_Widget *parent, char *text) {
 
 static UI_Widget *
 UILayout(UI_Context *ui, UI_Widget *parent, UI_Layout layout, char *text) {
-    // TODO(ziv): REMOVE whatever is going on in here!!!!
     Assert(ui);
-
 	UI_Widget *widget = UIBuildWidget(ui, parent, text, 0);
 	widget->layout = layout;
-
-
-	//UI_Widget *widget = UIFindWidget(ui, text);
-	/*
-	if (!widget) {
-		widget = UIGetWidget(ui);
-		Assert(widget);
-	UIAddWidgetNode(ui, parent, widget);
-
-		// TODO(ziv): Think about it some more idk
-		widget->layout = layout;
-		widget->text = text;
-	}
-	 */
-
-
-
     return widget;
 }
 
@@ -1700,176 +2075,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 	InputInitialize(window);
 
-	//~
-	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
-	//
-
-	HRESULT hr;
-	ID3D11Device1 *device;
-	ID3D11DeviceContext1*context;
-	{
-
-		UINT flags = 0;
-
-#if _DEBUG
-		// this enables VERY USEFUL debug messages in debugger output
-		flags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
-		D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
-
-		ID3D11Device* base_device;
-		ID3D11DeviceContext* base_context;
-
-		hr = D3D11CreateDevice(NULL, // Default adapter
-							   D3D_DRIVER_TYPE_HARDWARE,  // Use GPU
-							   NULL, // Software renderer if specified to use CPU
-							   flags | D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-							   featureLevels, ARRAYSIZE(featureLevels),
-							   D3D11_SDK_VERSION, &base_device, NULL, &base_context);
-		AssertHR(hr);
-
-		base_device->QueryInterface(__uuidof(ID3D11Device1), (void **)&device);
-		base_device->Release();
-		base_context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **)&context);
-		base_context->Release();
-	}
-
-#if _DEBUG
-	// for debug builds enable VERY USEFUL debug break on API errors
-    {
-        ID3D11InfoQueue* info;
-        device->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&info);
-        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-        info->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-        info->Release();
-    }
-
-    // enable debug break for DXGI too
-    {
-        IDXGIInfoQueue* dxgi_info;
-        hr = DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), (void**)&dxgi_info);
-        AssertHR(hr);
-        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-        dxgi_info->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
-        dxgi_info->Release();
-    }
-
-    // after this there's no need to check for any errors on device functions manually
-    // so all HRESULT return  values in this code will be ignored
-    // debugger will break on errors anyway
-#endif
-
-	// Create D3D11 Swap Chain
-	IDXGISwapChain1* swap_chain;
-	{
-
-		IDXGIDevice1* dxgiDevice;
-		device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
-
-		IDXGIAdapter* dxgiAdapter;
-		dxgiDevice->GetAdapter(&dxgiAdapter);
-		dxgiDevice->Release();
-
-		IDXGIFactory2* dxgiFactory;
-		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
-		dxgiAdapter->Release();
-
-		//
-
-		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
-		swap_chain_desc.Width              = 0; // use window width
-		swap_chain_desc.Height             = 0; // use window height
-		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-		swap_chain_desc.Stereo             = FALSE;
-		swap_chain_desc.SampleDesc.Count   = 1;
-		swap_chain_desc.SampleDesc.Quality = 0;
-		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swap_chain_desc.BufferCount        = 2;
-		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
-		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
-		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swap_chain_desc.Flags              = 0;
-
-		dxgiFactory->CreateSwapChainForHwnd(device, window, &swap_chain_desc, NULL, NULL, &swap_chain);
-		dxgiFactory->Release();
-	}
-
-	// Create a Target View
-	ID3D11RenderTargetView *frame_buffer_view;
-	{
-		ID3D11Texture2D* frame_buffer;
-		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
-
-		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
-		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
-		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-
-		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
-		frame_buffer->Release();
-	}
-
-	//
-	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
-	//
-
-	// Create Depth Sentcil
-	ID3D11DepthStencilState* depth_stencil_state;
-	{
-		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
-		depth_stencil_desc.DepthEnable    = TRUE;
-		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
-
-		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
-	}
-
-	// Create Z-Buffer
-	ID3D11DepthStencilView *zbuffer;
-	ID3D11Texture2D *zbuffer_texture;
-	{
-		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
-
-		depth_buffer_desc.Width = window_height;
-		depth_buffer_desc.Height = window_width;
-		depth_buffer_desc.MipLevels = 1;
-		depth_buffer_desc.ArraySize = 1;
-		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_buffer_desc.SampleDesc.Count = 1;
-		depth_buffer_desc.SampleDesc.Quality = 0;
-		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
-
-		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
-		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		depth_stencil_view_desc.Texture2D.MipSlice = 0;
-		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
-	}
-
-	// Create a Rasterizer
-	ID3D11RasterizerState1* rasterizer_cull_back;
-	{
-		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
-		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
-		rasterizer_desc.CullMode = D3D11_CULL_BACK;
-
-		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
-
-		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
-		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
-		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
-	}
-
-	R_D3D11Context r = {
-		window, device, context, swap_chain, frame_buffer_view,
-		depth_stencil_state, zbuffer, zbuffer_texture, rasterizer_cull_back
-	};
-
-
-
-
+	R_D3D11Context r; 
+	RendererInit(&r, window);
 
 
 	//~
@@ -1905,53 +2112,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		D3D11_SUBRESOURCE_DATA index_data = { indicies };
 		r.device->CreateBuffer(&index_descriptor, &index_data, &index_buffer);
 	}
-
+	
+	
+	// Vertex Shader Fromat Descriptor
+	const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
+		{ "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "Texture",  0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(struct Vertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	
 	// Create Vertex And Pixel Shaders
 	ID3D11InputLayout  *layout = NULL;
 	ID3D11VertexShader *vshader = NULL;
 	ID3D11PixelShader  *pshader = NULL;
-	{
-
-		// Vertex Shader Fromat Descriptor
-		const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
-			{ "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "Texture",  0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(struct Vertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 }
-		};
-
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompileFromFile(L"../shaders.hlsl", NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile vertex shader!");
-		}
-		r.device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
-
-		r.device->CreateInputLayout(vs_input_desc, ARRAYSIZE(vs_input_desc),
-									vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
-
-
-		ID3DBlob *pblob;
-		hr = D3DCompileFromFile(L"../shaders.hlsl", NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile pixel shader!");
-		}
-		r.device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
-
-		vblob->Release();
-		pblob->Release();
-	}
-
+	RendererD3D11GetShaders(&r, &vshader, L"../shaders.hlsl",
+							&pshader, L"../shaders.hlsl",
+							&layout, vs_input_desc, ARRAYSIZE(vs_input_desc));
+	
+	
 	struct VSConstantBuffer {
 		matrix transform;
 		matrix projection;
@@ -2042,14 +2220,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Main Game Loop
 	//
 
-	LONG curr_width = window_width, curr_height = window_height;
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
-
 	r.viewport = &viewport;
-
 
 	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 
@@ -2116,7 +2291,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		// Handle window resize
-		resized_dirty = 0;
+		r.dirty = 0;
 		
 		RECT rect;
 		GetClientRect(window, &rect);
@@ -2218,32 +2393,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				0, n * f / (n - f), 0
 			};
 
-
 			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = projection;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-
-			D3D11_MAPPED_SUBRESOURCE mapped;
-			r.context->Map((ID3D11Resource *)cbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-			memcpy(mapped.pData, &vs_cbuf, sizeof(vs_cbuf));
-			r.context->Unmap((ID3D11Resource *)cbuffer, 0);
-
+			RendererD3D11UpdateBuffer(&r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
+			
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
-
-			D3D11_MAPPED_SUBRESOURCE ps_mapped;
-			r.context->Map((ID3D11Resource *)ps_constant_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ps_mapped);
-			memcpy(ps_mapped.pData, &ps_cbuf, sizeof(ps_cbuf));
-			r.context->Unmap((ID3D11Resource *)ps_constant_buffer, 0);
+			RendererD3D11UpdateBuffer(&r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
+			
 		}
-
+		
+		// clear background
+		r.context->ClearRenderTargetView(r.frame_buffer_view, background_color);
+		
 		// Draw Entity
 		{
-            r.context->ClearRenderTargetView(r.frame_buffer_view, background_color);
             r.context->ClearDepthStencilView(r.zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
             // Input Assembler
@@ -2284,9 +2453,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
 
-		input.mouse.px = mouse_pos[0];
-		input.mouse.py = height-mouse_pos[1];
-
 		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
 
 
@@ -2306,13 +2472,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// UIPopParent();
 		// UIEnd(); // here is the layout&rendering passes
 
-
+		
+		input.mouse.px = mouse_pos[0];
+		input.mouse.py = mouse_pos[1];
+		
+		
 		UIBegin(&ui);
 		UI_Layout layout_t = {
 			UI_AXIS2_X,
 			{
-				{ UI_SIZEKIND_PIXELS, 100.f, 1.f },
-                { UI_SIZEKIND_PIXELS, 100.f, 1.f }
+				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
+                { UI_SIZEKIND_TEXTCONTENT,  0.f, 1.f }
 			},
 		};
 
@@ -2337,9 +2507,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 
 
-
-
-
 		// ===== RendererEndFrame
 
 		// present the backbuffer to the screen
@@ -2359,7 +2526,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 
 
-	//~
+	//
 	// Release resources
 	//
 
@@ -2372,168 +2539,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	layout->Release();
 	pshader->Release();
 	vshader->Release();
-
-	r.device->Release();
-	r.context->Release();
-	r.swap_chain->Release();
-	r.frame_buffer_view->Release();
-	r.depth_stencil_state->Release();
-	r.zbuffer->Release();
-	r.zbuffer_texture->Release();
-	r.rasterizer_cull_back->Release();
-
+	
+	UIDeInit(&ui);
+	RendererDeInit(&r);
+	
 	return 0;
 }
-
-/*
-
-//~
-// Text Data
-//
-
-// Font Constant Buffer
-ID3D11Buffer* font_constant_buffer;
-{
-	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
-	float font_constant_data[4] = {
-		2.0f / window_width,
-		-2.0f / window_height,
-		1.0f / ATLAS_WIDTH,
-		1.0f / ATLAS_HEIGHT
-	};
-
-	D3D11_BUFFER_DESC constant_buffer_desc = {};
-	constant_buffer_desc.ByteWidth = sizeof(font_constant_data) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
-	constant_buffer_desc.Usage     = D3D11_USAGE_IMMUTABLE; // constant buffer doesn't need updating in this example
-	constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-
-	D3D11_SUBRESOURCE_DATA font_data = { font_constant_data };
-	device->CreateBuffer(&constant_buffer_desc, &font_data, &font_constant_buffer);
-}
-
-// Texture Atlas
-ID3D11ShaderResourceView* atlas_resource_view;
-{
-    D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
-    texture_atlas_desc.Width             = ATLAS_WIDTH;
-    texture_atlas_desc.Height            = ATLAS_HEIGHT;
-    texture_atlas_desc.MipLevels         = 1;
-    texture_atlas_desc.ArraySize         = 1;
-    texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
-    texture_atlas_desc.SampleDesc.Count  = 1;
-    texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
-    texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
-
-    D3D11_SUBRESOURCE_DATA atlas_data = {};
-    atlas_data.pSysMem     = atlas;
-    atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
-
-    ID3D11Texture2D* atlas_texture;
-    device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
-	device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
-	atlas_texture->Release();
-}
-
-#define MAX_SPRITES 4096
-struct int2 {
-	int x, y;
-};
-struct Sprite {
-	int2 screen_pos, size, atlas_pos;
-};
-
-// Sprite Buffer
-ID3D11Buffer* sprite_buffer;
-ID3D11ShaderResourceView* sprite_resource_view;
-{
-    D3D11_BUFFER_DESC sprite_buffer_desc = {};
-    sprite_buffer_desc.ByteWidth           = MAX_SPRITES * sizeof(Sprite);
-    sprite_buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
-    sprite_buffer_desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
-    sprite_buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
-    sprite_buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // Structured Buffer contains elements of equal size. Inside the shader you can access members using an index
-    sprite_buffer_desc.StructureByteStride = sizeof(Sprite);
-    device->CreateBuffer(&sprite_buffer_desc, NULL, &sprite_buffer);
-
-	// A shader resource view wraps textures in a format that the shaders can access them
-    D3D11_SHADER_RESOURCE_VIEW_DESC sprite_shader_resource_view_desc = {};
-    sprite_shader_resource_view_desc.Format             = DXGI_FORMAT_UNKNOWN;
-    sprite_shader_resource_view_desc.ViewDimension      = D3D11_SRV_DIMENSION_BUFFER; // indicates the resource is a buffer
-    sprite_shader_resource_view_desc.Buffer.NumElements = MAX_SPRITES;
-	device->CreateShaderResourceView(sprite_buffer, &sprite_shader_resource_view_desc, &sprite_resource_view);
-}
-
-// Point Sampler
-ID3D11SamplerState* font_sampler;
-{
-    D3D11_SAMPLER_DESC font_sampler_desc = {};
-    font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-    font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
-    device->CreateSamplerState(&font_sampler_desc, &font_sampler);
-}
-
-// Vertex And Pixel Shaders
-ID3D11VertexShader* font_vshader;
-ID3D11PixelShader* font_pshader;
-{
-	ID3DBlob *vblob, *pblob;
-    D3DCompileFromFile(L"../font.hlsl", nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vblob, nullptr);
-    device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), nullptr, &font_vshader);
-    D3DCompileFromFile(L"../font.hlsl", nullptr, nullptr, "ps", "ps_5_0", 0, 0, &pblob, nullptr);
-	device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), nullptr, &font_pshader);
-	pblob->Release();
-	vblob->Release();
-}
-
-Sprite* sprite_batch = (Sprite*)(HeapAlloc(GetProcessHeap(), 0, MAX_SPRITES * sizeof(Sprite)));
-
-
-
-//~
-// Render Text
-//
-
-int sprite_count = 0;
-Sprite sprite = { 100, 100, ATLAS_WIDTH / CHARACTER_COUNT, ATLAS_HEIGHT }; // screen_pos, size
-char *text = (char *)"";
-while (*text)
-{
-	sprite.atlas_pos.x = (*text++ - ' ') * sprite.size.x;
-	sprite_batch[sprite_count++] = sprite;
-	sprite.screen_pos.x += sprite.size.x + 1;
-}
-
-D3D11_MAPPED_SUBRESOURCE sprite_mapped;
-context->Map(sprite_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &sprite_mapped);
-memcpy(sprite_mapped.pData, sprite_batch, sprite_count * sizeof(Sprite));
-context->Unmap(sprite_buffer, 0);
-
-context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-
-context->VSSetShader(font_vshader, NULL, 0);
-context->VSSetShaderResources(0, 1, &sprite_resource_view);
-context->VSSetConstantBuffers(0, 1, &font_constant_buffer);
-
-context->RSSetViewports(1, &viewport);
-
-context->PSSetShader(font_pshader, NULL, 0);
-context->PSSetShaderResources(1, 1, &atlas_resource_view);
-context->PSSetSamplers(0, 1, &font_sampler);
-
-context->OMSetRenderTargets(1, &frame_buffer_view, NULL);
-context->DrawInstanced(4, sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
-
-
-font_pshader->Release();
-font_vshader->Release();
-font_sampler->Release();
-font_constant_buffer->Release();
-atlas_resource_view->Release();
-sprite_resource_view->Release();
-sprite_buffer->Release();
-
-*/
