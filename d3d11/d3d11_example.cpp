@@ -423,6 +423,28 @@ InputInitialize(HWND window) {
 
 }
 
+static void
+InputShutdown() {
+	
+	// Rawinput
+	{
+		RAWINPUTDEVICE Rid[1];
+		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+		Rid[0].hwndTarget = 0;
+		
+		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
+		{
+			//registration failed. Call GetLastError for the cause of the error.
+			FatalError("Couldn't register a mouse\n");
+		}
+	}
+	
+	
+}
+
+
 static bool
 InputUpdate(LPARAM lparam) {
 
@@ -444,18 +466,17 @@ InputUpdate(LPARAM lparam) {
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
 
 		Mouse mouse = g_raw_input_state.mouse;
-		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
 			int delta_m = (int)raw->data.mouse.usButtonData;
 			//printf("wheel: %d\n", delta_m);
 
-			mouse.px += raw->data.mouse.lLastX;
-            mouse.py += raw->data.mouse.lLastY;
+			mouse.px = raw->data.mouse.lLastX;
+		mouse.py = raw->data.mouse.lLastY;
+		
             if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
                 mouse.wy += (int)raw->data.mouse.usButtonData;
             }
-		}
-
-		int buttons = 0;
+		
+		int buttons = mouse.buttons;
 		switch (raw->data.mouse.ulButtons) {
 			case RI_MOUSE_BUTTON_1_DOWN: buttons |= MouseLeftButton; break;
 			case RI_MOUSE_BUTTON_1_UP:   buttons &= ~MouseLeftButton; break;
@@ -475,27 +496,6 @@ InputUpdate(LPARAM lparam) {
 
 static Game_Input InputGetState() {
 	return g_raw_input_state;
-}
-
-static void
-InputShutdown() {
-
-	// Rawinput
-	{
-		RAWINPUTDEVICE Rid[1];
-		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
-		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
-		Rid[0].hwndTarget = 0;
-
-		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
-		{
-			//registration failed. Call GetLastError for the cause of the error.
-			FatalError("Couldn't register a mouse\n");
-		}
-	}
-
-
 }
 
 #if 0
@@ -2261,7 +2261,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
-
+	c.yaw = 3.14f/2;
+	
 	Game_Input input = {0};
 	UI_Context ui = {0};
 	UIInit(&ui, &r, &input);
@@ -2344,8 +2345,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		key_tab_pressed = false;
 
-
-
+		if (show_free_camera) {
+			SetCursorPos(window_width/2, window_height/2);
+		}
+		
+		
 
 		//~
 		// Update Game State
@@ -2355,9 +2359,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float speed = 5;
 		end_frame = Time();
 		float dt = (float)(end_frame - start_frame);
-		float dx = (float)(mouse_pos[0] - last_mouse_pos[0]);
-		float dy = (float)(last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
-
+		float dx = (float)input.mouse.px; // (mouse_pos[0] - last_mouse_pos[0]);
+		float dy = (float)-input.mouse.py; // (last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+		
+		g_raw_input_state.mouse.px = 0;
+		g_raw_input_state.mouse.py = 0;
+		
+		printf("dx, dy %f, %f\n", dx, dy);
+		
 		for (int i = 0; i < 4; i++) {
 			dx += input.gamepads[i].right_thumbstick_x*speed;
 			dy += input.gamepads[i].right_thumbstick_y*speed;
@@ -2374,8 +2383,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (width == 0 && height == 0) {
 			Sleep(16); continue;
 		}
-
-
+		
+		
 		//~
 		// Render Game
 		//
@@ -2482,7 +2491,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			UI_AXIS2_X,
 			{
 				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
-                { UI_SIZEKIND_TEXTCONTENT,  0.f, 1.f }
+                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
 
