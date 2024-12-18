@@ -86,8 +86,8 @@ typedef int     b32;
 
 // ==================== Goals for today ========================
 // [ ] theme - uploaded to gpu once, rendered using it
-// [ ] finally make the push-pop utilities for higherarchy building
-// [ ] use text as id (meaning I need more than just the text itself, I also would need loc..)
+// [x] finally make the push-pop utilities for higherarchy building
+// [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
 // [ ] make widget allocator smarter
 //
 // [ ] font rendering (text displayed on screen) 
@@ -390,7 +390,7 @@ static Game_Input g_raw_input_state;
 
 // In the RawInput API you must register the devices you
 // want to get data from. Then you can poll for data which
-// happens from WM_INPUT
+// happens from WM_INPUT 
 //
 // By default no application recieves rawinput. You must
 // register the device to begin recieving rawinput.
@@ -1183,11 +1183,13 @@ RendererD3D11GetShaders(R_D3D11Context *r,
 
 static void
 RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, unsigned int data_size) {
-	Assert(r && buff && data && data_size); 
+	Assert(r && buff && data); 
+	if (data_size > 0) {
 	D3D11_MAPPED_SUBRESOURCE mapped;
 	r->context->Map((ID3D11Resource *)buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 	memcpy(mapped.pData, data, data_size);
-	r->context->Unmap((ID3D11Resource *)buff, 0);
+		r->context->Unmap((ID3D11Resource *)buff, 0);
+	}
 }
 
 
@@ -1269,7 +1271,8 @@ struct UI_Widget {
 	
 	u32 flags; 
 	char *text; // this will serve as an id for the time being
-
+	s64 id;
+	
 	UI_Layout layout;
 
 	UI_Widget *parent;
@@ -1284,14 +1287,13 @@ struct UI_Widget {
 
 typedef int UI_Widget_Handle;
 
-typedef struct UIDrawBox { // a draw box that I send to the gpu to draw
+typedef struct UI_DrawBox { // a draw box that I send to the gpu to draw
 	Rect rect; 
 	u32 flags;
-} UIDrawBox; 
+} UI_DrawBox; 
 
 #define WIDGETS_COUNT 0x100
-
-typedef struct s s;
+#define MAX_WIDGET_STACK_SIZE 1
 
 typedef struct {
 	Game_Input *input;
@@ -1310,7 +1312,7 @@ typedef struct {
 	// UI Drawing
 	//
 	
-	UIDrawBox boxs[WIDGETS_COUNT];
+	UI_DrawBox boxs[WIDGETS_COUNT];
 	int boxs_idx;
 	
 	R_D3D11Context *r;
@@ -1332,6 +1334,10 @@ typedef struct {
 	
 	Sprite sprites[MAX_SPRITES];
 	int sprite_count;
+	
+	
+	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
+	int stack_idx;
 	
 } UI_Context;
 
@@ -1380,7 +1386,7 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 static UI_Widget *
 UIBuildLayout(UI_Context *ui, int  axis) {
     Assert(0 < ui->last); // there must be more than one widget to layout
-    UI_Widget *head = &ui->widgets[0];
+    UI_Widget *head = ui->head_widget;
 	UI_Widget *temp = head;
     for (; temp; temp = temp->next) {
 		UIBuildLayoutDown(temp, axis);
@@ -1400,12 +1406,14 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
+		if (head->flags & UI_DRAWTEXT) {
 		Sprite sprite = { (int)head->computed_rel_pos[0]+5, (int)head->computed_rel_pos[1]+5, ATLAS_WIDTH / CHARACTER_COUNT, ATLAS_HEIGHT}; // screen_pos, size
 		char *text = head->text;
 		while (*text) {
 			sprite.atlas_pos.x = (*text++ - ' ') * sprite.size.x ;
 		ui->sprites[ui->sprite_count++] = sprite;
 			sprite.screen_pos.x += sprite.size.x*1 + 1;
+		}
 		}
 		
 		if (head->flags >= UI_DRAWBOX) { // has something to draw
@@ -1612,7 +1620,7 @@ UIEnd(UI_Context *ui) {
 	
 // layout
 	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(ui, axis); }
-	UIBuildLayoutFinalRect(ui, &ui->widgets[0]);
+	UIBuildLayoutFinalRect(ui, ui->head_widget);
 	
 	//
 	// darwing
@@ -1625,7 +1633,7 @@ UIEnd(UI_Context *ui) {
 		RendererD3D11UpdateBuffer(r, ui->widget.buffers[0], ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0])); 
 		if (r->dirty) { // if reisized update window constants
 			float widgets_constants[4] = {1.f/(float)window_width,1.f/(float)window_height, (float)window_height*1.f};
-			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants));
+			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants)*1);
 		}
 		
 		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
@@ -1673,75 +1681,97 @@ UIEnd(UI_Context *ui) {
 
 
 static UI_Widget *
-UIGetWidget(UI_Context *ui) {
+UIGetWidget(UI_Context *ui, s64 id) {
     // TODO(ziv): Make the allocator smarter
     // have the ability to free up widgets, and
     // allocate inside free node space.
-    if (0 <= ui->last && ui->last < WIDGETS_COUNT) {
-        return &ui->widgets[ui->last++];
-    }
-    else {
-        Assert(!"Can not allocate more nodes");
-        return NULL;
-    }
+	ui->last++;
+	UI_Widget *widget = &ui->widgets[id];
+	widget->id = id;
+	if (!widget->text) return widget; 
+	while (widget->text)  widget = &ui->widgets[id++]; 
+	
+	widget = &ui->widgets[id-1];
+	widget->id = id-1;
+	return widget;
+}
+
+static s64 GenHashFronString(s64 seed, char *text) {
+	s64 hash = seed;
+	for (; *text++; ) {
+		hash ^= text[0]*seed;
+		hash <<= text[0] & 0xf;
+	}
+	return hash;
 }
 
 static b32
 UIStrCmp(char *s1, char *s2) {
-    while (*s2 && *s1 && *s2++ == *s1++);
+    if (s1 == NULL || s2 == NULL) return 0;
+	while (*s2 && *s1 && *s2++ == *s1++);
     if (s2[-1] == s1[-1]) {
         return 1;
     }
     return 0;
 }
 
+static void
+UIPushParent(UI_Context *ui, UI_Widget *parent) {
+	
+	if (ui->stack_idx < MAX_WIDGET_STACK_SIZE) {
+		ui->stack[ui->stack_idx++] = parent;
+	}
+	else {
+		char message[0x100];
+		sprintf(message, "%s:(%d) UIPushParent stack size is insufficient or UIPopParent not used.", __FILE__, __LINE__);
+		FatalError(message);
+	}
+	
+}
+
+static inline UI_Widget *
+UIPopParent(UI_Context *ui) {
+	return ui->stack[--ui->stack_idx];
+}
+
+static inline UI_Widget *
+UIGetParent(UI_Context *ui) { 
+	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : ui->stack[0];
+}
+
+
 static UI_Widget *
-UIBuildWidget(UI_Context *ui, UI_Widget *parent, char *text, u32 flags) {
+UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
     Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
-
-    // TODO(ziv): Use hashes? Put everything inside a hash table to
-    // accelerate lookups of nodes inside the graph and do less work
-
-    // Find the widget inside the graph
-    UI_Widget *match = NULL;
-    if (parent && parent->child) {
-        // Reasonable to expect it to be one of the parents children
-        UI_Widget *child = parent->child;
-        for (; child; child = child->next) {
-            if (UIStrCmp(text, child->text)) {
-                match = child;
-                break;
-            }
-        }
-    }
-    else {
-        // It could be a parent itself
-        UI_Widget *head = &ui->widgets[0];
-		UI_Widget *temp = head;
-		for (; temp; temp = temp->next) {
-			if (temp->text && UIStrCmp(text, temp->text)) {
-                match = temp;
-                break;
-            }
-        }
-    }
-
-    if (match) {
-        return match;
-    }
-
-
+	
+	//
+	// Get entry fron hashmap
+	//
+	
+	s64 id = GenHashFronString(234982374, text); 
+	UI_Widget *entry = NULL;
+	do {
+		entry = &ui->widgets[id++ & (WIDGETS_COUNT-1)];
+	} while(!UIStrCmp(text, entry->text) && entry->text);
+	id--;
+	if (UIStrCmp(text, entry->text)) {
+		return entry;
+	}
+	
+	
     //
     // Create and add the widget to the graph
     //
-
-    UI_Widget *widget = UIGetWidget(ui);
+	
+	UI_Widget *parent = UIGetParent(ui);
+	
+    UI_Widget *widget = UIGetWidget(ui, id & (WIDGETS_COUNT-1));
     widget->parent = parent;
     widget->child = NULL;
     widget->next = NULL;
     widget->flags = flags;
 	widget->text = text;
-
+	
     // Push widget into hierarchy
     if (parent) {
         // connect to parents children
@@ -1816,18 +1846,20 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 
 static UI_Widget *
 UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, char *text, u32 flags) {
-	UI_Widget *widget = UIBuildWidget(ui, NULL, text, flags);
+	UI_Widget *widget = UIBuildWidget(ui, text, flags);
 	widget->layout = layout;
 	widget->computed_rel_pos[UI_AXIS2_X] = (float)x;
 	widget->computed_rel_pos[UI_AXIS2_Y] = (float)y;
 	return widget;
 }
 
-static bool
-UIButton(UI_Context *ui, UI_Widget *parent, char *text) {
 
-	UI_Widget *widget = UIBuildWidget(ui, parent, text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_DRAWTEXT);
+static bool
+UIButton(UI_Context *ui, char *text) {
+	
+	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_DRAWTEXT);
 	// TODO(ziv): move this
+	UI_Widget *parent = UIGetParent(ui);
 	if (parent) widget->layout = parent->layout;
 	
 	UI_Output output = UIInteractWidget(ui, widget);
@@ -1837,9 +1869,9 @@ UIButton(UI_Context *ui, UI_Widget *parent, char *text) {
 
 
 static UI_Widget *
-UILayout(UI_Context *ui, UI_Widget *parent, UI_Layout layout, char *text) {
+UILayout(UI_Context *ui, UI_Layout layout, char *text) {
     Assert(ui);
-	UI_Widget *widget = UIBuildWidget(ui, parent, text, 0);
+	UI_Widget *widget = UIBuildWidget(ui, text, 0);
 	widget->layout = layout;
     return widget;
 }
@@ -2365,7 +2397,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		g_raw_input_state.mouse.px = 0;
 		g_raw_input_state.mouse.py = 0;
 		
-		printf("dx, dy %f, %f\n", dx, dy);
 		
 		for (int i = 0; i < 4; i++) {
 			dx += input.gamepads[i].right_thumbstick_x*speed;
@@ -2485,8 +2516,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.px = mouse_pos[0];
 		input.mouse.py = mouse_pos[1];
 		
-		
-		UIBegin(&ui);
 		UI_Layout layout_t = {
 			UI_AXIS2_X,
 			{
@@ -2494,24 +2523,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
-
-		UI_Widget *layout = UILayout(&ui, NULL, layout_t, "YO");
-		bool clicked = UIButton(&ui, layout, "HELLOW1");
-        if (clicked) {
-            printf("button clicked1\n");
-		}
 		
-		clicked = UIButton(&ui, layout, "HELLOW2");
+		UIBegin(&ui);
+		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
+		
+		bool clicked = UIButton(&ui,"Tab 1");
+        if (clicked) { printf("button clicked1\n"); }
+		clicked = UIButton(&ui,  "Tab 2");
         if (clicked) { printf("button clicked2\n"); }
-		clicked = UIButton(&ui, layout, "HELLOW3");
+		clicked = UIButton(&ui, "Tab 3");
         if (clicked) { printf("button clicked3\n"); }
-		clicked = UIButton(&ui, layout, "HELLOW4");
+		clicked = UIButton(&ui, "Tab 4");
         if (clicked) { printf("button clicked4\n"); }
-		clicked = UIButton(&ui, layout, "HELLOW5");
+		clicked = UIButton(&ui, "Tab 5");
         if (clicked) { printf("button clicked5\n"); }
-		clicked = UIButton(&ui, layout, "HELLOW6");
+		clicked = UIButton(&ui, "Tab 6");
         if (clicked) { printf("button clicked6\n"); } 
 		
+		UIPopParent(&ui);
 		UIEnd(&ui);
 
 
