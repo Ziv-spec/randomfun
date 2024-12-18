@@ -1723,7 +1723,7 @@ UIPushParent(UI_Context *ui, UI_Widget *parent) {
 	}
 	else {
 		char message[0x100];
-		sprintf(message, "%s:(%d) UIPushParent stack size is insufficient or UIPopParent not used.", __FILE__, __LINE__);
+		sprintf(message, "%s:(%d) UIPushParent %d stack size is insufficient or UIPopParent not used.", __FILE__, __LINE__, MAX_WIDGET_STACK_SIZE);
 		FatalError(message);
 	}
 	
@@ -2525,6 +2525,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		};
 		
 		UIBegin(&ui);
+		
+		
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		
 		bool clicked = UIButton(&ui,"Tab 1");
