@@ -98,7 +98,7 @@ typedef int     b32;
 //   [ ] add support for border/no-border
 //   [ ] add support for rounded corners
 // [ ] restucture and make better input handling?
-// [ ] implement fullscreen alt+enter ?
+// [x] implement fullscreen alt+enter
 // 
 */
 
@@ -310,7 +310,7 @@ get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 #endif
 }
 
-//
+//~
 // Time
 //
 
@@ -330,7 +330,41 @@ Time() {
 	return (double)time.QuadPart * g_inv_freq;
 }
 
+//~
+// Win32 
+//
 
+static WINDOWPLACEMENT g_previous_window_placement = { sizeof(g_previous_window_placement) };
+
+static  void 
+ToggleFullScreen(HWND window)
+{
+	// NOTE(ziv): Code taken from raymond chen blog post
+	// https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+	
+	DWORD style = GetWindowLong(window, GWL_STYLE);
+	if (style & WS_OVERLAPPEDWINDOW) {
+		MONITORINFO monitor_info = { sizeof(monitor_info) };
+		if (GetWindowPlacement(window, &g_previous_window_placement) &&
+			GetMonitorInfo(MonitorFromWindow(window,
+											 MONITOR_DEFAULTTOPRIMARY), &monitor_info)) {
+			SetWindowLong(window, GWL_STYLE,
+						  style & ~WS_OVERLAPPEDWINDOW);
+			SetWindowPos(window, HWND_TOP,
+						 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+						 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+						 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+						 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+		}
+	} else {
+		SetWindowLong(window, GWL_STYLE,
+					  style | WS_OVERLAPPEDWINDOW);
+		SetWindowPlacement(window, &g_previous_window_placement);
+		SetWindowPos(window, NULL, 0, 0, 0, 0,
+					 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+	}
+}
 
 //~
 // Input
@@ -665,6 +699,13 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
 
 			if (wparam == VK_TAB) { key_tab = true; }
+			
+			// NOTE(ziv): Implemented currently as alt+enter combination
+			// which is the windows default for toggling to fullscreen
+			if (wparam == VK_RETURN && (lparam & (1<<29))) {
+				ToggleFullScreen(window); 
+			}
+			
 		} break;
 
 		case WM_KEYUP:
@@ -2067,9 +2108,6 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 	*v_cnt = idx;
 	return true;
 }
-
-
-
 
 #ifdef _DEBUG
 int main()
