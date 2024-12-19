@@ -1262,8 +1262,6 @@ static Color DARKRED = { .6f, .1f, .1f, 1};
 #define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
 #define DARKGRAY   Color{ 80.f/255.f, 80.f/255.f, 80.f/255.f, 255.f/255.f}
 
-
-
 typedef struct { float minx, miny, maxx, maxy; } Rect;
 
 typedef enum {
@@ -1286,7 +1284,7 @@ enum UI_SizeKind {
 	UI_SIZEKIND_PIXELS, // size in pixels
 	UI_SIZEKIND_TEXTCONTENT, // figure out text size
 
-	// TODO(xiv): think whether it is worthwhile to implement these features:
+	// TODO(ziv): think whether it is worthwhile to implement these features:
 	UI_SIZEKIND_PERCENTOFPARENT, // take some percentage of parent
 	UI_SIZEKIND_CHILDRENSUM,     // use the sum sizing of children
 };
@@ -1356,9 +1354,15 @@ typedef struct {
 	
 	// NOTE(ziv): widget[0] will default to the first widget built
     UI_Widget widgets[WIDGETS_COUNT];
-	UI_Widget *head_widget;
+	UI_Widget head_widget;
 	UI_Widget_Handle last;
     UI_Widget *hot, *active;
+	
+	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
+	int stack_idx;
+	
+	UI_Theme theme;
+	b32 dirty;
 	
 	//
 	// UI Drawing
@@ -1386,17 +1390,10 @@ typedef struct {
 	
 	Sprite sprites[MAX_SPRITES];
 	int sprite_count;
-	
-	
-	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
-	int stack_idx;
-	
-	UI_Theme theme;
-	
 } UI_Context;
 
 static void
-UIBuildLayoutDown(UI_Widget *widget, int axis) {
+UIBuildLayout(UI_Widget *widget, int axis) {
 	
 	if (!widget) return;
 	
@@ -1416,7 +1413,12 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 		case UI_SIZEKIND_PERCENTOFPARENT: {
 			Assert(widget->parent);
 			// NOTE(ziv): I assume the value to already be present
-			widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
+			if (widget->flags) {
+				widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
+			}
+			else {
+				widget->computed_size[axis] = widget->parent->computed_size[axis];
+			}
 		} break;
 		
 		case UI_SIZEKIND_CHILDRENSUM: FatalError("unimplemneted line 1367"); break;
@@ -1445,22 +1447,10 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 	
 	UI_Widget *child = widget->child;
 	for (; child; child = child->next) {
-		UIBuildLayoutDown(child, axis);
+		UIBuildLayout(child, axis);
 	}
 	
 }
-
-static UI_Widget *
-UIBuildLayout(UI_Context *ui, int  axis) {
-    Assert(0 < ui->last); // there must be more than one widget to layout
-    UI_Widget *head = ui->head_widget;
-	UI_Widget *temp = head;
-    for (; temp; temp = temp->next) {
-		UIBuildLayoutDown(temp, axis);
-	}
-	return head;
-}
-
 
 static void
 UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
@@ -1503,8 +1493,9 @@ static void
 UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->input = input;
 	ui->r = r;
-	ui->head_widget = NULL;
-	
+	ui->head_widget = {0};
+	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
+	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
 	
 	// 
 	// Widgets
@@ -1676,6 +1667,7 @@ static void
 	ui->widget.pshader->Release(); 
 	ui->widget.buffers[0]->Release(); 
 	ui->widget.buffers[1]->Release(); 
+	ui->widget.buffers[2]->Release(); 
 	ui->widget.srv[0]->Release(); 
 	
 ui->font.pshader->Release();
@@ -1704,8 +1696,8 @@ UIEnd(UI_Context *ui) {
 	Assert(ui && ui->r);
 	
 // layout
-	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(ui, axis); }
-	UIBuildLayoutFinalRect(ui, ui->head_widget);
+	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(&ui->head_widget, axis); }
+	UIBuildLayoutFinalRect(ui, &ui->head_widget);
 	
 	//
 	// darwing
@@ -1716,7 +1708,9 @@ UIEnd(UI_Context *ui) {
 	// Draw Widgets
 	  {
 		RendererD3D11UpdateBuffer(r, ui->widget.buffers[0], ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0])); 
+		if (ui->dirty) {
 		RendererD3D11UpdateBuffer(r, ui->widget.buffers[2], &ui->theme, sizeof(ui->theme)); 
+		}
 		if (r->dirty) { // if reisized update window constants
 			float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants)*1);
@@ -1873,15 +1867,19 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
 
     }
     else {
-        // make this the first node
-        if (ui->head_widget) {
-            widget->next = ui->head_widget;
-            ui->head_widget->last = widget;
-        }
-        else {
-            ui->head_widget = widget;
-        }
-
+        Assert(&ui->head_widget);
+		
+		widget->parent = &ui->head_widget;
+		if (ui->head_widget.child) {
+			widget->next = ui->head_widget.child;
+			ui->head_widget.child->last = widget;
+		}
+		else {
+			ui->head_widget.child = widget;
+		}
+		
+		 
+		
     }
 
     return widget;
@@ -2384,8 +2382,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	UI_Context ui = {0};
 	ui.theme = { 
-		GRAY, 
-		LIGHTGRAY, 
+		{ 0.05f, 0.1f, .2f, 1}, 
+		{ 0.1f, 0.15f, .3f, 1}, 
 		GRAY,  
 		3
 	};
@@ -2611,7 +2609,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UI_Layout layout_t = {
 			UI_AXIS2_Y,
 			{
-				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
+				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
@@ -2619,16 +2617,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UI_Layout rect_layout = {
 			UI_AXIS2_X,
 			{
-				{ UI_SIZEKIND_PIXELS, 500.f, 1.f },
+				{ UI_SIZEKIND_PIXELS, 300.f, 1.f },
                 { UI_SIZEKIND_PIXELS, 100.f, 1.f }
 			},
 		};
 		
 		UIBegin(&ui);
 		
-		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 100, 100, "none", UI_DRAWBOX));
+		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
-		
 		bool clicked = UIButton(&ui,"Tab 1");
         if (clicked) { printf("button clicked1\n"); }
 		clicked = UIButton(&ui,  "Tab 2");
@@ -2641,7 +2638,16 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         if (clicked) { printf("button clicked5\n"); }
 		clicked = UIButton(&ui, "Tab 6");
         if (clicked) { printf("button clicked6\n"); } 
+		UIPopParent(&ui);
+		UIPopParent(&ui);
 		
+		rect_layout.axis = UI_AXIS2_X; 
+		layout_t.axis    = UI_AXIS2_X;
+		layout_t.semantic_size[UI_AXIS2_X] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT, 0.5f, 1.f};
+		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "tab2234", UI_DRAWBOX));
+		UIPushParent(&ui, UILayout(&ui, layout_t, "YO0234")); 
+		clicked = UIButton(&ui,"Tab 7");
+		clicked = UIButton(&ui,"Tab 8");
 		UIPopParent(&ui);
 		UIPopParent(&ui);
 		
