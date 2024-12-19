@@ -1,6 +1,4 @@
 
-#define FAT_PIXEL_SIZE 1
-
 cbuffer constants : register(b0)
 {
     float2 rn_screensize;
@@ -11,8 +9,8 @@ cbuffer constants : register(b0)
 
 struct sprite
 {
-    int2 screenpos;
-    int2 size;
+    float2 screenpos;
+    float2 size;
     int2 atlaspos;
 };
 
@@ -37,8 +35,8 @@ pixel vs_main(uint spriteid : SV_INSTANCEID, uint vertexid : SV_VERTEXID)
 {
     sprite spr = spritebuffer[spriteid];
 
-    float4 pos = float4(spr.screenpos, spr.screenpos + spr.size * FAT_PIXEL_SIZE);
-    float4 tex = float4(spr.atlaspos,  spr.atlaspos  + spr.size);
+    float4 pos = float4(spr.screenpos, spr.screenpos + spr.size);
+    float4 tex = float4(spr.atlaspos,  spr.atlaspos  + float2(5, 7)); // known character size (5,7)
 
     uint2 i = { vertexid & 2, (vertexid << 1 & 2) ^ 3 };
 

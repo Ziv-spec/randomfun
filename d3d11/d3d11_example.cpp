@@ -1,4 +1,4 @@
-//#define COBJMACROS
+#define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
@@ -22,7 +22,6 @@
 #pragma comment(lib, "d3dcompiler")
 //#pragma comment(lib, "gameinput")
 
-#define DRAW_WIDGETS_SINGLE 0 // TODO(ziv): remove this
 #define APP_TITLE "D3D11 application!!!"
 
 // default starting width and height for the window
@@ -85,16 +84,22 @@ typedef int     b32;
 * [ ] Pixelated look
 
 // ==================== Goals for today ========================
-// [ ] theme - uploaded to gpu once, rendered using it
-// [x] finally make the push-pop utilities for higherarchy building
-// [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
-// [ ] make widget allocator smarter
+
 //
-// [ ] font rendering (text displayed on screen) 
-//  [x] make font stay same size on resize
-//  [x] buttons draw their font
-//  [ ] resizeable font
+// [ ] UI
+//   [x] finally make the push-pop utilities for higherarchy building
+//   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
+ //   [ ] theme - uploaded to gpu once, rendered using it
+//   [ ] make widget allocator smarter
+//   [ ] font rendering (text displayed on screen) 
+//    [x] make font stay same size on resize
+//    [x] buttons draw their font
+//    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
+//   [ ] add support for border/no-border
+//   [ ] add support for rounded corners
 // [ ] restucture and make better input handling?
+// [ ] implement fullscreen alt+enter ?
+// 
 */
 
 static void FatalError(const char* message)
@@ -150,21 +155,23 @@ const static UINT atlas[] = {
 	0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
 };
 
-typedef struct int2 {
-	int x, y;
-} int2;
+typedef struct int2 { int x, y; } int2;
+typedef struct float2 { float x, y; } float2;
 
 typedef struct Sprite {
-	int2 screen_pos, size, atlas_pos;
+	float2 screen_pos, size; 
+	int2 atlas_pos;
 } Sprite;
+
+#define FAT_PIXEL_SIZE 2.f
 
 static void
 TextSize(char *text, float *width, float *height) {
 	// TODO(ziv): implement dynamic font size?
 	u32 len = 0;
 	while (*text++) len++;
-	if (width) *width  = (float)(len * (ATLAS_WIDTH / CHARACTER_COUNT + 1));
-	if (height) *height = (float)(ATLAS_HEIGHT);
+	if (width) *width  = (float)(len * (ATLAS_WIDTH / CHARACTER_COUNT + 1)*FAT_PIXEL_SIZE);
+	if (height) *height = (float)(ATLAS_HEIGHT)*FAT_PIXEL_SIZE;
 }
 
 
@@ -413,13 +420,6 @@ InputInitialize(HWND window) {
 		}
 
 	}
-
-
-	// Gameinput
-	{
-
-	}
-
 
 }
 
@@ -1406,13 +1406,15 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
+		 float pad = 5; 
+		
 		if (head->flags & UI_DRAWTEXT) {
-		Sprite sprite = { (int)head->computed_rel_pos[0]+5, (int)head->computed_rel_pos[1]+5, ATLAS_WIDTH / CHARACTER_COUNT, ATLAS_HEIGHT}; // screen_pos, size
+			Sprite sprite = { head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
 		char *text = head->text;
 		while (*text) {
-			sprite.atlas_pos.x = (*text++ - ' ') * sprite.size.x ;
+				sprite.atlas_pos.x = (*text++ - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
 		ui->sprites[ui->sprite_count++] = sprite;
-			sprite.screen_pos.x += sprite.size.x*1 + 1;
+				sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
 		}
 		}
 		
@@ -2075,7 +2077,10 @@ int main()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
-
+			
+	
+	printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
+	
 	//~
 	// Win32 API Window Creation
 	//
@@ -2523,7 +2528,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
-		
+
 		UIBegin(&ui);
 		
 		
@@ -2539,12 +2544,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         if (clicked) { printf("button clicked4\n"); }
 		clicked = UIButton(&ui, "Tab 5");
         if (clicked) { printf("button clicked5\n"); }
-		clicked = UIButton(&ui, "Tab 6");
+		clicked = UIButton(&ui, "Tab 6, there is something that I would lvoe to show to you");
         if (clicked) { printf("button clicked6\n"); } 
 		
 		UIPopParent(&ui);
 		UIEnd(&ui);
-
 
 
 		// ===== RendererEndFrame
