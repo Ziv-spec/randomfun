@@ -89,13 +89,13 @@ typedef int     b32;
 // [ ] UI
 //   [x] finally make the push-pop utilities for higherarchy building
 //   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
- //   [ ] theme - uploaded to gpu once, rendered using it
+ //   [x] theme - uploaded to gpu once, rendered using it
 //   [ ] make widget allocator smarter
 //   [ ] font rendering (text displayed on screen) 
 //    [x] make font stay same size on resize
 //    [x] buttons draw their font
 //    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
-//   [ ] add support for border/no-border
+//   [x] add support for border/no-border
 //   [ ] add support for rounded corners
 // [ ] restucture and make better input handling?
 // [x] implement fullscreen alt+enter
@@ -1258,6 +1258,14 @@ static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
 static Color DARKRED = { .6f, .1f, .1f, 1};
 
+#define LIGHTGRAY  Color{ 200.f/255.f, 200.f/255.f, 200.f/255.f, 255.f/255.f }
+#define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
+#define DARKGRAY   Color{ 80.f/255.f, 80.f/255.f, 80.f/255.f, 255.f/255.f}
+
+
+
+typedef struct { float minx, miny, maxx, maxy; } Rect;
+
 typedef enum {
 	UI_CLICKABLE  = 1 << 0,  // can be clicked
     UI_SLIDERABLE = 1 << 1,  // slider property (also allows for mouse movement)
@@ -1266,10 +1274,6 @@ typedef enum {
     UI_DRAWTEXT   = 1 << 5,
 	UI_DRAWBORDER = 1 << 6, 
 } UI_Flags;
-
-typedef struct {
-	float minx, miny, maxx, maxy;
-} Rect;
 
 typedef struct {
 	bool clicked : 1;
@@ -1333,8 +1337,15 @@ typedef struct UI_DrawBox { // a draw box that I send to the gpu to draw
 	u32 flags;
 } UI_DrawBox; 
 
+typedef struct UI_Theme {
+	Color foreground_color;
+	Color hot_color;
+	Color active_color;
+	float border; // size
+} UI_Theme; 
+
 #define WIDGETS_COUNT 0x100
-#define MAX_WIDGET_STACK_SIZE 1
+#define MAX_WIDGET_STACK_SIZE 2
 
 typedef struct {
 	Game_Input *input;
@@ -1359,7 +1370,7 @@ typedef struct {
 	R_D3D11Context *r;
 	// widgets
 	struct {
-	ID3D11Buffer *buffers[2];
+	ID3D11Buffer *buffers[3];
     ID3D11VertexShader *vshader;
     ID3D11PixelShader *pshader;
 		ID3D11ShaderResourceView *srv[1];
@@ -1380,6 +1391,8 @@ typedef struct {
 	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
 	int stack_idx;
 	
+	UI_Theme theme;
+	
 } UI_Context;
 
 static void
@@ -1387,8 +1400,10 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 	
 	if (!widget) return;
 	
+	//
+	// Compute the final size 
+	// 
 	
-	// Figure out semantic sizing
 	UI_Layout *layout = &widget->layout;
 	switch (layout->semantic_size[axis].kind) {
 		case UI_SIZEKIND_NULL: break;
@@ -1407,11 +1422,22 @@ UIBuildLayoutDown(UI_Widget *widget, int axis) {
 		case UI_SIZEKIND_CHILDRENSUM: FatalError("unimplemneted line 1367"); break;
 	}
 	
+	//
+	// Compute the final relative position
+	// 
+	
 	if (widget->last) {
 		if (axis == widget->layout.axis) {
 			widget->computed_rel_pos[axis] = widget->last->computed_rel_pos[axis] + widget->last->computed_size[axis];
 		}
+		else {
+			widget->computed_rel_pos[axis] = widget->last->computed_rel_pos[axis];
+		}
 	}
+	else if (widget->parent) {
+		widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
+	}
+	
 	
 	if (!widget->child) {
 		return;
@@ -1461,7 +1487,7 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		
 		if (head->flags >= UI_DRAWBOX) { // has something to draw
 			ui->boxs[ui->boxs_idx].rect = head->rect;
-			ui->boxs[ui->boxs_idx].flags= head->flags;
+			ui->boxs[ui->boxs_idx].flags= (head->flags & (~(1<<4)-1)) | (head == ui->hot);
 			ui->boxs_idx++;
 		}
 		
@@ -1478,6 +1504,7 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->input = input;
 	ui->r = r;
 	ui->head_widget = NULL;
+	
 	
 	// 
 	// Widgets
@@ -1503,7 +1530,7 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
 	}
 
-	float widgets_constants[4] = {1.f/(float)window_width,1.f/(float)window_height,(float)window_height*1.f };
+	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 	ID3D11Buffer *cbuffer;
 	{
 
@@ -1516,6 +1543,20 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 		r->device->CreateBuffer(&desc, &data, &cbuffer);
 	}
 	
+	
+	
+	ID3D11Buffer *ps_theme_cbuffer; 
+	{ 
+		D3D11_BUFFER_DESC desc = {0}; 
+		desc.ByteWidth = sizeof(ui->theme) + 0xf & 0xfffffff0; 
+		desc.Usage = D3D11_USAGE_DYNAMIC; 
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; 
+		
+		D3D11_SUBRESOURCE_DATA data = {&ui->theme}; 
+		r->device->CreateBuffer(&desc, &data, &ps_theme_cbuffer); 
+	}
+	
 	ID3D11VertexShader *vshader = NULL;
 	ID3D11PixelShader *pshader = NULL;
 	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
@@ -1524,6 +1565,7 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	
 	ui->widget.buffers[0] = widgets_buffer;
 	ui->widget.buffers[1] = cbuffer;
+	ui->widget.buffers[2] = ps_theme_cbuffer;
 	ui->widget.pshader = pshader;
 	ui->widget.vshader = vshader;
 	ui->widget.srv[0]= widgets_resource_view;
@@ -1674,8 +1716,9 @@ UIEnd(UI_Context *ui) {
 	// Draw Widgets
 	  {
 		RendererD3D11UpdateBuffer(r, ui->widget.buffers[0], ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0])); 
+		RendererD3D11UpdateBuffer(r, ui->widget.buffers[2], &ui->theme, sizeof(ui->theme)); 
 		if (r->dirty) { // if reisized update window constants
-			float widgets_constants[4] = {1.f/(float)window_width,1.f/(float)window_height, (float)window_height*1.f};
+			float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants)*1);
 		}
 		
@@ -1685,12 +1728,12 @@ UIEnd(UI_Context *ui) {
 		r->context->VSSetConstantBuffers(0, 1, &ui->widget.buffers[1]);
 		r->context->RSSetViewports(1, r->viewport);
 		r->context->PSSetShader(ui->widget.pshader, NULL, 0);
+		r->context->PSSetConstantBuffers(0, 1, &ui->widget.buffers[2]); 
 		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 		r->context->DrawInstanced(4, ui->boxs_idx, 0, 0);
 	}
 	
 	// Draw Font
-	#if 1
 	{
 		
 		if (r->dirty) {
@@ -1719,7 +1762,6 @@ UIEnd(UI_Context *ui) {
 		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 		r->context->DrawInstanced(4, ui->sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 	}
-	#endif 
 }
 
 
@@ -1900,7 +1942,8 @@ UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, char *text, u32 fla
 static bool
 UIButton(UI_Context *ui, char *text) {
 	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_DRAWTEXT);
+	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX |  UI_DRAWTEXT  | UI_DRAWBORDER);
+	
 	// TODO(ziv): move this
 	UI_Widget *parent = UIGetParent(ui);
 	if (parent) widget->layout = parent->layout;
@@ -2116,8 +2159,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 			
-	
-	printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
+	 printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
 	//~
 	// Win32 API Window Creation
@@ -2339,10 +2381,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.yaw = 3.14f/2;
 	
 	Game_Input input = {0};
+	
 	UI_Context ui = {0};
+	ui.theme = { 
+		GRAY, 
+		LIGHTGRAY, 
+		GRAY,  
+		3
+	};
 	UIInit(&ui, &r, &input);
-
-
+	
+	
 #ifdef USE_GAMEINPUT
 	initialize_input();
 #endif
@@ -2560,16 +2609,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		input.mouse.py = mouse_pos[1];
 		
 		UI_Layout layout_t = {
-			UI_AXIS2_X,
+			UI_AXIS2_Y,
 			{
 				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
-
+		
+		UI_Layout rect_layout = {
+			UI_AXIS2_X,
+			{
+				{ UI_SIZEKIND_PIXELS, 500.f, 1.f },
+                { UI_SIZEKIND_PIXELS, 100.f, 1.f }
+			},
+		};
+		
 		UIBegin(&ui);
 		
-		
+		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 100, 100, "none", UI_DRAWBOX));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		
 		bool clicked = UIButton(&ui,"Tab 1");
@@ -2582,10 +2639,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         if (clicked) { printf("button clicked4\n"); }
 		clicked = UIButton(&ui, "Tab 5");
         if (clicked) { printf("button clicked5\n"); }
-		clicked = UIButton(&ui, "Tab 6, there is something that I would lvoe to show to you");
+		clicked = UIButton(&ui, "Tab 6");
         if (clicked) { printf("button clicked6\n"); } 
 		
 		UIPopParent(&ui);
+		UIPopParent(&ui);
+		
 		UIEnd(&ui);
 
 

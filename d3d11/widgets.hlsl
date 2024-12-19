@@ -9,7 +9,6 @@ cbuffer vs_constants : register(b0) {
 
 struct widget { 
 	float4 rect;
-	//float border_size; 
 	uint flags;
 }; 
 
@@ -18,6 +17,7 @@ StructuredBuffer<widget> widgets : register(t0);
 struct PS_INPUT {
 	float4 pos : SV_Position;
 	float4 size : SIZE;
+	uint flags : FLAGS;
 };
 
 
@@ -27,19 +27,20 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
     uint2 i = { vertexid & 2, (vertexid << 1 & 2) ^ 3 };
 
 	float4 rect = widgets[widgetid].rect;
-	float4 pos = float4((rect[i.x]*inv_window_width*2)-1, 
-						(rect[i.y]*inv_window_height*-2)+1, 
+	float4 pos = float4(rect[i.x]*inv_window_width-1, 
+						rect[i.y]*inv_window_height+1, 
 						0., 1.);
 
-	PS_INPUT o = { pos, rect.x, rect.y, (rect.z-rect.x), (rect.w-rect.y) };
+	PS_INPUT o = { pos, rect.x, rect.y, (rect.z-rect.x), (rect.w-rect.y),  widgets[widgetid].flags };
 	return o;
 }
 
 
-cbuffer ps_constantas : register(b1) {
-	//float4 foreground_color;
-	//float4 hot_color;
-	//float4 active_color;
+cbuffer ps_constantas : register(b0) {
+	float4 foreground_color;
+	float4 hot_color;
+	float4 active_color;
+	float border; // size
 }; 
 
 
@@ -50,7 +51,6 @@ float BoarderdRectSDF(float2 pixel, float2 size, float radius) {
 
 float4 ps_main(PS_INPUT o) : SV_Target {
 
-	float border = 3; // px
 	float radius = 0; // currently I don't care about rounded corners
 
 	float2 size = float2(o.size.z, o.size.w);
@@ -61,7 +61,18 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 	float clamped_distance = clamp(round(distance), 0, 1.0);
 
 	float4 border_color = float4(0., 0., 0., 1.);
-	float4 box_color = float4(1., 0., 0., 1.);
+	float4 box_color = foreground_color; // float4(1., 0., 0., 1.);
+	
+	// show or don't show border
+	if (!(o.flags & (1<<6))) {
+		border_color = box_color;
+	}
+	
+	if (o.flags & 1) {
+		box_color = hot_color;
+	}
+
+
 	float4 color = lerp(box_color, border_color, clamped_distance);
 
 	if (color.a <= 0) discard;
