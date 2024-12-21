@@ -76,7 +76,7 @@ typedef int     b32;
 * [ ] Font Rendering
 * [ ] General UI
 * [ ] Shadow Mapping
-* [ ] Normal Mapping
+* [ ] Normal Mapping?
 * [ ] Input
 * [ ] Obj Outlines
 * [ ] Mouse screen to world projection
@@ -84,21 +84,23 @@ typedef int     b32;
 * [ ] Pixelated look
 
 // ==================== Goals for today ========================
-
 //
+// [x] implement fullscreen alt+enter
 // [ ] UI
 //   [x] finally make the push-pop utilities for higherarchy building
 //   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
  //   [x] theme - uploaded to gpu once, rendered using it
-//   [ ] make widget allocator smarter
-//   [ ] font rendering (text displayed on screen) 
+//   [x] font rendering (text displayed on screen) 
 //    [x] make font stay same size on resize
 //    [x] buttons draw their font
 //    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
 //   [x] add support for border/no-border
+//   [ ] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
+//   [ ] add slider widget (think about how to render that)
+//   [ ] Make hash of id smarter (support for ##id)
+//   [ ] make widget allocator smarter
 //   [ ] add support for rounded corners
 // [ ] restucture and make better input handling?
-// [x] implement fullscreen alt+enter
 // 
 */
 
@@ -1343,7 +1345,7 @@ typedef struct UI_Theme {
 } UI_Theme; 
 
 #define WIDGETS_COUNT 0x100
-#define MAX_WIDGET_STACK_SIZE 2
+#define MAX_WIDGET_STACK_SIZE 44
 
 typedef struct {
 	Game_Input *input;
@@ -1686,6 +1688,12 @@ UIBegin(UI_Context *ui) {
 	ui->boxs_idx = 0;
 	//ui->last = 0;
 	ui->sprite_count = 0;
+	
+	if (ui->r->dirty) {
+		ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
+		ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
+	}
+	
 }
 
 
@@ -1949,6 +1957,34 @@ UIButton(UI_Context *ui, char *text) {
 	UI_Output output = UIInteractWidget(ui, widget);
 
 	return output.clicked;
+}
+
+static float 
+UISlider(UI_Context *ui, char *text) {
+	
+	
+	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER);
+	// TODO(ziv): move this
+	UI_Widget *parent = UIGetParent(ui);
+	if (parent) widget->layout = parent->layout;
+	UI_Output output = UIInteractWidget(ui, widget);
+	
+	// Get another widget to draw the small rect idk
+	
+	UI_Size semantic_size[] = {
+		{ UI_SIZEKIND_PERCENTOFPARENT, 0.2f, 1.f }, 
+		{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
+	};
+	UI_Layout small_rect_layout = {
+		widget->layout.axis,
+		{ semantic_size[widget->layout.axis], semantic_size[1-widget->layout.axis] }
+	};
+	
+	UIPushParent(ui, widget); 
+	UICreateRect(ui, small_rect_layout, 10,0, " kajshdflkajhsdfioqy", UI_DRAWBORDER); 
+	UIPopParent(ui);
+	
+	return output.slider_value;
 }
 
 
@@ -2590,26 +2626,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Build UI
 		//
 
-
-		// Usage code:
-		//
-		// UIBegin(); // initialization of vars
-		// UI_Widget *parent = UICreateParent(rect, layout);
-		// UIPushParent(parent);           // formation of hierarchy & layout
-		// if (UIButton("something")) {
-		//   ...
-		// }
-		// UIPopParent();
-		// UIEnd(); // here is the layout&rendering passes
-
-		
 		input.mouse.px = mouse_pos[0];
 		input.mouse.py = mouse_pos[1];
 		
 		UI_Layout layout_t = {
-			UI_AXIS2_Y,
+			UI_AXIS2_X,
 			{
-				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
+				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
@@ -2617,8 +2640,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UI_Layout rect_layout = {
 			UI_AXIS2_X,
 			{
-				{ UI_SIZEKIND_PIXELS, 300.f, 1.f },
-                { UI_SIZEKIND_PIXELS, 100.f, 1.f }
+				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
+                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
 		
@@ -2626,9 +2649,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
-		bool clicked = UIButton(&ui,"Tab 1");
+		bool clicked = UIButton(&ui,"File");
         if (clicked) { printf("button clicked1\n"); }
-		clicked = UIButton(&ui,  "Tab 2");
+		clicked = UIButton(&ui,  "Window");
         if (clicked) { printf("button clicked2\n"); }
 		clicked = UIButton(&ui, "Tab 3");
         if (clicked) { printf("button clicked3\n"); }
@@ -2638,19 +2661,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
         if (clicked) { printf("button clicked5\n"); }
 		clicked = UIButton(&ui, "Tab 6");
         if (clicked) { printf("button clicked6\n"); } 
-		UIPopParent(&ui);
-		UIPopParent(&ui);
 		
-		rect_layout.axis = UI_AXIS2_X; 
-		layout_t.axis    = UI_AXIS2_X;
-		layout_t.semantic_size[UI_AXIS2_X] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT, 0.5f, 1.f};
-		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "tab2234", UI_DRAWBOX));
-		UIPushParent(&ui, UILayout(&ui, layout_t, "YO0234")); 
-		clicked = UIButton(&ui,"Tab 7");
-		clicked = UIButton(&ui,"Tab 8");
+		UISlider(&ui, "SLIDER");
 		UIPopParent(&ui);
 		UIPopParent(&ui);
-		
+
 		UIEnd(&ui);
 
 
