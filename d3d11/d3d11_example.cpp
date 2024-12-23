@@ -75,10 +75,10 @@ typedef int     b32;
 * [x] z-buffer
 * [ ] Font Rendering
 * [ ] General UI
-* [ ] Shadow Mapping
+* [ ] Shadow Mapping? - or precompute all shadow information
 * [ ] Normal Mapping?
 * [ ] Input
-* [ ] Obj Outlines
+* [ ] Obj Outlines?
 * [ ] Mouse screen to world projection
 * [ ] Update on Resize for fluid screen resize handling?
 * [ ] Pixelated look
@@ -95,12 +95,17 @@ typedef int     b32;
 //    [x] buttons draw their font
 //    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
 //   [x] add support for border/no-border
+//   [x] hot animation
+//   [ ] active animation
+//   [ ] fix button clicking when button is hot but mouse is outside window
 //   [ ] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
 //   [ ] add slider widget (think about how to render that)
+//   [ ] prune out widgets that are no longer part of higherarchy
 //   [ ] Make hash of id smarter (support for ##id)
 //   [ ] make widget allocator smarter
 //   [ ] add support for rounded corners
-// [ ] restucture and make better input handling?
+// [ ] Input
+//   [ ] make input events
 // 
 */
 
@@ -181,6 +186,10 @@ TextSize(char *text, float *width, float *height) {
 //~
 // Math
 //
+
+inline static float lerp(float start, float end, float t) {
+	return start + (end-start)*t;
+}
 
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
@@ -1273,6 +1282,7 @@ typedef enum {
 	UI_DRAWBOX    = 1 << 4,
     UI_DRAWTEXT   = 1 << 5,
 	UI_DRAWBORDER = 1 << 6, 
+	UI_ANIMATE_HOT = 1 << 7
 } UI_Flags;
 
 typedef struct {
@@ -1292,7 +1302,7 @@ enum UI_SizeKind {
 };
 
 typedef struct {
-	UI_SizeKind kind;
+	UI_SizeKind kind; // 4bytes 
 	float value; // if pixel kind, this decided the pixel count of the axis
 	float strictness; // how strict we want the value itself to be
 } UI_Size;
@@ -1313,21 +1323,26 @@ typedef struct {
 
 typedef struct UI_Widget UI_Widget;
 struct UI_Widget {
-	
+	// 16
 	u32 flags; 
+	s32 id;
 	char *text; // this will serve as an id for the time being
-	s64 id;
 	
+	// 28 -> 20 (new layout)
 	UI_Layout layout;
-
+	
+	// 32 -> 8 (u16)
 	UI_Widget *parent;
 	UI_Widget *child;
 	UI_Widget *next;
 	UI_Widget *last;
-
+	
+	// 40 bytes can't change
 	float computed_rel_pos[UI_AXIS2_COUNT];
 	float computed_size[UI_AXIS2_COUNT];
 	Rect rect; // final computed rect
+	
+	float hot_t, active_t;
 };
 
 typedef int UI_Widget_Handle;
@@ -1335,6 +1350,8 @@ typedef int UI_Widget_Handle;
 typedef struct UI_DrawBox { // a draw box that I send to the gpu to draw
 	Rect rect; 
 	u32 flags;
+	float hot_t; 
+	float active_t;
 } UI_DrawBox; 
 
 typedef struct UI_Theme {
@@ -1345,7 +1362,7 @@ typedef struct UI_Theme {
 } UI_Theme; 
 
 #define WIDGETS_COUNT 0x100
-#define MAX_WIDGET_STACK_SIZE 44
+#define MAX_WIDGET_STACK_SIZE 4
 
 typedef struct {
 	Game_Input *input;
@@ -1373,6 +1390,9 @@ typedef struct {
 	UI_DrawBox boxs[WIDGETS_COUNT];
 	int boxs_idx;
 	
+	Sprite sprites[MAX_SPRITES];
+	int sprite_count;
+	
 	R_D3D11Context *r;
 	// widgets
 	struct {
@@ -1390,8 +1410,6 @@ typedef struct {
 	ID3D11SamplerState* sampler; 
 	} font;
 	
-	Sprite sprites[MAX_SPRITES];
-	int sprite_count;
 } UI_Context;
 
 static void
@@ -1480,8 +1498,12 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		if (head->flags >= UI_DRAWBOX) { // has something to draw
 			ui->boxs[ui->boxs_idx].rect = head->rect;
 			ui->boxs[ui->boxs_idx].flags= (head->flags & (~(1<<4)-1)) | (head == ui->hot);
-			ui->boxs_idx++;
 		}
+		
+		float dt = 1.f/60.f; // TODO(ziv): move/remove this?
+		head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -16.f * dt));
+			ui->boxs[ui->boxs_idx].hot_t = head->hot_t;
+			ui->boxs_idx++;
 		
 		if (head->child) {
 			UIBuildLayoutFinalRect(ui, head->child);
@@ -1704,8 +1726,14 @@ UIEnd(UI_Context *ui) {
 	Assert(ui && ui->r);
 	
 // layout
-	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { UIBuildLayout(&ui->head_widget, axis); }
+	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
+		UIBuildLayout(&ui->head_widget, axis); 
+	}
+	
+	
 	UIBuildLayoutFinalRect(ui, &ui->head_widget);
+	
+	
 	
 	//
 	// darwing
@@ -1764,11 +1792,12 @@ UIEnd(UI_Context *ui) {
 		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 		r->context->DrawInstanced(4, ui->sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 	}
+	
 }
 
 
 static UI_Widget *
-UIGetWidget(UI_Context *ui, s64 id) {
+UIGetWidget(UI_Context *ui, s32 id) {
     // TODO(ziv): Make the allocator smarter
     // have the ability to free up widgets, and
     // allocate inside free node space.
@@ -1842,6 +1871,7 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
 	} while(!UIStrCmp(text, entry->text) && entry->text);
 	id--;
 	if (UIStrCmp(text, entry->text)) {
+		Assert(entry->flags == flags && entry->id == (id & (WIDGETS_COUNT-1)));
 		return entry;
 	}
 	
@@ -1921,13 +1951,19 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 
         // widget slider widget->flags
         if ((widget->flags & UI_SLIDERABLE)) {
-
-        }
+			if (mouse.buttons & MouseLeftButton) {
+				// TODO(ziv): make it take the layout axis into account
+				output.slider_value = (mouse.px-rect.minx)/(rect.maxx - rect.minx);
+				widget->active_t = output.slider_value;
+			}
+		}
     }
     else if (ui->hot == widget|| ui->active == widget) {
         ui->hot = NULL;
-        ui->active = NULL;
+        ui->active = NULL;;
     }
+	
+	output.slider_value = widget->active_t;
 
 	return output;
 
@@ -1948,7 +1984,11 @@ UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, char *text, u32 fla
 static bool
 UIButton(UI_Context *ui, char *text) {
 	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX |  UI_DRAWTEXT  | UI_DRAWBORDER);
+	UI_Widget *widget = UIBuildWidget(ui, text, 
+									  UI_CLICKABLE | 
+									  UI_DRAWBOX | 
+									  UI_DRAWTEXT | 
+									  UI_ANIMATE_HOT);
 	
 	// TODO(ziv): move this
 	UI_Widget *parent = UIGetParent(ui);
@@ -1962,8 +2002,10 @@ UIButton(UI_Context *ui, char *text) {
 static float 
 UISlider(UI_Context *ui, char *text) {
 	
-	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER);
+	UI_Widget *widget = UIBuildWidget(ui, text, 
+									  UI_SLIDERABLE | 
+									  UI_DRAWBOX | 
+									  UI_DRAWBORDER);
 	// TODO(ziv): move this
 	UI_Widget *parent = UIGetParent(ui);
 	if (parent) widget->layout = parent->layout;
@@ -1972,16 +2014,22 @@ UISlider(UI_Context *ui, char *text) {
 	// Get another widget to draw the small rect idk
 	
 	UI_Size semantic_size[] = {
-		{ UI_SIZEKIND_PERCENTOFPARENT, 0.2f, 1.f }, 
+		{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value, 1.f }, 
 		{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
 	};
 	UI_Layout small_rect_layout = {
 		widget->layout.axis,
-		{ semantic_size[widget->layout.axis], semantic_size[1-widget->layout.axis] }
+		{ 
+			semantic_size[widget->layout.axis], 
+			semantic_size[1-widget->layout.axis] 
+		}
 	};
 	
 	UIPushParent(ui, widget); 
-	UICreateRect(ui, small_rect_layout, 10,0, " kajshdflkajhsdfioqy", UI_DRAWBORDER); 
+	
+	UI_Widget *sub_widget = UIBuildWidget(ui, "kajshdflkajhsdfioqy", UI_DRAWBOX);
+	sub_widget->layout = small_rect_layout;
+	
 	UIPopParent(ui);
 	
 	return output.slider_value;
@@ -2186,14 +2234,18 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 	return true;
 }
 
+
+
 #ifdef _DEBUG
 int main()
 #else
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
-			
-	 printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
+	
+	//printf("%d, %d, %d\n", (int)sizeof(UI_Widget), (int)sizeof(UI_Layout), (int)sizeof(UI_Layout2));
+	
+	printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
 	//~
 	// Win32 API Window Creation
@@ -2419,7 +2471,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	UI_Context ui = {0};
 	ui.theme = { 
 		{ 0.05f, 0.1f, .2f, 1}, 
-		{ 0.1f, 0.15f, .3f, 1}, 
+		{ 0.2f, 0.3f, .5f, 1}, 
 		GRAY,  
 		3
 	};
@@ -2516,6 +2568,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 		float speed = 5;
 		end_frame = Time();
+		if (show_free_camera) { 
 		float dt = (float)(end_frame - start_frame);
 		float dx = (float)input.mouse.px; // (mouse_pos[0] - last_mouse_pos[0]);
 		float dy = (float)-input.mouse.py; // (last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
@@ -2532,8 +2585,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
 		c.pitch = float_clamp(c.pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f);
 		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
+		}
 		CameraBuild(&c);
-
+		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 
 		// Don't render when minimized
@@ -2650,7 +2704,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		bool clicked = UIButton(&ui,"File");
-        if (clicked) { printf("button clicked1\n"); }
+        if (clicked) { 
+			UIButton(&ui, "popupbutton");
+			printf("button clicked1\n"); 
+			
+		}
 		clicked = UIButton(&ui,  "Window");
         if (clicked) { printf("button clicked2\n"); }
 		clicked = UIButton(&ui, "Tab 3");
@@ -2662,7 +2720,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		clicked = UIButton(&ui, "Tab 6");
         if (clicked) { printf("button clicked6\n"); } 
 		
-		UISlider(&ui, "SLIDER");
+		float value = UISlider(&ui, "SLIDER");
+		
 		UIPopParent(&ui);
 		UIPopParent(&ui);
 

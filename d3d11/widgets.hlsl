@@ -10,7 +10,9 @@ cbuffer vs_constants : register(b0) {
 struct widget { 
 	float4 rect;
 	uint flags;
-}; 
+	float hot_t; 
+	float active_t;
+};
 
 StructuredBuffer<widget> widgets : register(t0);
 
@@ -18,6 +20,7 @@ struct PS_INPUT {
 	float4 pos : SV_Position;
 	float4 size : SIZE;
 	uint flags : FLAGS;
+	float hot_t : HOT_TIME;
 };
 
 
@@ -31,7 +34,7 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 						rect[i.y]*inv_window_height+1, 
 						0., 1.);
 
-	PS_INPUT o = { pos, rect.x, rect.y, (rect.z-rect.x), (rect.w-rect.y),  widgets[widgetid].flags };
+	PS_INPUT o = { pos, rect.x, rect.y, (rect.z-rect.x), (rect.w-rect.y),  widgets[widgetid].flags, widgets[widgetid].hot_t };
 	return o;
 }
 
@@ -68,9 +71,11 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 		border_color = box_color;
 	}
 	
-	if (o.flags & 1) {
-		box_color = hot_color;
+	float hot_t = o.hot_t;
+	if (!(o.flags & (1<<7))) { // !UI_ANIMATE_HOT
+		hot_t = 0;
 	}
+	box_color = lerp(box_color, hot_color, hot_t);
 
 
 	float4 color = lerp(box_color, border_color, clamped_distance);
