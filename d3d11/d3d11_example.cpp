@@ -62,8 +62,8 @@ typedef int     b32;
 // https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
 
+// TODO(ziv):
 /*
-* TODO(ziv):
 * [x] Obj loading (with position, textures, normals)
 * [x] Obj dynamic transformation
 * [x] Obj dynamic lighting(global illumination + point light)
@@ -97,10 +97,10 @@ typedef int     b32;
 //   [x] add support for border/no-border
 //   [x] hot animation
 //   [ ] active animation
-//   [ ] fix button clicking when button is hot but mouse is outside window
+//   [x] fix button clicking when button is hot but mouse is outside window
 //   [ ] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
 //   [ ] add slider widget (think about how to render that)
-//   [ ] prune out widgets that are no longer part of higherarchy
+//   [x] prune out widgets that are no longer part of higherarchy
 //   [ ] Make hash of id smarter (support for ##id)
 //   [ ] make widget allocator smarter
 //   [ ] add support for rounded corners
@@ -681,8 +681,6 @@ static bool key_right;
 static bool key_left;
 
 
-static int mouse_pos[2];
-
 bool show_free_camera = false;
 
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -696,6 +694,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 
 		case WM_KEYDOWN:
 		{
+			
 			if ((char)wparam == 'W') { key_w = true; }
 			if ((char)wparam == 'S') { key_s = true; }
 			if ((char)wparam == 'A') { key_a = true; }
@@ -738,12 +737,13 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if (wparam == VK_TAB) key_tab_pressed = true;
 
 		} break;
-
-		case WM_MOUSEMOVE: {
-			POINTS p = MAKEPOINTS(lparam);
-			mouse_pos[0] = p.x; mouse_pos[1] = p.y;
+		
+		case WM_ACTIVATE: {
+			if (!wparam) {
+				g_raw_input_state.mouse = Mouse{0};
+			}
 		} break;
-
+		
 		//
 		// Rawinput
 		//
@@ -1512,15 +1512,47 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	
 	return;
 }
+static void
+UIPruneDeadWidgets(UI_Widget *head) {
+	
+	if (!head) return; 
+	
+	if (!(head->id & (1<<31))) { // dead
+		head->id = 0; 
+		head->text = NULL; 
+		
+		if (head->last) {
+			head->last->next = head->next;
+			head->last = NULL; 
+		}
+		else if (head->next) {
+			if (head->parent) {
+				head->parent->child = head->next;
+			}
+		}
+		else if (head->parent) {
+			head->parent->child = NULL; 
+		}
+	}
+	head->id &= ~(1<<31);
+	
+	
+	UI_Widget *child = head->child; 
+	for (; child; child = child->next) {
+		
+		UIPruneDeadWidgets(child);
+	}
+	
+}
+
 
 static void
 UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->input = input;
 	ui->r = r;
-	ui->head_widget = {0};
 	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
-	
+	ui->head_widget.id = 1<<31;
 	// 
 	// Widgets
 	//
@@ -1706,14 +1738,20 @@ ui->font.vshader->Release();
 
 static void
 UIBegin(UI_Context *ui) {
-	memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
+	//memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
 	ui->boxs_idx = 0;
-	//ui->last = 0;
 	ui->sprite_count = 0;
 	
 	if (ui->r->dirty) {
 		ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 		ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
+		ui->head_widget.id = 1<<31;
+	}
+	
+	// prune out all widgets that don't participate in hierarchy
+	{
+		ui->head_widget.id = 1<<31;
+		UIPruneDeadWidgets(&ui->head_widget);
 	}
 	
 }
@@ -1721,18 +1759,21 @@ UIBegin(UI_Context *ui) {
 
 static void
 UIEnd(UI_Context *ui) {
-
+	//c 256/64
+	
     Assert(0 < ui->last); // there must be more than one widget to layout
 	Assert(ui && ui->r);
 	
+	
 // layout
+	{
 	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
 		UIBuildLayout(&ui->head_widget, axis); 
 	}
 	
 	
 	UIBuildLayoutFinalRect(ui, &ui->head_widget);
-	
+	}
 	
 	
 	//
@@ -1803,12 +1844,16 @@ UIGetWidget(UI_Context *ui, s32 id) {
     // allocate inside free node space.
 	ui->last++;
 	UI_Widget *widget = &ui->widgets[id];
-	widget->id = id;
-	if (!widget->text) return widget; 
-	while (widget->text)  widget = &ui->widgets[id++]; 
+	s32 alive_flag = (1<<31); 
+	widget->id = id | alive_flag;
+	if (!widget->text) // this is a free node 
+		return widget; 
 	
+	// find a free node
+	while (widget->text)  widget = &ui->widgets[id++]; 
 	widget = &ui->widgets[id-1];
-	widget->id = id-1;
+	widget->id = (id-1) | alive_flag;
+	
 	return widget;
 }
 
@@ -1864,14 +1909,17 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
 	// Get entry fron hashmap
 	//
 	
-	s64 id = GenHashFronString(234982374, text); 
+	s32 mask = (WIDGETS_COUNT-1);
+	s32 id = (s32)GenHashFronString(234982374, text) & mask;
+	
 	UI_Widget *entry = NULL;
 	do {
-		entry = &ui->widgets[id++ & (WIDGETS_COUNT-1)];
+		entry = &ui->widgets[id++ & mask];
 	} while(!UIStrCmp(text, entry->text) && entry->text);
 	id--;
 	if (UIStrCmp(text, entry->text)) {
-		Assert(entry->flags == flags && entry->id == (id & (WIDGETS_COUNT-1)));
+		//Assert(entry->flags == flags && !(entry->id & (1<<31)) && (entry->id & mask) == (id & mask));
+		entry->id |= 1<<31;
 		return entry;
 	}
 	
@@ -2526,8 +2574,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			Gamepad gamepad = input.gamepads[i];
 			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
 		}
-		mouse_pos[0] = (int)input.mouse.px;
-		mouse_pos[1] = (int)input.mouse.py;
 #endif
 
 
@@ -2570,8 +2616,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		end_frame = Time();
 		if (show_free_camera) { 
 		float dt = (float)(end_frame - start_frame);
-		float dx = (float)input.mouse.px; // (mouse_pos[0] - last_mouse_pos[0]);
-		float dy = (float)-input.mouse.py; // (last_mouse_pos[1] - mouse_pos[1]); // NOTE(ziv): flipped y axis so up is positive
+		float dx = (float)input.mouse.px;
+		float dy = (float)-input.mouse.py;
 		
 		g_raw_input_state.mouse.px = 0;
 		g_raw_input_state.mouse.py = 0;
@@ -2679,10 +2725,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//~
 		// Build UI
 		//
-
-		input.mouse.px = mouse_pos[0];
-		input.mouse.py = mouse_pos[1];
 		
+		
+		POINT cursor_position; 
+		GetCursorPos(&cursor_position);
+		ScreenToClient(window, &cursor_position); 
+		input.mouse.px = cursor_position.x; 
+		input.mouse.py = cursor_position.y;
+		
+		
+		
+
+
 		UI_Layout layout_t = {
 			UI_AXIS2_X,
 			{
@@ -2733,7 +2787,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// present the backbuffer to the screen
 		r.swap_chain->Present(1, 0); // Using here VSYNC
 		// end of frame
-		last_mouse_pos[0] = mouse_pos[0]; last_mouse_pos[1] = mouse_pos[1];
 		start_frame = end_frame; // update time for dt calc
 	}
 
