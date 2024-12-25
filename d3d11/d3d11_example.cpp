@@ -97,14 +97,14 @@ typedef int     b32;
 //   [x] add support for border/no-border
 //   [x] hot animation
 //   [x] fix button clicking when button is hot but mouse is outside window
-//   [ ] active animation
 //   [x] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
+//   [x] make widget allocator smarter (apperently it was)
 //   [x] prune out widgets that are no longer part of higherarchy
 //   [ ] add slider widget (think about how to render that)
 //   [ ] Make hash of id smarter (support for ##id)
-//   [x] make widget allocator smarter (apperently it was)
 //   [ ] add support for rounded corners, custom color (per vertex?)
 //   [ ] change where drawing happens to use DrawQuad and make it in a better location
+//   [ ] active animation
 // [ ] OS
 //   [ ] Input
 //     [ ] make input events
@@ -1578,6 +1578,9 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
+		
+		// Render widgets
+		
 		 float pad = 5; 
 		
 		if (head->flags & UI_DRAWTEXT) {
@@ -1612,7 +1615,6 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 	
 	if (!head->id.alive) { // dead
 		
-
 		if (head->last) {
 			
 			head->last->next = head->next;
@@ -1721,41 +1723,52 @@ UITopParent(UI_Context *ui) {
 
 
 static UI_Widget *
-UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
-    Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
-	
-	//
-	// Get entry fron hashmap
-	//
-	
-	String8 strid = Str8Lit(text); 
-	s32 mask = (WIDGETS_COUNT-1);
-	s32 idx = (s32)Str8GetHash(234982374, strid) & mask;
-	UI_Widget *entry = NULL;
-	
+	UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
+		Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
+			
+		//
+		// Get entry from hashmap if exists
+		//
+			
+		String8 strid = Str8Lit(text); 
+		s32 mask = (WIDGETS_COUNT-1);
+		s32 key = (s32)Str8GetHash(234982374, strid) & mask;
+		UI_Widget *entry = NULL;
+			
 	do {
-		entry = &ui->widgets[idx++ & mask];
-	} while(!Str8Compare(strid, entry->id.value) && entry->id.alive);
-	idx--;
+		entry = &ui->widgets[key++ & mask];
+	} while(!Str8Compare(strid, entry->id.value) && entry->id.value.size);
+	key--;
 	 
 	if (Str8Compare(strid, entry->id.value)) {
 		//Assert(entry->flags == flags && !(entry->id & (1<<31)) && (entry->id & mask) == (id & mask));
+		
+		// I need to make sure to update the widget into the graph 
+		// as it might have been excluded from it in the process of idk 
+		#if 0 
+		UI_Widget *child = entry->parent->child; 
+		if (child) {
+		while (child->next && child->next->id.alive) child = child->next;
+			entry->next = child->next;
+			child->next = entry; 
+			entry->last = child; 
+		}
+		#endif
+			// add the node into the graph if needed 
+		
+		
+		
 		entry->id.alive = 1;
 		return entry;
 	}
 	
-	 
     //
     // Create and add the widget to the graph
     //
 	
-		// TODO(ziv): Make the allocator smarter
-		// have the ability to free up widgets, and
-		// allocate inside free node space.
-			
     UI_Widget *parent = UITopParent(ui);
-		UI_Widget *widget = &ui->widgets[idx & mask];
-	widget->id = { idx, 1, strid };
+		UI_Widget *widget = &ui->widgets[key & mask];
+	widget->id = { key, 1, strid };
 	widget->parent = parent;
     widget->child = NULL;
     widget->next = NULL;
@@ -1832,8 +1845,12 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
         // widget slider widget->flags
         if ((widget->flags & UI_SLIDERABLE)) {
 			if (mouse.buttons & MouseLeftButton) {
-				// TODO(ziv): make it take the layout axis into account
+				if (widget->layout.axis == UI_AXIS2_X) { 
 				output.slider_value = (mouse.px-rect.minx)/(rect.maxx - rect.minx);
+				}
+				else {
+					output.slider_value = (mouse.py-rect.miny)/(rect.maxy - rect.miny);
+				}
 				widget->active_t = output.slider_value;
 			}
 		}
@@ -1892,7 +1909,7 @@ UISlider(UI_Context *ui, const char *text) {
 	
 	// Get another widget to draw the small rect idk
 
-/* 	
+
 	UI_Size semantic_size[] = {
 		{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value, 1.f }, 
 		{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
@@ -1906,12 +1923,10 @@ UISlider(UI_Context *ui, const char *text) {
 	};
 	
 	UIPushParent(ui, widget); 
-	
 	UI_Widget *sub_widget = UIBuildWidget(ui, "kajshdflkajhsdfioqy", UI_DRAWBOX);
 	sub_widget->layout = small_rect_layout;
-	
 	UIPopParent(ui);
-	 */
+	 
 
 	return output.slider_value;
 }
@@ -2591,10 +2606,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			clicked1 = !clicked1;
 		}
         if (clicked1) {
-			bool clicked = 0;
+
+/* 				
+				bool clicked = 0;
 			clicked = UIButton(&ui, "Window").activated;
 			if (clicked) { printf("button clicked2\n"); }
-
 			clicked = UIButton(&ui, "Tab 3").activated;
 			if (clicked) { printf("button clicked3\n"); }
 			clicked = UIButton(&ui, "Tab 4").activated;
@@ -2603,7 +2619,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			if (clicked) { printf("button clicked5\n"); }
 			clicked = UIButton(&ui, "Tab 6").activated;
 			if (clicked) { printf("button clicked6\n"); } 
-			 
+ */
+
 			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
 			rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
 			UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
@@ -2611,9 +2628,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			UIButton(&ui, "SMOETHING NOT WRONG"); 
 				}
 					UIPopParent(&ui);
-		}
+				
+			}
 		
 		float value = UISlider(&ui, "SLIDER");
+		//value = UISlider(&ui, "SLIDER2");
 		}
 		UIPopParent(&ui);
 		UIPopParent(&ui);
