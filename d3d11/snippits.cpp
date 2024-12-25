@@ -1,4 +1,5 @@
 
+/* 
 #if 0
 // GAMEINPUT implementation (for some reason doesn't work on my pc)
 
@@ -142,3 +143,4 @@ initialize_input();
 #ifdef USE_GAMEINPUT
 shutdown_input();
 #endif
+ */
