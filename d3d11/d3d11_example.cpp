@@ -6,7 +6,6 @@
 #include <dxgi1_3.h>
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
-//#include <gameinput.h>
 
 #include <stdint.h>
 #define _USE_MATH_DEFINES
@@ -20,7 +19,6 @@
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "dxguid")
 #pragma comment(lib, "d3dcompiler")
-//#pragma comment(lib, "gameinput")
 
 #define APP_TITLE "D3D11 application!!!"
 
@@ -50,8 +48,6 @@ typedef int32_t u32;
 typedef int16_t u16;
 typedef int8_t  u8;
 typedef int     b32;
-
-// #define USE_GAMEINPUT
 
 // Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
@@ -96,15 +92,16 @@ typedef int     b32;
 //    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
 //   [x] add support for border/no-border
 //   [x] hot animation
+//   [x] use DrawQuad and make it in a better location
+//   [x] active animation
 //   [x] fix button clicking when button is hot but mouse is outside window
 //   [x] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
 //   [x] make widget allocator smarter (apperently it was)
 //   [x] prune out widgets that are no longer part of higherarchy
+//   [x] add support for rounded corners, custom color (per vertex?)
 //   [ ] add slider widget (think about how to render that)
+//     [ ] make slider colors not be funny
 //   [ ] Make hash of id smarter (support for ##id)
-//   [ ] add support for rounded corners, custom color (per vertex?)
-//   [ ] change where drawing happens to use DrawQuad and make it in a better location
-//   [ ] active animation
 // [ ] OS
 //   [ ] Input
 //     [ ] make input events
@@ -119,9 +116,6 @@ static void FatalError(const char* message)
     ExitProcess(0);
 }
 
-
-
-
 //~
 // Math
 //
@@ -130,9 +124,11 @@ inline static float lerp(float start, float end, float t) {
 	return start + (end-start)*t;
 }
 
+typedef struct { float minx, miny, maxx, maxy; } Rect;
+typedef struct { float r, g, b, a; } Color;
+
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
-typedef struct { float minx, miny, maxx, maxy; } Rect;
 
 inline static float3 operator+=(const float3 v1, const float3 v2){ return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
 inline static float3 operator+(const float3 v1, const float3 v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
@@ -270,7 +266,7 @@ typedef struct {
 	const char *data;
 } String8;
 
-static String8
+inline static String8
 Str8Lit(const char *str) {
 	Assert(str);
 	
@@ -281,7 +277,7 @@ Str8Lit(const char *str) {
 	return String8{ i, str };
 }
 
-static bool
+inline static bool
 Str8Compare(String8 s1, String8 s2) {
 	if (s1.size != s2.size) return 0; 
 	for (int i = 0; i < s1.size; i++) {
@@ -735,9 +731,9 @@ struct Vertex {
 
 typedef struct R_QuadInst { // a draw box that I send to the gpu to draw
 	Rect rect; 
-	u32 flags;
-	float hot_t; 
-	float active_t;
+	Color color;
+	float radius;
+	float border;
 } R_QuadInst; 
 
 typedef struct R_SpriteInst {
@@ -1272,17 +1268,15 @@ else if (FAILED(hr))
 // Draw
 // 
 
-typedef struct {
-	R_D3D11Context *r; 
-} D_Context;
 
 static void 
-DrawQuad(D_Context *d, Rect rect, float hot_t) {
-	Assert(d->r->quads.idx < MAX_QUAD_COUNT); 
-	d->r->quads.data[d->r->quads.idx].rect = rect;
-	d->r->quads.data[d->r->quads.idx].hot_t = 0;
-	d->r->quads.data[d->r->quads.idx].flags = 1 | 1<<6;
-	d->r->quads.idx++; 
+DrawQuad(R_D3D11Context *r, Rect rect, Color color) {
+	Assert(r->quads.idx < MAX_QUAD_COUNT); 
+	r->quads.data[r->quads.idx].rect = rect;
+	r->quads.data[r->quads.idx].color = color;
+	r->quads.data[r->quads.idx].radius = 0;
+	r->quads.data[r->quads.idx].border = 0;
+	r->quads.idx++;
 }
 
 static void 
@@ -1315,7 +1309,7 @@ DrawDefaultText(R_D3D11Context *r, const char *text, size_t len,  float x, float
 //
 
 
-typedef struct { float r, g, b, a; } Color;
+
 static Color RED      = { 1, 0, 0, 1 };
 static Color LIGHTRED = { 1, .1f, .1f, 1};
 static Color DARKRED = { .6f, .1f, .1f, 1};
@@ -1325,9 +1319,9 @@ static Color DARKRED = { .6f, .1f, .1f, 1};
 #define DARKGRAY   Color{ 80.f/255.f, 80.f/255.f, 80.f/255.f, 255.f/255.f}
 
 typedef enum {
-	UI_CLICKABLE  = 1 << 0,  // can be clicked
-    UI_SLIDERABLE = 1 << 1,  // slider property (also allows for mouse movement)
-    UI_INPUTABLE  = 1 << 3,  // accepts keyboard input
+	UI_CLICKABLE  = 1 << 0,
+    UI_SLIDERABLE = 1 << 1,
+    UI_INPUTABLE  = 1 << 3,
 	UI_DRAWBOX    = 1 << 4,
     UI_DRAWTEXT   = 1 << 5,
 	UI_DRAWBORDER = 1 << 6, 
@@ -1571,43 +1565,73 @@ static void
 UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	if (!head) return;
 	
-	// Compute final rects for all widgets
     for (; head; head = head->next) {
+	// Compute final rects for all widgets
 		head->rect.minx = head->computed_rel_pos[0];
 		head->rect.miny = head->computed_rel_pos[1];
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
 		
-		
+		//
 		// Render widgets
-		
-		 float pad = 5; 
+		//
 		
 		if (head->flags & UI_DRAWTEXT) {
-			
+		 float pad = 5; 
 			DrawDefaultText(ui->r, head->text.data, (int)head->text.size, 
 							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
-			 
-
 		}
 		
-		if (head->flags >= UI_DRAWBOX) { // has something to draw
-			ui->r->quads.data[ui->r->quads.idx].rect = head->rect;
-			ui->r->quads.data[ui->r->quads.idx].flags= (head->flags & (~(1<<4)-1)) | (head == ui->hot);
+		if (head->flags >= UI_DRAWBOX) {
+			
+			// update hot/active time
+			float dt = 1.f/60.f; // TODO(ziv): move/remove this?
+			head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
+			if (!(head->flags & UI_SLIDERABLE)) {
+			head->active_t = lerp(head->active_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
+			}
+			
+			
+#define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
+			// get final color 
+			
+			Color background = { 0.05f, 0.1f, .2f, 1}; 
+			if (head->flags & UI_SLIDERABLE) {
+				background = { 0.05f, 0.3f, .1f, 1 };
+			}
+			Color hot = { 0.2f, 0.3f, .5f, 1};
+			Color active = GRAY;
+			Color final = {0};
+			if (head == ui->active) {
+				head->active_t = (head->flags & UI_ANIMATE_HOT) ? head->active_t : 1;
+				final.r = lerp(background.r, active.r, head->active_t);
+				final.g = lerp(background.g, active.g, head->active_t);
+				final.b = lerp(background.b, active.b, head->active_t);
+				final.a = lerp(background.a, active.a, head->active_t);
+			}
+			else if ((head == ui->hot) ) {
+				head->hot_t = (head->flags & UI_ANIMATE_HOT) ? head->hot_t : 0;
+				final.r = lerp(background.r, hot.r, head->hot_t);
+				final.g = lerp(background.g, hot.g, head->hot_t);
+				final.b = lerp(background.b, hot.b, head->hot_t);
+				final.a = lerp(background.a, hot.a, head->hot_t);
+			}
+			else {
+				final = background;
+			}
+			
+			// draw the quad to the screen
+			DrawQuad(ui->r, head->rect, final); 
 		}
 		
-		float dt = 1.f/60.f; // TODO(ziv): move/remove this?
-		head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -16.f * dt));
-		ui->r->quads.data[ui->r->quads.idx].hot_t = head->hot_t;
-		ui->r->quads.idx++;
+		
 		
 		if (head->child) {
 			UICoreLayoutFinalRect(ui, head->child);
 		}
 	}
-	
-	return;
 }
+
 static void
 UICorePruneDeadWidgets(UI_Widget *head) {
 	
@@ -1680,7 +1704,6 @@ UIBegin(UI_Context *ui, b32 dirty) {
 
 static void
 UIEnd(UI_Context *ui) {
-	//c 256/64
 	
 	Assert(ui);
 	
@@ -1713,6 +1736,9 @@ UIPushParent(UI_Context *ui, UI_Widget *parent) {
 
 static inline UI_Widget *
 UIPopParent(UI_Context *ui) {
+	if (ui->stack_idx == 0) {
+		FatalError("Poping more times than should be possible");
+	}
 	return ui->stack[--ui->stack_idx];
 }
 
@@ -1742,21 +1768,6 @@ static UI_Widget *
 	 
 	if (Str8Compare(strid, entry->id.value)) {
 		//Assert(entry->flags == flags && !(entry->id & (1<<31)) && (entry->id & mask) == (id & mask));
-		
-		// I need to make sure to update the widget into the graph 
-		// as it might have been excluded from it in the process of idk 
-		#if 0 
-		UI_Widget *child = entry->parent->child; 
-		if (child) {
-		while (child->next && child->next->id.alive) child = child->next;
-			entry->next = child->next;
-			child->next = entry; 
-			entry->last = child; 
-		}
-		#endif
-			// add the node into the graph if needed 
-		
-		
 		
 		entry->id.alive = 1;
 		return entry;
@@ -1845,19 +1856,14 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
         // widget slider widget->flags
         if ((widget->flags & UI_SLIDERABLE)) {
 			if (mouse.buttons & MouseLeftButton) {
-				if (widget->layout.axis == UI_AXIS2_X) { 
 				output.slider_value = (mouse.px-rect.minx)/(rect.maxx - rect.minx);
-				}
-				else {
-					output.slider_value = (mouse.py-rect.miny)/(rect.maxy - rect.miny);
-				}
 				widget->active_t = output.slider_value;
 			}
 		}
     }
     else if (ui->hot == widget|| ui->active == widget) {
         ui->hot = NULL;
-        ui->active = NULL;;
+        ui->active = NULL;
     }
 	
 	output.slider_value = widget->active_t;
@@ -1889,7 +1895,6 @@ static UI_Output
 UIButton(UI_Context *ui, const char *text) {
 	
 	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWTEXT | UI_DRAWBORDER | UI_ANIMATE_HOT);
-	// TODO(ziv): move this
 	UI_Widget *parent = UITopParent(ui);
 	if (parent) widget->layout = parent->layout;
 	
@@ -1902,7 +1907,6 @@ static float
 UISlider(UI_Context *ui, const char *text) {
 	
 	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER);
-	// TODO(ziv): move this
 	UI_Widget *parent = UITopParent(ui);
 	if (parent) widget->layout = parent->layout;
 	UI_Output output = UIInteractWidget(ui, widget);
@@ -1916,14 +1920,25 @@ UISlider(UI_Context *ui, const char *text) {
 	};
 	UI_Layout small_rect_layout = {
 		widget->layout.axis,
-		{ 
-			semantic_size[widget->layout.axis], 
-			semantic_size[1-widget->layout.axis] 
+		{
+			{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value, 1.f }, 
+			{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
 		}
 	};
+
+	
+		// TODO(ziv): make this more robust
+		// currently there are ways and conditions 
+		// in which the widgets get messed up
+			
+	String8 str = Str8Lit(text); 
+	String8 postfix = Str8Lit("sub_widget");
+	char buffer[20];
+	memcpy(buffer, str.data, str.size); 
+	memcpy(buffer+str.size, postfix.data, postfix.size+1); 
 	
 	UIPushParent(ui, widget); 
-	UI_Widget *sub_widget = UIBuildWidget(ui, "kajshdflkajhsdfioqy", UI_DRAWBOX);
+	UI_Widget *sub_widget = UIBuildWidget(ui, buffer, UI_DRAWBOX);
 	sub_widget->layout = small_rect_layout;
 	UIPopParent(ui);
 	 
@@ -2487,12 +2502,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	Game_Input input = {0};
 	
 	UI_Context ui = {0};
-	ui.theme = { 
-		{ 0.05f, 0.1f, .2f, 1}, 
-		{ 0.2f, 0.3f, .5f, 1}, 
-		GRAY,  
-		3
-	};
 	UIInit(&ui, r, &input);
 	
 	
@@ -2583,7 +2592,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UI_Layout layout_t = {
 			UI_AXIS2_Y,
 			{
-				{ UI_SIZEKIND_TEXTCONTENT, 1.f, 1.f },
+				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
                 { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
 			},
 		};
@@ -2591,14 +2600,16 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UI_Layout rect_layout = {
 			UI_AXIS2_Y,
 			{
-				{ UI_SIZEKIND_CHILDRENMAX, .5f, 1.f },
+				{ UI_SIZEKIND_PERCENTOFPARENT, .5f, 1.f },
                 { UI_SIZEKIND_CHILDRENSUM, 1.f, 1.f }
 			},
 		};
 		
+		float value = 0; 
+		
 		UIBegin(&ui, r->dirty);
 		
-		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
+		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", 0));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		{
 		static bool clicked1 = 0;
@@ -2607,19 +2618,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
         if (clicked1) {
 
-/* 				
 				bool clicked = 0;
-			clicked = UIButton(&ui, "Window").activated;
-			if (clicked) { printf("button clicked2\n"); }
-			clicked = UIButton(&ui, "Tab 3").activated;
-			if (clicked) { printf("button clicked3\n"); }
+			clicked = UIButton(&ui, "Move Up").activated;
+				if (clicked) { 
+					c.pos = c.pos + c.up * -0.1f;
+					 }
+			clicked = UIButton(&ui, "Move Down").activated;
+				if (clicked) { 
+					c.pos = c.pos + c.up * 0.1f;
+					  }
 			clicked = UIButton(&ui, "Tab 4").activated;
 			if (clicked) { printf("button clicked4\n"); }
 			clicked = UIButton(&ui, "Tab 5").activated;
 			if (clicked) { printf("button clicked5\n"); }
 			clicked = UIButton(&ui, "Tab 6").activated;
 			if (clicked) { printf("button clicked6\n"); } 
- */
 
 			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
 			rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
@@ -2631,8 +2644,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				
 			}
 		
-		float value = UISlider(&ui, "SLIDER");
-		//value = UISlider(&ui, "SLIDER2");
+		value = UISlider(&ui, "speed");
+			
 		}
 		UIPopParent(&ui);
 		UIPopParent(&ui);
@@ -2647,7 +2660,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//
 		
 		
-		float speed = 5;
+		float speed = 1+10*value;
 		end_frame = Time();
 		if (show_free_camera) { 
 			float dt = (float)(end_frame - start_frame);
@@ -2663,6 +2676,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
 		}
+		
 		CameraBuild(&c);
 		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
@@ -2670,15 +2684,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		#if 0
-		D_Context d = { r };
 		
 		Rect my_rc= { 100, 100, 100+150, 200 }; 
-		DrawQuad(&d, my_rc, 1.f);
+		DrawQuad(r, my_rc, GRAY);
 		
 		char txt[] =  "this is sometext to render";
-		float txt_width = 0;
+		float txt_width = DefaultTextWidth(Str8Lit(txt));;
 		float box_width = 150;
-		TextSize(txt, &txt_width, NULL);
 		
 		float percent_to_remove = box_width / txt_width; 
 		
@@ -2688,7 +2700,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		int chars_to_print = (int)((float)txt_len * MIN(percent_to_remove, 1)); 
 		
-		DrawDefaultText(&d, txt, chars_to_print, 100, 100);
+		DrawDefaultText(r, txt, chars_to_print, 100, 100);
 		#endif 
 		
 		//~

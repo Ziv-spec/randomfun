@@ -1,3 +1,6 @@
+//#include <gameinput.h>
+//#pragma comment(lib, "gameinput")
+// #define USE_GAMEINPUT
 
 /* 
 #if 0
