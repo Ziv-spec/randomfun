@@ -25,9 +25,11 @@
 #define APP_TITLE "D3D11 application!!!"
 
 // default starting width and height for the window
-static int window_width = 800;
+static int window_width  = 800;
 static int window_height = 600;
-#define MAX_SPRITES 4096
+
+#define MAX_SPRITES_COUNT 0x1000
+#define MAX_QUAD_COUNT    0x100
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -76,7 +78,6 @@ typedef int     b32;
 * [ ] Font Rendering
 * [ ] General UI
 * [ ] Shadow Mapping? - or precompute all shadow information
-* [ ] Normal Mapping?
 * [ ] Input
 * [ ] Obj Outlines?
 * [ ] Mouse screen to world projection
@@ -96,17 +97,22 @@ typedef int     b32;
 //    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
 //   [x] add support for border/no-border
 //   [x] hot animation
-//   [ ] active animation
 //   [x] fix button clicking when button is hot but mouse is outside window
-//   [ ] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
+//   [ ] active animation
+//   [x] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
 //   [ ] add slider widget (think about how to render that)
 //   [x] prune out widgets that are no longer part of higherarchy
 //   [ ] Make hash of id smarter (support for ##id)
 //   [ ] make widget allocator smarter
 //   [ ] add support for rounded corners
-// [ ] Input
-//   [ ] make input events
-// 
+//   [ ] change where drawing happens to use DrawQuad and make it in a better location
+// [ ] OS
+//   [ ] Input
+//     [ ] make input events
+//   [ ] Renderer
+//   [ ] Draw
+//
+
 */
 
 static void FatalError(const char* message)
@@ -165,11 +171,6 @@ const static UINT atlas[] = {
 typedef struct int2 { int x, y; } int2;
 typedef struct float2 { float x, y; } float2;
 
-typedef struct Sprite {
-	float2 screen_pos, size; 
-	int2 atlas_pos;
-} Sprite;
-
 #define FAT_PIXEL_SIZE 2.f
 
 static void
@@ -193,6 +194,7 @@ inline static float lerp(float start, float end, float t) {
 
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
+typedef struct { float minx, miny, maxx, maxy; } Rect;
 
 inline static float3 operator+=(const float3 v1, const float3 v2){ return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
 inline static float3 operator+(const float3 v1, const float3 v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
@@ -322,33 +324,46 @@ get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 }
 
 //~
-// Time
-//
-
-thread_local double g_inv_freq;
-
-static void
-TimeInit() {
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	g_inv_freq = 1/(double)freq.QuadPart;
-}
-
-static double
-Time() {
-	LARGE_INTEGER time;
-	QueryPerformanceCounter(&time);
-	return (double)time.QuadPart * g_inv_freq;
-}
-
-//~
 // Win32 
 //
+
+static LRESULT CALLBACK WinProc(HWND, UINT ,WPARAM ,LPARAM);
+static HWND g_window;
+
+static HWND
+Win32CreateWindow() { 
+	
+	HINSTANCE instance_handle = GetModuleHandleW(NULL);
+	
+	WNDCLASSEXA window_class = {0};
+	window_class.cbSize = sizeof(window_class);
+	window_class.lpfnWndProc = WinProc;
+	window_class.hInstance = instance_handle ;
+	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
+	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+	window_class.lpszClassName = "d3d11 example";
+	
+	ATOM atom = RegisterClassExA(&window_class);
+	Assert(atom && "Could not register class");
+	
+	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW,
+								  window_class.lpszClassName,
+								  APP_TITLE,
+								  WS_OVERLAPPEDWINDOW,
+								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
+								  NULL, NULL, window_class.hInstance, NULL);
+	Assert(window && "Failed to create a window");
+	
+	g_window = window;
+	
+	return window;
+}
+
 
 static WINDOWPLACEMENT g_previous_window_placement = { sizeof(g_previous_window_placement) };
 
 static  void 
-ToggleFullScreen(HWND window)
+Win32ToggleFullScreen(HWND window)
 {
 	// NOTE(ziv): Code taken from raymond chen blog post
 	// https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
@@ -378,6 +393,26 @@ ToggleFullScreen(HWND window)
 }
 
 //~
+// Time
+//
+
+thread_local double g_inv_freq;
+
+static void
+TimeInit() {
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	g_inv_freq = 1/(double)freq.QuadPart;
+}
+
+static double
+Time() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return (double)time.QuadPart * g_inv_freq;
+}
+
+//~
 // Input
 //
 
@@ -393,7 +428,8 @@ typedef enum {
 } Mouse_Buttons;
 
 typedef struct {
-	s64 px, py; // position detlta x, delta y
+	s64 px, py; // position
+	s64 dx, dy; // delta
 	s64 wx, wy; // wheel x,y
 	Mouse_Buttons buttons;
 } Mouse;
@@ -482,13 +518,11 @@ InputShutdown() {
 		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
 		{
 			//registration failed. Call GetLastError for the cause of the error.
-			FatalError("Couldn't register a mouse\n");
+			FatalError("Rawinput couldn't register a mouse\n");
 		}
 	}
 	
-	
-}
-
+	}
 
 static bool
 InputUpdate(LPARAM lparam) {
@@ -514,8 +548,8 @@ InputUpdate(LPARAM lparam) {
 			int delta_m = (int)raw->data.mouse.usButtonData;
 			//printf("wheel: %d\n", delta_m);
 
-			mouse.px = raw->data.mouse.lLastX;
-		mouse.py = raw->data.mouse.lLastY;
+			mouse.dx = raw->data.mouse.lLastX;
+		mouse.dy = raw->data.mouse.lLastY;
 		
             if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
                 mouse.wy += (int)raw->data.mouse.usButtonData;
@@ -540,129 +574,15 @@ InputUpdate(LPARAM lparam) {
 }
 
 static Game_Input InputGetState() {
+	
+	POINT cursor_position; 
+	GetCursorPos(&cursor_position);
+	ScreenToClient(g_window, &cursor_position); 
+	g_raw_input_state.mouse.px = cursor_position.x; 
+	g_raw_input_state.mouse.py = cursor_position.y;
+	
 	return g_raw_input_state;
 }
-
-#if 0
-// GAMEINPUT implementation (for some reason doesn't work on my pc)
-
-IGameInput *g_gameinput = 0;
-IGameInputDevice *g_gamepads[4]; // game supports upto 4 gamepads
-IGameInputDevice *g_mouse = 0;
-
-static HRESULT initialize_input() {
-	HRESULT result = GameInputCreate(&g_gameinput);
-	return result;
-}
-
-static void shutdown_input() {
-
-	for (int i = 0; i < ArrayLength(g_gamepads); i++) {
-		if (g_gamepads[i]) { g_gamepads[i]->Release(); }
-	}
-
-	if (g_gameinput) {
-		g_gameinput->Release();
-	}
-}
-
-static void poll_gameinput(Game_Input *input) {
-	// NOTE(ziv): GameInput is "Input-Centric" API. It finds the types
-	// of input the user is interested in and then optionally query
-	// the device from which it came from.
-
-	// Ask for the latest reading from devices that provide fix-format
-	// gamepad state. If a device has beend assigned to g_gamepad, filter
-	// readings to just the ones coming from that device. Otherwise, if
-	// g_gamepad is null, it will allow readings from any device.
-
-	IGameInputReading *reading;
-	for (int i = 0; i < ArrayLength(g_gamepads); i++) {
-
-		HRESULT success = g_gameinput->GetCurrentReading(GameInputKindGamepad, g_gamepads[i], &reading);
-		if (SUCCEEDED(success)) {
-
-			// If not device has been assigned to g_gamepad yet, set it
-			// to the first device we recieve input from. (This must be
-			// the one the player is using because it's generating input.)
-			if (!g_gamepads[i]) {
-				reading->GetDevice(&g_gamepads[i]);
-			}
-
-			if (i > 0 && g_gamepads[i] == g_gamepads[i-1]) {
-				g_gamepads[i] = 0;
-				reading->Release();
-				break;
-			}
-
-			// Retrive the fixed-format gamepad state from the reading
-			GameInputGamepadState state;
-			if (reading->GetGamepadState(&state)) {
-
-				// Application specific code to process the gamepad state goes here:
-				input->gamepads[i].buttons = (Gamepad_Buttons)state.buttons;
-				input->gamepads[i].left_trigger  = state.leftTrigger;
-				input->gamepads[i].right_trigger = state.rightTrigger;
-
-				float threshold = 0.2f;
-#define THRESHOLD_INPUT(val, t) (-t > val || val > t) ? val : 0
-				input->gamepads[i].left_thumbstick_x = THRESHOLD_INPUT(state.leftThumbstickX, threshold);
-				input->gamepads[i].left_thumbstick_y = THRESHOLD_INPUT(state.leftThumbstickY, threshold);
-				input->gamepads[i].right_thumbstick_x = THRESHOLD_INPUT(state.rightThumbstickX, threshold);
-				input->gamepads[i].right_thumbstick_y = THRESHOLD_INPUT(state.rightThumbstickY, threshold);
-
-				reading->Release();
-			}
-
-		}
-		else {
-			if (g_gamepads[i]) {
-				g_gamepads[i]->Release();
-				g_gamepads[i] = 0;
-			}
-			//printf("Couldn't get any readings from gamepad\n");
-			break;
-		}
-
-
-	}
-
-	//
-	// Mouse Input
-	//
-
-	HRESULT success = g_gameinput->GetCurrentReading(GameInputKindMouse, g_mouse, &reading);
-	if (!SUCCEEDED(success)) {
-		if (g_mouse) {
-			g_mouse->Release();
-			g_mouse= 0;
-		}
-		return;
-	}
-
-	if (!g_mouse) {
-		reading->GetDevice(&g_mouse);
-	}
-
-	GameInputMouseState mouse_state;
-	if (reading->GetMouseState(&mouse_state)) {
-		input->mouse.buttons = (Mouse_Buttons)mouse_state.buttons;
-		input->mouse.px = mouse_state.positionX;
-		input->mouse.py = mouse_state.positionY;
-		input->mouse.wx = mouse_state.wheelX;
-		input->mouse.wy = mouse_state.wheelY;
-
-#if 0
-		printf("mouse input ");
-		printf("%d, %d,  %d, %d | %d\n", (int)input->mouse.px, (int)input->mouse.px,
-			   (int)mouse_state.wheelX, (int)mouse_state.wheelY, input->mouse.buttons);
-#endif
-
-		reading->Release();
-	}
-
-}
-#endif
 
 
 static bool key_w; // up
@@ -710,10 +630,11 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 
 			if (wparam == VK_TAB) { key_tab = true; }
 			
+			
 			// NOTE(ziv): Implemented currently as alt+enter combination
 			// which is the windows default for toggling to fullscreen
 			if (wparam == VK_RETURN && (lparam & (1<<29))) {
-				ToggleFullScreen(window); 
+				Win32ToggleFullScreen(window); 
 			}
 			
 		} break;
@@ -760,168 +681,6 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 }
 
 //~
-// Camera
-//
-// Resources:
-// [1] https://learnopengl.com/Getting-started/Camera
-// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
-//
-
-typedef struct {
-
-	/// In
-	// camera
-	float3 pos;
-	float pitch, yaw;
-
-	// projection
-	float fov;  // field of view
-	float n, f; // near, far plaines
-	float aspect_ratio;
-
-	/// Out
-	matrix view; // obj world->view space
-	matrix proj; // obj view->screen space
-	matrix norm; // normals world->view
-	matrix view_inv;
-	matrix proj_inv;
-
-	// movement vectors
-	float3 right, left;
-	float3 up, down;
-	float3 forward, backward;
-} Camera;
-
-static void
-CameraInit(Camera *c) {
-	c->fov = 0.25f*(float)M_PI;
-	c->n = .01f;
-	c->f = 1000.f;
-
-	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-}
-
-static void
-CameraBuild(Camera *c) {
-	Assert(c);
-
-	// Build the lookat matrix
-	float3 some_up_vector = { 0, 1, 0 };
-
-	// The lookat matrix is a matrix created from a 'single' vector
-	// pointing in the forward direction of the player looking at the
-	// object we want to point the camera towards.
-	// In this case I create the forward vector using the pitch and yaw
-	// values and from it I compute the space in which the camera lies.
-	// The view matrix created from this space is the inverse translation
-	// and inverse rotations done by the camera itself [2].
-
-	// this camera is pointing in the inverse direction of it's target
-	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
-	float3 rv = f3normalize(f3cross(some_up_vector, fv));
-	float3 uv = f3normalize(f3cross(fv, rv));
-
-	float3 p = c->pos;
-
-	matrix cmat = {
-		rv.x, uv.x, fv.x, 0,
-		rv.y, uv.y, fv.y, 0,
-		rv.z, uv.z, fv.z, 0,
-		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
-	};
-
-	c->view = cmat;
-	c->view_inv = matrix_transpose(cmat);
-
-	c->forward.x = c->view_inv.m[2][0];
-	c->forward.y = c->view_inv.m[2][1];
-	c->forward.z = c->view_inv.m[2][2];
-
-	c->backward.x = -c->view_inv.m[2][0];
-	c->backward.y = -c->view_inv.m[2][1];
-	c->backward.z = -c->view_inv.m[2][2];
-
-	c->right.x = c->view_inv.m[0][0];
-	c->right.y = c->view_inv.m[0][1];
-	c->right.z = c->view_inv.m[0][2];
-
-	c->left.x = -c->view_inv.m[0][0];
-	c->left.y = -c->view_inv.m[0][1];
-	c->left.z = -c->view_inv.m[0][2];
-
-	c->up.x = c->view_inv.m[1][0];
-	c->up.y = c->view_inv.m[1][1];
-	c->up.z = c->view_inv.m[1][2];
-
-	c->down.x = -c->view_inv.m[1][0];
-	c->down.y = -c->view_inv.m[1][1];
-	c->down.z = -c->view_inv.m[1][2];
-
-
-
-	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here
-    // Build the projection matrix
-
-	// In this case the projection matrix which we are building
-	// is mapping object's in the players thrustum inside a
-	// -1 to 1 cordinate space [2].
-	float hfov = 1.0f/tanf(c->fov*0.5f);
-
-	c->proj = matrix{0};
-	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
-	c->proj.m[1][1] = 1.0f/hfov;
-	c->proj.m[2][3] = -1.0f;
-
-	// cn = -1 and cf = 1:
-	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
-	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
-
-	/*
-	 //cn = 0 and cf = 1:
-	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
-	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
-
-	 //cn = -1 and cf = 0:
-	c->proj.m[2][2] = (c->n) / (c->n - c->f);
-	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
-    */
-
-	// Inverse of the Projection Matrix
-	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
-	c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
-	c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
-	c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
-	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
-	c->proj_inv.m[3][3] = -c->proj.m[2][2];
-	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
-}
-
-static void
-CameraMove(Camera *c, float x, float y, float z) {
-	// Here we use the right up and forward vectors aligned to
-	// the camera space. We do so such that every movement we
-	// let the player have is one which respects the camera
-	// viewing angle.
-
-	// NOTE(ziv): Player movement is defined here
-	// Currently using first person shooter movement.
-	float cy = c->pos.y;
-
-	c->pos = c->pos + c->right * x;
-	c->pos = c->pos + c->up * y;
-	c->pos = c->pos + c->forward * z;
-
-	if (1) {
-		// in a first person shooter camera we don't change the players
-		// y position because he looked in that direction. Only when the
-		// player requrests.
-		c->pos.y = cy;
-	}
-}
-
-
-//~
 // D3D11 Renderer
 //
 
@@ -930,6 +689,18 @@ struct Vertex {
 	float norm[3];
 	float uv[2];
 };
+
+typedef struct R_QuadInst { // a draw box that I send to the gpu to draw
+	Rect rect; 
+	u32 flags;
+	float hot_t; 
+	float active_t;
+} R_QuadInst; 
+
+typedef struct R_SpriteInst {
+	float2 screen_pos, size; 
+	int2 atlas_pos;
+} R_SpriteInst;
 
 typedef struct {
 	HWND window;
@@ -946,9 +717,78 @@ typedef struct {
 
 	D3D11_VIEWPORT *viewport;
 	
-	b32 dirty; // something changed this frame in the renderer
+	b32 dirty; // window size changed
+	
+	
+	// Widget rendering
+	
+	// widgets
+	struct {
+		ID3D11Buffer *buffers[2];
+		ID3D11VertexShader *vshader;
+		ID3D11PixelShader *pshader;
+		ID3D11ShaderResourceView *srv[1];
+		
+		R_QuadInst data[MAX_QUAD_COUNT];
+		int idx;
+	} quads;
+	
+	// Font rendering
+	struct {
+		ID3D11Buffer *buffers[2];
+		ID3D11VertexShader *vshader;
+		ID3D11PixelShader *pshader;
+		ID3D11ShaderResourceView *srv[2];
+		ID3D11SamplerState* sampler; 
+		
+			R_SpriteInst data[MAX_SPRITES_COUNT];
+			int idx;
+	} font;
 	
 } R_D3D11Context;
+
+static void
+RendererD3D11GetShaders(R_D3D11Context *r,
+						ID3D11VertexShader **vshader, wchar_t *vs_file,
+						ID3D11PixelShader **pshader, wchar_t *ps_file,
+						ID3D11InputLayout **layout, 
+						const D3D11_INPUT_ELEMENT_DESC vs_format_desc[], 
+						unsigned int format_desc_length) {
+	HRESULT hr;
+	// Create Vertex And Pixel Shaders
+	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+	ID3DBlob *error;
+	ID3DBlob *vblob;
+	hr = D3DCompileFromFile(vs_file, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
+	if (FAILED(hr)) {
+		const char *message = (const char *)error->GetBufferPointer();
+		OutputDebugStringA(message);
+		Assert(!"Failed to compile vertex shader!");
+	}
+	r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
+	
+	if (vs_format_desc && format_desc_length > 0) {
+		r->device->CreateInputLayout(vs_format_desc, format_desc_length,
+									 vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
+	}
+	
+	ID3DBlob *pblob;
+	hr = D3DCompileFromFile(ps_file, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
+	if (FAILED(hr)) {
+		const char *message = (const char *)error->GetBufferPointer();
+		OutputDebugStringA(message);
+		Assert(!"Failed to compile pixel shader!");
+	}
+	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
+	
+	vblob->Release();
+	pblob->Release();
+}
 
 static void
 RendererInit(R_D3D11Context *r, HWND window) {
@@ -1124,6 +964,158 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->zbuffer = zbuffer;
 	r->zbuffer_texture = zbuffer_texture;
 	r->rasterizer_cull_back = rasterizer_cull_back;
+	
+	
+	//~
+	
+	
+	// 
+	// Quad
+	//
+	
+	// Instanced Quad Drawing
+	ID3D11Buffer *quads_buf; // structurd buffer
+	ID3D11ShaderResourceView* quads_srv;
+	{
+		D3D11_BUFFER_DESC desc = {0};
+		desc.ByteWidth = MAX_QUAD_COUNT*sizeof(R_QuadInst);
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		desc.StructureByteStride = sizeof(R_QuadInst);
+		r->device->CreateBuffer(&desc, NULL, &quads_buf);
+		
+		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
+		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		rv_desc.Buffer.NumElements = MAX_QUAD_COUNT;
+		r->device->CreateShaderResourceView(quads_buf, &rv_desc, &quads_srv);
+	}
+	
+	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+	ID3D11Buffer *cbuffer;
+	{
+		
+		D3D11_BUFFER_DESC desc = {0};
+		desc.ByteWidth = sizeof(widgets_constants);
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
+		r->device->CreateBuffer(&desc, &data, &cbuffer);
+	}
+	
+	
+	ID3D11VertexShader *vshader = NULL;
+	ID3D11PixelShader *pshader = NULL;
+	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
+							&pshader, L"../widgets.hlsl",
+							NULL, NULL, 0);
+	
+	r->quads.buffers[0] = quads_buf;
+	r->quads.buffers[1] = cbuffer;
+	r->quads.pshader = pshader;
+	r->quads.vshader = vshader;
+	r->quads.srv[0]= quads_srv;
+	
+	//
+	// Font
+	//
+	
+	// Font Constant Buffer
+	ID3D11Buffer* font_constant_buffer;
+	{
+		// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
+		float font_constant_data[4] = {
+			2.0f / window_width,
+			-2.0f / window_height,
+			1.0f / ATLAS_WIDTH,
+			1.0f / ATLAS_HEIGHT
+		};
+		
+		D3D11_BUFFER_DESC constant_buffer_desc = {};
+		constant_buffer_desc.ByteWidth = sizeof(font_constant_data) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
+		constant_buffer_desc.Usage     = D3D11_USAGE_DYNAMIC; 
+		constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		constant_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		
+		D3D11_SUBRESOURCE_DATA font_data = { font_constant_data };
+		r->device->CreateBuffer(&constant_buffer_desc, &font_data, &font_constant_buffer);
+	}
+	
+	// Texture Atlas
+	ID3D11ShaderResourceView* atlas_resource_view;
+	{
+		D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
+		texture_atlas_desc.Width             = ATLAS_WIDTH;
+		texture_atlas_desc.Height            = ATLAS_HEIGHT;
+		texture_atlas_desc.MipLevels         = 1;
+		texture_atlas_desc.ArraySize         = 1;
+		texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
+		texture_atlas_desc.SampleDesc.Count  = 1;
+		texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
+		texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
+		
+		D3D11_SUBRESOURCE_DATA atlas_data = {};
+		atlas_data.pSysMem     = atlas;
+		atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
+		
+		ID3D11Texture2D* atlas_texture;
+		r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
+		r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
+		atlas_texture->Release();
+	}
+	
+	// Sprite Buffer
+	ID3D11Buffer* sprite_buffer;
+	ID3D11ShaderResourceView* sprite_resource_view;
+	{
+		D3D11_BUFFER_DESC sprite_buffer_desc = {};
+		sprite_buffer_desc.ByteWidth           = MAX_SPRITES_COUNT * sizeof(R_SpriteInst);
+		sprite_buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
+		sprite_buffer_desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+		sprite_buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+		sprite_buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // Structured Buffer contains elements of equal size. Inside the shader you can access members using an index
+		sprite_buffer_desc.StructureByteStride = sizeof(R_SpriteInst);
+		r->device->CreateBuffer(&sprite_buffer_desc, NULL, &sprite_buffer);
+		
+		// A shader resource view wraps textures in a format that the shaders can access them
+		D3D11_SHADER_RESOURCE_VIEW_DESC sprite_shader_resource_view_desc = {};
+		sprite_shader_resource_view_desc.Format             = DXGI_FORMAT_UNKNOWN;
+		sprite_shader_resource_view_desc.ViewDimension      = D3D11_SRV_DIMENSION_BUFFER; // indicates the resource is a buffer
+		sprite_shader_resource_view_desc.Buffer.NumElements = MAX_SPRITES_COUNT;
+		r->device->CreateShaderResourceView(sprite_buffer, &sprite_shader_resource_view_desc, &sprite_resource_view);
+	}
+	
+	// Point Sampler
+	ID3D11SamplerState* font_sampler;
+	{
+		D3D11_SAMPLER_DESC font_sampler_desc = {};
+		font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		
+		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
+	}
+	
+	// Vertex And Pixel Shaders
+	ID3D11VertexShader* font_vshader;
+	ID3D11PixelShader* font_pshader;
+	RendererD3D11GetShaders(r, &font_vshader, L"../font.hlsl", 
+							&font_pshader, L"../font.hlsl", 
+							NULL, NULL, 0); 
+	
+	r->font.pshader = font_pshader;
+	r->font.vshader = font_vshader;
+	r->font.sampler = font_sampler;
+	r->font.buffers[0] = sprite_buffer;
+	r->font.buffers[1] = font_constant_buffer;
+	r->font.srv[0] = sprite_resource_view;
+	r->font.srv[1] = atlas_resource_view;
+	
 }
 
 static void
@@ -1136,6 +1128,20 @@ RendererDeInit(R_D3D11Context *r) {
 	r->zbuffer->Release();
 	r->zbuffer_texture->Release();
 	r->rasterizer_cull_back->Release();
+	
+	r->quads.vshader->Release(); 
+	r->quads.pshader->Release(); 
+	r->quads.buffers[0]->Release(); 
+	r->quads.buffers[1]->Release(); 
+	r->quads.srv[0]->Release(); 
+	
+	r->font.pshader->Release();
+	r->font.vshader->Release();
+	r->font.sampler->Release();
+	r->font.buffers[0]->Release();
+	r->font.buffers[1]->Release();
+	r->font.srv[0]->Release();
+	r->font.srv[1]->Release();
 }
 
 static void
@@ -1190,50 +1196,6 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 }
 
 static void
-RendererD3D11GetShaders(R_D3D11Context *r,
-						ID3D11VertexShader **vshader, wchar_t *vs_file,
-						ID3D11PixelShader **pshader, wchar_t *ps_file,
-						ID3D11InputLayout **layout, 
-						const D3D11_INPUT_ELEMENT_DESC vs_format_desc[], 
-						unsigned int format_desc_length) {
-	HRESULT hr;
-	// Create Vertex And Pixel Shaders
-        UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error;
-		ID3DBlob *vblob;
-		hr = D3DCompileFromFile(vs_file, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile vertex shader!");
-		}
-		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
-		
-		if (vs_format_desc && format_desc_length > 0) {
-		r->device->CreateInputLayout(vs_format_desc, format_desc_length,
-									vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
-		}
-		
-		ID3DBlob *pblob;
-		hr = D3DCompileFromFile(ps_file, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-		if (FAILED(hr)) {
-			const char *message = (const char *)error->GetBufferPointer();
-			OutputDebugStringA(message);
-			Assert(!"Failed to compile pixel shader!");
-		}
-		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
-		
-		vblob->Release();
-	pblob->Release();
-	
-}
-
-static void
 RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, unsigned int data_size) {
 	Assert(r && buff && data); 
 	if (data_size > 0) {
@@ -1244,6 +1206,51 @@ RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, uns
 	}
 }
 
+static void
+RendererD3D11Present(R_D3D11Context *r) { 
+// present the backbuffer to the screen
+bool vsync = TRUE; 
+HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
+if (hr == DXGI_STATUS_OCCLUDED)
+{
+	// window is minimized, cannot vsync - instead sleep a bit
+	if (vsync)
+	{
+		Sleep(10);
+	}
+}
+else if (FAILED(hr))
+{
+	FatalError("Failed to present swap chain! Device lost?");
+}
+}
+
+//~ 
+// Draw
+// 
+
+typedef struct {
+	R_D3D11Context *r; 
+} D_Context;
+
+static void 
+DrawQuad(D_Context *d, Rect rect, float hot_t) {
+	Assert(d->r->quads.idx < MAX_QUAD_COUNT); 
+	d->r->quads.data[d->r->quads.idx].rect = rect;
+	d->r->quads.data[d->r->quads.idx].hot_t = 0;
+	d->r->quads.idx++; 
+}
+
+static void 
+DrawDefaultText(D_Context *d, const char *text, int len,  float x, float  y) {
+	R_SpriteInst sprite = { (float)x, (float)y, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
+	for (int i = 0; i < len; i++) {
+		sprite.atlas_pos.x = (text[i] - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
+		d->r->font.data[d->r->font.idx++] = sprite;
+		sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
+	}
+	
+}
 
 //~
 // UI Core
@@ -1272,8 +1279,6 @@ static Color DARKRED = { .6f, .1f, .1f, 1};
 #define LIGHTGRAY  Color{ 200.f/255.f, 200.f/255.f, 200.f/255.f, 255.f/255.f }
 #define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
 #define DARKGRAY   Color{ 80.f/255.f, 80.f/255.f, 80.f/255.f, 255.f/255.f}
-
-typedef struct { float minx, miny, maxx, maxy; } Rect;
 
 typedef enum {
 	UI_CLICKABLE  = 1 << 0,  // can be clicked
@@ -1347,13 +1352,6 @@ struct UI_Widget {
 
 typedef int UI_Widget_Handle;
 
-typedef struct UI_DrawBox { // a draw box that I send to the gpu to draw
-	Rect rect; 
-	u32 flags;
-	float hot_t; 
-	float active_t;
-} UI_DrawBox; 
-
 typedef struct UI_Theme {
 	Color foreground_color;
 	Color hot_color;
@@ -1366,6 +1364,7 @@ typedef struct UI_Theme {
 
 typedef struct {
 	Game_Input *input;
+	R_D3D11Context *r;
 	
 	//
 	// UI Graph
@@ -1381,72 +1380,89 @@ typedef struct {
 	int stack_idx;
 	
 	UI_Theme theme;
-	b32 dirty;
-	
-	//
-	// UI Drawing
-	//
-	
-	UI_DrawBox boxs[WIDGETS_COUNT];
-	int boxs_idx;
-	
-	Sprite sprites[MAX_SPRITES];
-	int sprite_count;
-	
-	R_D3D11Context *r;
-	// widgets
-	struct {
-	ID3D11Buffer *buffers[3];
-    ID3D11VertexShader *vshader;
-    ID3D11PixelShader *pshader;
-		ID3D11ShaderResourceView *srv[1];
-	} widget;
-	// font
-	struct {
-	ID3D11Buffer *buffers[2];
-    ID3D11VertexShader *vshader;
-    ID3D11PixelShader *pshader;
-	ID3D11ShaderResourceView *srv[2];
-	ID3D11SamplerState* sampler; 
-	} font;
-	
 } UI_Context;
 
 static void
-UIBuildLayout(UI_Widget *widget, int axis) {
-	
-	if (!widget) return;
-	
-	//
-	// Compute the final size 
-	// 
-	
+UIBuildLayoutConstant(UI_Widget *widget, int axis) {
+		if (!widget)  return; 
 	UI_Layout *layout = &widget->layout;
 	switch (layout->semantic_size[axis].kind) {
 		case UI_SIZEKIND_NULL: break;
 		case UI_SIZEKIND_PIXELS: { widget->computed_size[axis] = layout->semantic_size[axis].value; } break;
 		case UI_SIZEKIND_TEXTCONTENT: {
+			if (widget->text) {
 			if (axis == 0) { TextSize(widget->text, &widget->computed_size[axis], NULL);}
 			else if (axis == 1) { TextSize(widget->text, NULL, &widget->computed_size[axis]); }
-			widget->computed_size[axis] += 10;
-		} break;
-		case UI_SIZEKIND_PERCENTOFPARENT: {
-			Assert(widget->parent);
-			// NOTE(ziv): I assume the value to already be present
-			if (widget->flags) {
-				widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
-			}
-			else {
-				widget->computed_size[axis] = widget->parent->computed_size[axis];
+				widget->computed_size[axis] += 10;
 			}
 		} break;
 		
-		case UI_SIZEKIND_CHILDRENSUM: FatalError("unimplemneted line 1367"); break;
 	}
 	
-	//
-	// Compute the final relative position
-	// 
+	UI_Widget *child = widget->child;
+	for (; child; child = child->next) {
+		UIBuildLayoutConstant(child, axis);
+	}
+}
+
+static void
+UIBuildLayoutPreOrderUpwardDependednt(UI_Widget *widget, int axis) {
+	if (!widget)  return; 
+	UI_Layout *layout = &widget->layout;
+	switch (layout->semantic_size[axis].kind) {
+		case UI_SIZEKIND_PERCENTOFPARENT: {
+			Assert(widget->parent);
+			widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
+		} break;
+	}
+	
+	UI_Widget *child = widget->child;
+	for (; child; child = child->next) {
+		UIBuildLayoutPreOrderUpwardDependednt(child, axis);
+	}
+}
+
+static void
+UIBuildLayoutPostOrderDownwardsDependent(UI_Widget *widget, int axis) {
+	if (!widget)  return; 
+	
+	UI_Widget *child = widget->child;
+	for (; child; child = child->next) {
+		UIBuildLayoutPostOrderDownwardsDependent(child, axis);
+	}
+	
+	UI_Layout *layout = &widget->layout;
+	switch (layout->semantic_size[axis].kind) {
+		case UI_SIZEKIND_CHILDRENSUM: {
+			
+			if (!widget->child) {
+				widget->computed_size[axis] = 0;
+				break;
+			}
+			
+			child = widget->child;
+			if (!(child->flags >> 4)) { 
+				// NOTE(ziv): if we don't draw this widget 
+				// this means that this is a layout widget
+				// so we skip it, and get to it's children
+				child = child->child;
+			}
+			
+			float sum = 0;
+			for (; child; child = child->next) {
+				sum += child->computed_size[axis];
+			}
+			
+			widget->computed_size[axis] = sum;
+			
+		} break;
+	}
+	
+}
+
+static void
+UIBuildLayoutRelPos(UI_Widget *widget, int axis) { 
+	if (!widget)  return; 
 	
 	if (widget->last) {
 		if (axis == widget->layout.axis) {
@@ -1461,14 +1477,23 @@ UIBuildLayout(UI_Widget *widget, int axis) {
 	}
 	
 	
-	if (!widget->child) {
-		return;
-	}
 	
 	UI_Widget *child = widget->child;
 	for (; child; child = child->next) {
-		UIBuildLayout(child, axis);
+		UIBuildLayoutRelPos(child, axis);
 	}
+}
+
+static void
+UIBuildLayout(UI_Widget *widget, int axis) {
+	
+	UIBuildLayoutConstant(widget, axis);
+	UIBuildLayoutPreOrderUpwardDependednt(widget, axis); 
+	UIBuildLayoutPostOrderDownwardsDependent(widget, axis);
+	
+	
+	UIBuildLayoutRelPos(widget, axis); 
+	
 	
 }
 
@@ -1486,24 +1511,26 @@ UIBuildLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		 float pad = 5; 
 		
 		if (head->flags & UI_DRAWTEXT) {
-			Sprite sprite = { head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
+			R_SpriteInst sprite = { head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
 		char *text = head->text;
-		while (*text) {
+			if (text) {
+			while (*text) {
 				sprite.atlas_pos.x = (*text++ - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
-		ui->sprites[ui->sprite_count++] = sprite;
+		ui->r->font.data[ui->r->font.idx++] = sprite;
 				sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
-		}
+				}
+			}
 		}
 		
 		if (head->flags >= UI_DRAWBOX) { // has something to draw
-			ui->boxs[ui->boxs_idx].rect = head->rect;
-			ui->boxs[ui->boxs_idx].flags= (head->flags & (~(1<<4)-1)) | (head == ui->hot);
+			ui->r->quads.data[ui->r->quads.idx].rect = head->rect;
+			ui->r->quads.data[ui->r->quads.idx].flags= (head->flags & (~(1<<4)-1)) | (head == ui->hot);
 		}
 		
 		float dt = 1.f/60.f; // TODO(ziv): move/remove this?
 		head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -16.f * dt));
-			ui->boxs[ui->boxs_idx].hot_t = head->hot_t;
-			ui->boxs_idx++;
+		ui->r->quads.data[ui->r->quads.idx].hot_t = head->hot_t;
+		ui->r->quads.idx++;
 		
 		if (head->child) {
 			UIBuildLayoutFinalRect(ui, head->child);
@@ -1518,11 +1545,15 @@ UIPruneDeadWidgets(UI_Widget *head) {
 	if (!head) return; 
 	
 	if (!(head->id & (1<<31))) { // dead
-		head->id = 0; 
-		head->text = NULL; 
 		
+
 		if (head->last) {
+			
 			head->last->next = head->next;
+			if (head->next) {
+				head->next->last = head->last;
+			}
+			
 			head->last = NULL; 
 		}
 		else if (head->next) {
@@ -1533,6 +1564,10 @@ UIPruneDeadWidgets(UI_Widget *head) {
 		else if (head->parent) {
 			head->parent->child = NULL; 
 		}
+		
+		head->id = 0; 
+		head->text = NULL; 
+		
 	}
 	head->id &= ~(1<<31);
 	
@@ -1553,196 +1588,14 @@ UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
 	ui->head_widget.id = 1<<31;
-	// 
-	// Widgets
-	//
-			
-		// Instanced widget drawing
-	ID3D11Buffer *widgets_buffer; // structurd buffer
-	ID3D11ShaderResourceView* widgets_resource_view;
-	{
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = WIDGETS_COUNT*sizeof(ui->boxs[0]);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(ui->boxs[0]);
-		r->device->CreateBuffer(&desc, NULL, &widgets_buffer);
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
-		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		rv_desc.Buffer.NumElements = WIDGETS_COUNT;
-		r->device->CreateShaderResourceView(widgets_buffer, &rv_desc, &widgets_resource_view);
-	}
-
-	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-	ID3D11Buffer *cbuffer;
-	{
-
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = sizeof(widgets_constants);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
-		r->device->CreateBuffer(&desc, &data, &cbuffer);
-	}
-	
-	
-	
-	ID3D11Buffer *ps_theme_cbuffer; 
-	{ 
-		D3D11_BUFFER_DESC desc = {0}; 
-		desc.ByteWidth = sizeof(ui->theme) + 0xf & 0xfffffff0; 
-		desc.Usage = D3D11_USAGE_DYNAMIC; 
-		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; 
-		
-		D3D11_SUBRESOURCE_DATA data = {&ui->theme}; 
-		r->device->CreateBuffer(&desc, &data, &ps_theme_cbuffer); 
-	}
-	
-	ID3D11VertexShader *vshader = NULL;
-	ID3D11PixelShader *pshader = NULL;
-	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
-							&pshader, L"../widgets.hlsl",
-							NULL, NULL, 0);
-	
-	ui->widget.buffers[0] = widgets_buffer;
-	ui->widget.buffers[1] = cbuffer;
-	ui->widget.buffers[2] = ps_theme_cbuffer;
-	ui->widget.pshader = pshader;
-	ui->widget.vshader = vshader;
-	ui->widget.srv[0]= widgets_resource_view;
-	
-	//
-	// Font
-	//
-	
-	// Font Constant Buffer
-	ID3D11Buffer* font_constant_buffer;
-	{
-		// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
-		float font_constant_data[4] = {
-			2.0f / window_width,
-			-2.0f / window_height,
-			1.0f / ATLAS_WIDTH,
-			1.0f / ATLAS_HEIGHT
-		};
-		
-	D3D11_BUFFER_DESC constant_buffer_desc = {};
-	constant_buffer_desc.ByteWidth = sizeof(font_constant_data) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
-	constant_buffer_desc.Usage     = D3D11_USAGE_DYNAMIC; 
-		constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		constant_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	
-	D3D11_SUBRESOURCE_DATA font_data = { font_constant_data };
-	r->device->CreateBuffer(&constant_buffer_desc, &font_data, &font_constant_buffer);
-}
-
-// Texture Atlas
-ID3D11ShaderResourceView* atlas_resource_view;
-{
-    D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
-    texture_atlas_desc.Width             = ATLAS_WIDTH;
-    texture_atlas_desc.Height            = ATLAS_HEIGHT;
-    texture_atlas_desc.MipLevels         = 1;
-    texture_atlas_desc.ArraySize         = 1;
-    texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
-    texture_atlas_desc.SampleDesc.Count  = 1;
-    texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
-    texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
-	
-    D3D11_SUBRESOURCE_DATA atlas_data = {};
-    atlas_data.pSysMem     = atlas;
-    atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
-	
-    ID3D11Texture2D* atlas_texture;
-    r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
-	r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
-	atlas_texture->Release();
-}
-
-// Sprite Buffer
-ID3D11Buffer* sprite_buffer;
-ID3D11ShaderResourceView* sprite_resource_view;
-{
-    D3D11_BUFFER_DESC sprite_buffer_desc = {};
-    sprite_buffer_desc.ByteWidth           = MAX_SPRITES * sizeof(Sprite);
-    sprite_buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
-    sprite_buffer_desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
-    sprite_buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
-    sprite_buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // Structured Buffer contains elements of equal size. Inside the shader you can access members using an index
-    sprite_buffer_desc.StructureByteStride = sizeof(Sprite);
-    r->device->CreateBuffer(&sprite_buffer_desc, NULL, &sprite_buffer);
-	
-	// A shader resource view wraps textures in a format that the shaders can access them
-    D3D11_SHADER_RESOURCE_VIEW_DESC sprite_shader_resource_view_desc = {};
-    sprite_shader_resource_view_desc.Format             = DXGI_FORMAT_UNKNOWN;
-    sprite_shader_resource_view_desc.ViewDimension      = D3D11_SRV_DIMENSION_BUFFER; // indicates the resource is a buffer
-    sprite_shader_resource_view_desc.Buffer.NumElements = MAX_SPRITES;
-	r->device->CreateShaderResourceView(sprite_buffer, &sprite_shader_resource_view_desc, &sprite_resource_view);
-}
-
-// Point Sampler
-ID3D11SamplerState* font_sampler;
-{
-    D3D11_SAMPLER_DESC font_sampler_desc = {};
-    font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-    font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-    font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	
-    r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
-}
-
-// Vertex And Pixel Shaders
-ID3D11VertexShader* font_vshader;
-	ID3D11PixelShader* font_pshader;
-	RendererD3D11GetShaders(r, &font_vshader, L"../font.hlsl", 
-							&font_pshader, L"../font.hlsl", 
-							NULL, NULL, 0); 
-	
-	ui->font.pshader = font_pshader;
-	ui->font.vshader = font_vshader;
-	ui->font.sampler = font_sampler;
-	ui->font.buffers[0] = sprite_buffer;
-	ui->font.buffers[1] = font_constant_buffer;
-	ui->font.srv[0] = sprite_resource_view;
-	ui->font.srv[1] = atlas_resource_view;
-	
-	
-}
-
-static void 
-	UIDeInit(UI_Context *ui) {
-	ui->widget.vshader->Release(); 
-	ui->widget.pshader->Release(); 
-	ui->widget.buffers[0]->Release(); 
-	ui->widget.buffers[1]->Release(); 
-	ui->widget.buffers[2]->Release(); 
-	ui->widget.srv[0]->Release(); 
-	
-ui->font.pshader->Release();
-ui->font.vshader->Release();
-	ui->font.sampler->Release();
-	ui->font.buffers[0]->Release();
-	ui->font.buffers[1]->Release();
-	ui->font.srv[0]->Release();
-	ui->font.srv[1]->Release();
 }
 
 
 static void
-UIBegin(UI_Context *ui) {
+UIBegin(UI_Context *ui, b32 dirty) {
 	//memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
-	ui->boxs_idx = 0;
-	ui->sprite_count = 0;
 	
-	if (ui->r->dirty) {
+	if (dirty) {
 		ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 		ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
 		ui->head_widget.id = 1<<31;
@@ -1761,77 +1614,16 @@ static void
 UIEnd(UI_Context *ui) {
 	//c 256/64
 	
-    Assert(0 < ui->last); // there must be more than one widget to layout
-	Assert(ui && ui->r);
-	
+	Assert(ui);
 	
 // layout
 	{
 	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
 		UIBuildLayout(&ui->head_widget, axis); 
 	}
-	
-	
+		
+		// kind of this is where I draw 
 	UIBuildLayoutFinalRect(ui, &ui->head_widget);
-	}
-	
-	
-	//
-	// darwing
-	//
-	
-	R_D3D11Context *r = ui->r;
-	
-	// Draw Widgets
-	  {
-		RendererD3D11UpdateBuffer(r, ui->widget.buffers[0], ui->boxs, ui->boxs_idx*sizeof(ui->boxs[0])); 
-		if (ui->dirty) {
-		RendererD3D11UpdateBuffer(r, ui->widget.buffers[2], &ui->theme, sizeof(ui->theme)); 
-		}
-		if (r->dirty) { // if reisized update window constants
-			float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-			RendererD3D11UpdateBuffer(r, ui->widget.buffers[1], widgets_constants, sizeof(widgets_constants)*1);
-		}
-		
-		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-		r->context->VSSetShader(ui->widget.vshader, NULL, 0);
-		r->context->VSSetShaderResources(0, 1, ui->widget.srv);
-		r->context->VSSetConstantBuffers(0, 1, &ui->widget.buffers[1]);
-		r->context->RSSetViewports(1, r->viewport);
-		r->context->PSSetShader(ui->widget.pshader, NULL, 0);
-		r->context->PSSetConstantBuffers(0, 1, &ui->widget.buffers[2]); 
-		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-		r->context->DrawInstanced(4, ui->boxs_idx, 0, 0);
-	}
-	
-	// Draw Font
-	{
-		
-		if (r->dirty) {
-			// update constants buffer
-			float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
-			RendererD3D11UpdateBuffer(r, ui->font.buffers[1], font_constant_data, sizeof(font_constant_data)); 
-		}
-		
-		D3D11_MAPPED_SUBRESOURCE sprite_mapped;
-		r->context->Map(ui->font.buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &sprite_mapped);
-		memcpy(sprite_mapped.pData, ui->sprites, ui->sprite_count * sizeof(Sprite));
-		r->context->Unmap(ui->font.buffers[0], 0);
-		
-		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-		
-		r->context->VSSetShader(ui->font.vshader, NULL, 0);
-		r->context->VSSetShaderResources(0, 1, &ui->font.srv[0]);
-		r->context->VSSetConstantBuffers(0, 1, &ui->font.buffers[1]);
-		
-		r->context->RSSetViewports(1, r->viewport);
-		
-		r->context->PSSetShader(ui->font.pshader, NULL, 0);
-		r->context->PSSetShaderResources(1, 1, &ui->font.srv[1]);
-		r->context->PSSetSamplers(0, 1, &ui->font.sampler);
-		
-		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-		r->context->DrawInstanced(4, ui->sprite_count, 0, 0); // 4 vertices per instance, each instance is a sprite
 	}
 	
 }
@@ -1897,7 +1689,7 @@ UIPopParent(UI_Context *ui) {
 
 static inline UI_Widget *
 UIGetParent(UI_Context *ui) { 
-	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : ui->stack[0];
+	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : NULL;
 }
 
 
@@ -1942,9 +1734,14 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
         // connect to parents children
         if (parent->child) {
             UI_Widget *temp = parent->child;
-            while (temp->next) temp = temp->next;
-            temp->next = widget;
-            widget->last = temp;
+            
+			while (temp->next && temp->next->id & (1<<31)) temp = temp->next;
+            
+			UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
+			lhs->next = mid; 
+			mid->last = lhs; 
+			mid->next = rhs;
+			if (rhs) { rhs->last = mid; }
         }
         else {
             widget->last = NULL;
@@ -1954,7 +1751,6 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
     }
     else {
         Assert(&ui->head_widget);
-		
 		widget->parent = &ui->head_widget;
 		if (ui->head_widget.child) {
 			widget->next = ui->head_widget.child;
@@ -1964,7 +1760,6 @@ UIBuildWidget(UI_Context *ui, char *text, u32 flags) {
 			ui->head_widget.child = widget;
 		}
 		
-		 
 		
     }
 
@@ -2035,9 +1830,9 @@ UIButton(UI_Context *ui, char *text) {
 	UI_Widget *widget = UIBuildWidget(ui, text, 
 									  UI_CLICKABLE | 
 									  UI_DRAWBOX | 
-									  UI_DRAWTEXT | 
+									  UI_DRAWTEXT |
+									  UI_DRAWBORDER | 
 									  UI_ANIMATE_HOT);
-	
 	// TODO(ziv): move this
 	UI_Widget *parent = UIGetParent(ui);
 	if (parent) widget->layout = parent->layout;
@@ -2093,6 +1888,168 @@ UILayout(UI_Context *ui, UI_Layout layout, char *text) {
 }
 
 //~
+// Camera
+//
+// Resources:
+// [1] https://learnopengl.com/Getting-started/Camera
+// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
+//
+
+typedef struct {
+	
+	/// In
+	// camera
+	float3 pos;
+	float pitch, yaw;
+	
+	// projection
+	float fov;  // field of view
+	float n, f; // near, far plaines
+	float aspect_ratio;
+	
+	/// Out
+	matrix view; // obj world->view space
+	matrix proj; // obj view->screen space
+	matrix norm; // normals world->view
+	matrix view_inv;
+	matrix proj_inv;
+	
+	// movement vectors
+	float3 right, left;
+	float3 up, down;
+	float3 forward, backward;
+} Camera;
+
+static void
+CameraInit(Camera *c) {
+	c->fov = 0.25f*(float)M_PI;
+	c->n = .01f;
+	c->f = 1000.f;
+	
+	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+}
+
+static void
+CameraBuild(Camera *c) {
+	Assert(c);
+	
+	// Build the lookat matrix
+	float3 some_up_vector = { 0, 1, 0 };
+	
+	// The lookat matrix is a matrix created from a 'single' vector
+	// pointing in the forward direction of the player looking at the
+	// object we want to point the camera towards.
+	// In this case I create the forward vector using the pitch and yaw
+	// values and from it I compute the space in which the camera lies.
+	// The view matrix created from this space is the inverse translation
+	// and inverse rotations done by the camera itself [2].
+	
+	// this camera is pointing in the inverse direction of it's target
+	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
+	float3 rv = f3normalize(f3cross(some_up_vector, fv));
+	float3 uv = f3normalize(f3cross(fv, rv));
+	
+	float3 p = c->pos;
+	
+	matrix cmat = {
+		rv.x, uv.x, fv.x, 0,
+		rv.y, uv.y, fv.y, 0,
+		rv.z, uv.z, fv.z, 0,
+		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
+	};
+	
+	c->view = cmat;
+	c->view_inv = matrix_transpose(cmat);
+	
+	c->forward.x = c->view_inv.m[2][0];
+	c->forward.y = c->view_inv.m[2][1];
+	c->forward.z = c->view_inv.m[2][2];
+	
+	c->backward.x = -c->view_inv.m[2][0];
+	c->backward.y = -c->view_inv.m[2][1];
+	c->backward.z = -c->view_inv.m[2][2];
+	
+	c->right.x = c->view_inv.m[0][0];
+	c->right.y = c->view_inv.m[0][1];
+	c->right.z = c->view_inv.m[0][2];
+	
+	c->left.x = -c->view_inv.m[0][0];
+	c->left.y = -c->view_inv.m[0][1];
+	c->left.z = -c->view_inv.m[0][2];
+	
+	c->up.x = c->view_inv.m[1][0];
+	c->up.y = c->view_inv.m[1][1];
+	c->up.z = c->view_inv.m[1][2];
+	
+	c->down.x = -c->view_inv.m[1][0];
+	c->down.y = -c->view_inv.m[1][1];
+	c->down.z = -c->view_inv.m[1][2];
+	
+	
+	
+	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here
+    // Build the projection matrix
+	
+	// In this case the projection matrix which we are building
+	// is mapping object's in the players thrustum inside a
+	// -1 to 1 cordinate space [2].
+	float hfov = 1.0f/tanf(c->fov*0.5f);
+	
+	c->proj = matrix{0};
+	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
+	c->proj.m[1][1] = 1.0f/hfov;
+	c->proj.m[2][3] = -1.0f;
+	
+	// cn = -1 and cf = 1:
+	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
+	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
+	
+	/*
+	 //cn = 0 and cf = 1:
+	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
+	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
+
+	 //cn = -1 and cf = 0:
+	c->proj.m[2][2] = (c->n) / (c->n - c->f);
+	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
+    */
+	
+	// Inverse of the Projection Matrix
+	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
+	c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
+	c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
+	c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
+	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
+	c->proj_inv.m[3][3] = -c->proj.m[2][2];
+	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
+}
+
+static void
+CameraMove(Camera *c, float x, float y, float z) {
+	// Here we use the right up and forward vectors aligned to
+	// the camera space. We do so such that every movement we
+	// let the player have is one which respects the camera
+	// viewing angle.
+	
+	// NOTE(ziv): Player movement is defined here
+	// Currently using first person shooter movement.
+	float cy = c->pos.y;
+	
+	c->pos = c->pos + c->right * x;
+	c->pos = c->pos + c->up * y;
+	c->pos = c->pos + c->forward * z;
+	
+	if (1) {
+		// in a first person shooter camera we don't change the players
+		// y position because he looked in that direction. Only when the
+		// player requrests.
+		c->pos.y = cy;
+	}
+}
+
+
+//~
 // Object File Loader
 //
 
@@ -2111,13 +2068,11 @@ static float ObjParseFloat(char* str, size_t *length) {
 
 		if      (chr == '-' - '0') num = -num;
 		else if (chr == '.' - '0') dec = 0;
-		else if (dec)
-		{
+		else if (dec) {
 		    num += chr;
 		    num *= 0.1f;
 		}
-		else
-		{
+		else {
 		    num += chr * mul;
 		    mul *= 10.0;
 		}
@@ -2169,7 +2124,8 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 
 		obj_buf[file_size] = '\0'; // NULL terminate the string
 
-		// TODO(ziv): Close the file?
+		Assert(CloseHandle(file)); 
+		
 	}
 
 	int verticies_pos_count = 0;
@@ -2291,43 +2247,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 	
-	//printf("%d, %d, %d\n", (int)sizeof(UI_Widget), (int)sizeof(UI_Layout), (int)sizeof(UI_Layout2));
+	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
-	printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
+	HWND window = Win32CreateWindow(); 
 	
-	//~
-	// Win32 API Window Creation
-	//
-
-	HINSTANCE instance_handle = GetModuleHandleW(NULL);
-
-	WNDCLASSEXA window_class = {0};
-	window_class.cbSize = sizeof(window_class);
-	window_class.lpfnWndProc = WinProc;
-	window_class.hInstance = instance_handle ;
-	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
-	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.lpszClassName = "d3d11 example";
-
-	ATOM atom = RegisterClassExA(&window_class);
-	Assert(atom && "Could not register class");
-
-	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW,
-								  window_class.lpszClassName,
-								  APP_TITLE,
-								  WS_OVERLAPPEDWINDOW,
-								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
-								  NULL, NULL, window_class.hInstance, NULL);
-	Assert(window && "Failed to create a window");
-
-	//
-	// Init RAWINPUT
-	//
-
 	InputInitialize(window);
 
-	R_D3D11Context r; 
-	RendererInit(&r, window);
+	R_D3D11Context renderer; 
+	R_D3D11Context *r = &renderer; 
+	RendererInit(&renderer, window);
 
 
 	//~
@@ -2353,7 +2281,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		vertex_descriptor.Usage = D3D11_USAGE_DEFAULT;
 		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		D3D11_SUBRESOURCE_DATA vertex_data  = { verticies };
-		r.device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
+		r->device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
 
 		D3D11_BUFFER_DESC index_descriptor = {};
 		index_descriptor.ByteWidth = (UINT)indicies_count*sizeof(unsigned short);
@@ -2361,7 +2289,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		index_descriptor.Usage = D3D11_USAGE_DEFAULT;
 		index_descriptor.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		D3D11_SUBRESOURCE_DATA index_data = { indicies };
-		r.device->CreateBuffer(&index_descriptor, &index_data, &index_buffer);
+		r->device->CreateBuffer(&index_descriptor, &index_data, &index_buffer);
 	}
 	
 	
@@ -2376,7 +2304,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	ID3D11InputLayout  *layout = NULL;
 	ID3D11VertexShader *vshader = NULL;
 	ID3D11PixelShader  *pshader = NULL;
-	RendererD3D11GetShaders(&r, &vshader, L"../shaders.hlsl",
+	RendererD3D11GetShaders(r, &vshader, L"../shaders.hlsl",
 							&pshader, L"../shaders.hlsl",
 							&layout, vs_input_desc, ARRAYSIZE(vs_input_desc));
 	
@@ -2396,7 +2324,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
 		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		r.device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer);
+		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer);
 	}
 
 	struct PSConstantBuffer {
@@ -2412,7 +2340,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
 		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		r.device->CreateBuffer(&cbuffer_descriptor, NULL, &ps_constant_buffer);
+		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &ps_constant_buffer);
 	}
 
 	// Create Sampler State
@@ -2429,7 +2357,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		sampler_desc.BorderColor[3] = 1.0f;
 		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 
-		r.device->CreateSamplerState(&sampler_desc, &sampler_state);
+		r->device->CreateSamplerState(&sampler_desc, &sampler_state);
 	}
 
 	// Texture
@@ -2456,8 +2384,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture_data.SysMemPitch = pitch;
 
 		ID3D11Texture2D* texture;
-		r.device->CreateTexture2D(&texture_desc, &texture_data, &texture);
-		r.device->CreateShaderResourceView(texture, NULL, &texture_view);
+		r->device->CreateTexture2D(&texture_desc, &texture_data, &texture);
+		r->device->CreateShaderResourceView(texture, NULL, &texture_view);
 
 		texture->Release();
 		free(bytes);
@@ -2475,9 +2403,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
-	r.viewport = &viewport;
+	r->viewport = &viewport;
 
-	FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
+	
 
 	// projection matrix variables
 	float w = viewport.Width / viewport.Height; // width (aspect ratio)
@@ -2488,25 +2416,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-
+	
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 };
 	// point light
 	float3 lightposition = {  0, 0, 2 };
-
+	
 	// TODO(ziv): MOVE THIS CODE!!!
-	RECT rcClip;           // new area for ClipCursor
-	RECT rcOldClip;        // previous area for ClipCursor
-	// Record the area in which the cursor can move.
-	GetClipCursor(&rcOldClip);
-	// Get the dimensions of the application's window.
-	GetWindowRect(window, &rcClip);
-
+	RECT rc_clip;           // new area for ClipCursor
+	RECT rc_old_clip;        // previous area for ClipCursor
+	GetClipCursor(&rc_old_clip);
+	GetWindowRect(window, &rc_clip);
+	
 	// more things that I need I guess...
 	TimeInit();
 	double start_frame = Time(), end_frame;
-	int last_mouse_pos[2] = {window_width/2, window_height/2};
-
+	
 	// Camera
 	Camera c = {0};
 	CameraInit(&c);
@@ -2523,34 +2448,38 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		GRAY,  
 		3
 	};
-	UIInit(&ui, &r, &input);
+	UIInit(&ui, r, &input);
 	
 	
-#ifdef USE_GAMEINPUT
-	initialize_input();
-#endif
-
 	//~
-
+	
 	for (;;) {
-
+		
 		//
 		// Handle Input
 		//
-
+		
+		// sometimes dx,dy don't change since the mouse has not moved
+		// but their deltas stay. To fix this problem of "driftying" 
+		// I setting at the beginning of every frame these deltas to 0
+		g_raw_input_state.mouse.dx = 0;
+		g_raw_input_state.mouse.dy = 0;
+		
 		MSG msg;
 		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				goto release_resources;
 			}
-
+			
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
 		
 		
 		// Handle window resize
-		r.dirty = 0;
+		r->dirty = 0;
+		r->quads.idx = 0; 
+		r->font.idx = 0 ;
 		
 		RECT rect;
 		GetClientRect(window, &rect);
@@ -2558,98 +2487,167 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		LONG height = rect.bottom - rect.top;
 		if (width != window_width || height != window_height) {
 			window_width = width; window_height = height;
-			RendererD3D11Resize(&r, width, height);
+			RendererD3D11Resize(r, width, height);
 			c.aspect_ratio = (float)width/(float)height;
 		}
-			
-			
+		
+		// Don't render when minimized
+		if (width == 0 && height == 0) {
+			Sleep(14); continue;
+		}
+		
 		
 		// Get Input From User
 		input = InputGetState();
-#ifdef USE_GAMEINPUT
-		Game_Input input = {0};
-		poll_gameinput(&input);
-
-		for (int i = 0; i < ArrayLength(input.gamepads); i++) {
-			Gamepad gamepad = input.gamepads[i];
-			if (gamepad.buttons & GamepadA) printf("gamepad button a\n");
-		}
-#endif
-
-
+		
+		
+		
 		//
 		// Enable/Disable Free Camera Mode
 		//
-
+		
 		// Update Mouse Clip area
-		GetWindowRect(window, &rcClip);
-
+		GetWindowRect(window, &rc_clip);
+		
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera;
-
+			
 			if (show_free_camera) {
 				// Confine the cursor to the application's window.
-				Assert(ClipCursor(&rcClip));
+				Assert(ClipCursor(&rc_clip));
 				bool success = ShowCursor(false);
 				Assert(success);
 			}
 			else {
 				// Restore the cursor to its previous area.
-				ClipCursor(&rcOldClip);
+				ClipCursor(&rc_old_clip);
 				ShowCursor(true);
 			}
 		}
 		key_tab_pressed = false;
-
+		
 		if (show_free_camera) {
 			SetCursorPos(window_width/2, window_height/2);
 		}
 		
 		
+		//~
+		// UI
+		//
+		
+		UI_Layout layout_t = {
+			UI_AXIS2_Y,
+			{
+				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
+                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
+			},
+		};
+		
+		UI_Layout rect_layout = {
+			UI_AXIS2_Y,
+			{
+				{ UI_SIZEKIND_PERCENTOFPARENT, .5f, 1.f },
+                { UI_SIZEKIND_CHILDRENSUM, 1.f, 1.f }
+			},
+		};
+		
+		UIBegin(&ui, r->dirty);
+		
+		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
+		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
+		bool clicked = UIButton(&ui,"File");
+        if (clicked) {
+			
+			clicked = UIButton(&ui, "Window");
+			if (clicked) { printf("button clicked2\n"); }
 
+/* 			
+			clicked = UIButton(&ui, "Tab 3");
+			if (clicked) { printf("button clicked3\n"); }
+			clicked = UIButton(&ui, "Tab 4");
+			if (clicked) { printf("button clicked4\n"); }
+			clicked = UIButton(&ui, "Tab 5");
+			if (clicked) { printf("button clicked5\n"); }
+			clicked = UIButton(&ui, "Tab 6");
+			if (clicked) { printf("button clicked6\n"); } 
+			 */
+
+			
+			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
+			rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
+			UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
+			
+			UIButton(&ui, "SMOETHING NOT WRONG"); 
+			UIPopParent(&ui);
+		}
+		
+		float value = UISlider(&ui, "SLIDER");
+		
+		UIPopParent(&ui);
+		UIPopParent(&ui);
+		
+		UIEnd(&ui);
+		
+		
+		
+		
 		//~
 		// Update Game State
 		//
-
-
+		
+		
 		float speed = 5;
 		end_frame = Time();
 		if (show_free_camera) { 
-		float dt = (float)(end_frame - start_frame);
-		float dx = (float)input.mouse.px;
-		float dy = (float)-input.mouse.py;
-		
-		g_raw_input_state.mouse.px = 0;
-		g_raw_input_state.mouse.py = 0;
-		
-		
-		for (int i = 0; i < 4; i++) {
-			dx += input.gamepads[i].right_thumbstick_x*speed;
-			dy += input.gamepads[i].right_thumbstick_y*speed;
-		}
-
-		c.yaw   = fmodf(c.yaw - dx/window_width*2*3.14f, (float)(2*M_PI));
-		c.pitch = float_clamp(c.pitch + dy/window_height, -(float)M_PI/2.f, (float)M_PI/2.f);
-		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
+			float dt = (float)(end_frame - start_frame);
+			float dx = (float)input.mouse.dx;
+			float dy = (float)-input.mouse.dy;
+			
+			for (int i = 0; i < 4; i++) {
+				dx += input.gamepads[i].right_thumbstick_x*speed;
+				dy += input.gamepads[i].right_thumbstick_y*speed;
+			}
+			
+			c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
+			c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
+			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
 		}
 		CameraBuild(&c);
 		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
-
-		// Don't render when minimized
-		if (width == 0 && height == 0) {
-			Sleep(16); continue;
-		}
+		
+		
+		
+		
+		D_Context d = { r };
+		
+		Rect my_rc= { 100, 100, 100+150, 200 }; 
+		DrawQuad(&d, my_rc, 1.f);
+		
+		char txt[] =  "this is sometext to render";
+		float txt_width = 0;
+		float box_width = 150;
+		TextSize(txt, &txt_width, NULL);
+		
+		float percent_to_remove = box_width / txt_width; 
+		
+		int txt_len = 0;
+		while (txt[txt_len++]); 
+		txt_len--;
+		
+		int chars_to_print = (int)((float)txt_len * MIN(percent_to_remove, 1)); 
+		
+		DrawDefaultText(&d, txt, chars_to_print, 100, 100);
 		
 		
 		//~
 		// Render Game
 		//
-
+		
 		// Update model-view matrix
 		{
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
-
+			
 			// fov
 			float w = viewport.Width / viewport.Height; // width (aspect ratio)
 			matrix projection = {
@@ -2658,152 +2656,125 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				0, 0, f / (f - n), 1, 0,
 				0, n * f / (n - f), 0
 			};
-
+			
 			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = projection;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-			RendererD3D11UpdateBuffer(&r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
+			RendererD3D11UpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
 			
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
-			RendererD3D11UpdateBuffer(&r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
+			RendererD3D11UpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
 			
 		}
 		
 		// clear background
-		r.context->ClearRenderTargetView(r.frame_buffer_view, background_color);
+		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
+		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
 		// Draw Entity
 		{
-            r.context->ClearDepthStencilView(r.zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
-
-            // Input Assembler
-            r.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            r.context->IASetInputLayout(layout);
-            const UINT stride = sizeof(Vertex);
-            const UINT offset = 0;
-            r.context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-            r.context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
-
-            // Vertex Shader
-            r.context->VSSetShader(vshader, NULL, 0);
-            r.context->VSSetConstantBuffers(0, 1, &cbuffer);
-
-            // Rasterizer Stage
-            r.context->RSSetViewports(1, &viewport);
-            r.context->RSSetState(r.rasterizer_cull_back);
-
-            // Pixel Shader
-            r.context->PSSetShader(pshader, NULL, 0);
-            r.context->PSSetConstantBuffers(0, 1, &ps_constant_buffer);
-            r.context->PSSetShaderResources(0, 1, &texture_view);
-            r.context->PSSetSamplers(0, 1, &sampler_state);
-
-            // Output Merger
-            r.context->OMSetDepthStencilState(r.depth_stencil_state, 0);
-            r.context->OMSetRenderTargets(1, &r.frame_buffer_view, r.zbuffer);
-
-            r.context->DrawIndexed((UINT)indicies_count, 0, 0);
-        }
-
-
-
-
-
-		// NOTE(ziv): Testing for UI & API purposes
-		//
-
-		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-
-		//printf("mp %lld:%lld\n", input.mouse.px, input.mouse.py);
-
-
-		//~
-		// Build UI
-		//
-		
-		
-		POINT cursor_position; 
-		GetCursorPos(&cursor_position);
-		ScreenToClient(window, &cursor_position); 
-		input.mouse.px = cursor_position.x; 
-		input.mouse.py = cursor_position.y;
-		
-		
-		
-
-
-		UI_Layout layout_t = {
-			UI_AXIS2_X,
-			{
-				{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f },
-                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
-			},
-		};
-		
-		UI_Layout rect_layout = {
-			UI_AXIS2_X,
-			{
-				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
-                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
-			},
-		};
-		
-		UIBegin(&ui);
-		
-		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", UI_DRAWBOX));
-		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
-		bool clicked = UIButton(&ui,"File");
-        if (clicked) { 
-			UIButton(&ui, "popupbutton");
-			printf("button clicked1\n"); 
+			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 			
+			// Input Assembler
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			r->context->IASetInputLayout(layout);
+			const UINT stride = sizeof(Vertex);
+			const UINT offset = 0;
+			r->context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
+			r->context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
+			
+			// Vertex Shader
+			r->context->VSSetShader(vshader, NULL, 0);
+			r->context->VSSetConstantBuffers(0, 1, &cbuffer);
+			
+			// Rasterizer Stage
+			r->context->RSSetViewports(1, &viewport);
+			r->context->RSSetState(r->rasterizer_cull_back);
+			
+			// Pixel Shader
+			r->context->PSSetShader(pshader, NULL, 0);
+			r->context->PSSetConstantBuffers(0, 1, &ps_constant_buffer);
+			r->context->PSSetShaderResources(0, 1, &texture_view);
+			r->context->PSSetSamplers(0, 1, &sampler_state);
+			
+			// Output Merger
+			r->context->OMSetDepthStencilState(r->depth_stencil_state, 0);
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, r->zbuffer);
+			
+			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
-		clicked = UIButton(&ui,  "Window");
-        if (clicked) { printf("button clicked2\n"); }
-		clicked = UIButton(&ui, "Tab 3");
-        if (clicked) { printf("button clicked3\n"); }
-		clicked = UIButton(&ui, "Tab 4");
-        if (clicked) { printf("button clicked4\n"); }
-		clicked = UIButton(&ui, "Tab 5");
-        if (clicked) { printf("button clicked5\n"); }
-		clicked = UIButton(&ui, "Tab 6");
-        if (clicked) { printf("button clicked6\n"); } 
 		
-		float value = UISlider(&ui, "SLIDER");
+		// Draw Quads
+		{
+			// TODO(ziv): make sure that if graph has not changed fron last time
+			// there is no need to upload different data to the gpu. 
+			// which would reduce the data transfers to the gpu. 
+			
+			RendererD3D11UpdateBuffer(r, r->quads.buffers[0], r->quads.data, r->quads.idx*sizeof(r->quads.data[0])); 
+			if (r->dirty) { // if reisized update window constants
+				float quadss_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+				RendererD3D11UpdateBuffer(r, r->quads.buffers[1], quadss_constants, sizeof(quadss_constants)*1);
+			}
+			
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
+			r->context->VSSetShader(r->quads.vshader, NULL, 0);
+			r->context->VSSetShaderResources(0, 1, r->quads.srv);
+			r->context->VSSetConstantBuffers(0, 1, &r->quads.buffers[1]);
+			r->context->RSSetViewports(1, r->viewport);
+			r->context->PSSetShader(r->quads.pshader, NULL, 0);
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			r->context->DrawInstanced(4, r->quads.idx, 0, 0);
+		}
 		
-		UIPopParent(&ui);
-		UIPopParent(&ui);
-
-		UIEnd(&ui);
-
-
-		// ===== RendererEndFrame
-
-		// present the backbuffer to the screen
-		r.swap_chain->Present(1, 0); // Using here VSYNC
-		// end of frame
+		// Draw Font
+		{
+			
+			if (r->dirty) {
+				// update constants buffer
+				float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
+				RendererD3D11UpdateBuffer(r, r->font.buffers[1], font_constant_data, sizeof(font_constant_data)); 
+			}
+			
+			D3D11_MAPPED_SUBRESOURCE sprite_mapped;
+			r->context->Map(r->font.buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &sprite_mapped);
+			memcpy(sprite_mapped.pData, r->font.data, r->font.idx*sizeof(r->font.data[0]));
+			r->context->Unmap(r->font.buffers[0], 0);
+			
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
+			
+			r->context->VSSetShader(r->font.vshader, NULL, 0);
+			r->context->VSSetShaderResources(0, 1, &r->font.srv[0]);
+			r->context->VSSetConstantBuffers(0, 1, &r->font.buffers[1]);
+			
+			r->context->RSSetViewports(1, r->viewport);
+			
+			r->context->PSSetShader(r->font.pshader, NULL, 0);
+			r->context->PSSetShaderResources(1, 1, &r->font.srv[1]);
+			r->context->PSSetSamplers(0, 1, &r->font.sampler);
+			
+			r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
+			r->context->DrawInstanced(4, r->font.idx , 0, 0); // 4 vertices per instance, each instance is a sprite
+		}
+		
+		RendererD3D11Present(r);
 		start_frame = end_frame; // update time for dt calc
 	}
-
-
+	
+	
 	release_resources:
-
+	
 	InputShutdown(); // rawinput
-
-#ifdef USE_GAMEINPUT
-	shutdown_input();
-#endif
-
-
+	
+	
 	//
 	// Release resources
 	//
-
+	
 	index_buffer->Release();
 	vertex_buffer->Release();
 	cbuffer->Release();
@@ -2814,8 +2785,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	pshader->Release();
 	vshader->Release();
 	
-	UIDeInit(&ui);
-	RendererDeInit(&r);
+	RendererDeInit(r);
 	
 	return 0;
 }

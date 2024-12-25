@@ -39,20 +39,24 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 }
 
 
-cbuffer ps_constantas : register(b0) {
-	float4 foreground_color;
-	float4 hot_color;
-	float4 active_color;
-	float border; // size
-}; 
-
-
 float BoarderdRectSDF(float2 pixel, float2 size, float radius) {
 	float2 abs_point = float2(abs(pixel.x), abs(pixel.y)); 
 	return length(max(abs_point-size+radius, 0.))-radius;
 }
 
 float4 ps_main(PS_INPUT o) : SV_Target {
+
+	float4 foreground_color = float4(1., 0., 0., 1.);
+	float4 hot_color = float4(1., 0., 1., 1.);
+	float4 active_color = float4(1., 0., 0., 1.);
+	float border = 5; // size
+
+
+
+
+
+
+
 
 	float radius = 0; // currently I don't care about rounded corners
 
@@ -64,6 +68,8 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 	float clamped_distance = clamp(round(distance), 0, 1.0);
 
 	float4 border_color = float4(0., 0., 0., 1.);
+
+
 	float4 box_color = foreground_color; // float4(1., 0., 0., 1.);
 	
 	// show or don't show border
