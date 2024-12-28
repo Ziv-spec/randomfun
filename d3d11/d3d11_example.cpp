@@ -79,6 +79,7 @@ typedef int     b32;
 * [ ] Mouse screen to world projection
 * [ ] Update on Resize for fluid screen resize handling?
 * [ ] Pixelated look
+* [ ] editor for the game
 
 //
 // [x] implement fullscreen alt+enter
@@ -99,15 +100,27 @@ typedef int     b32;
 //   [x] make widget allocator smarter (apperently it was)
 //   [x] prune out widgets that are no longer part of higherarchy
 //   [x] add support for rounded corners, custom color (per vertex?)
-//   [ ] add slider widget (think about how to render that)
-//     [ ] make slider colors not be funny
+//   [x] make text confirm to widget dimenions
+//   [ ] resolve sizing conflicts and adhere to it's strictness
+//   [x] add slider widget (think about how to render that)
+//     [x] make slider colors not be funny
+//   [ ] fix drawing issuess with border / radius (working on it fixed alpha blending i think)
 //   [ ] Make hash of id smarter (support for ##id)
 // [ ] OS
 //   [ ] Input
 //     [ ] make input events
+ //     [ ] allow for eating events (for ui purposes)
 //   [ ] Renderer
 //   [ ] Draw
+// [ ] Memory allocation system
 //
+
+//  ============== goals for today ==============
+// [ ] resolve sizing conflicts
+// [x] allow widgets to have different positions on screen (not all relative to 0,0)
+// [ ] make a panel widget that moves using this not all relative thingy 
+// [ ] make input system as events and shit
+// [x] don't draw quads that are not on the screen (in DrawQaud func)
 */
 
 static void FatalError(const char* message)
@@ -116,16 +129,19 @@ static void FatalError(const char* message)
     ExitProcess(0);
 }
 
+typedef struct { int x, y; } int2;
+typedef struct { float x, y; } float2;
+typedef struct { float minx, miny, maxx, maxy; } Rect;
+typedef struct { float r, g, b, a; } Color;
+
 //~
 // Math
 //
 
-inline static float lerp(float start, float end, float t) {
+inline static float 
+lerp(float start, float end, float t) {
 	return start + (end-start)*t;
 }
-
-typedef struct { float minx, miny, maxx, maxy; } Rect;
-typedef struct { float r, g, b, a; } Color;
 
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
@@ -183,12 +199,12 @@ operator*(const matrix& m1, const matrix& m2)
 static matrix
 matrix_inverse_transpose(matrix A) {
 	matrix r = {0};
-
+	
 	float determinant =
 		+A.m[0][0]*(A.m[1][1]*A.m[2][2] - A.m[2][1]*A.m[1][2])
 		-A.m[0][1]*(A.m[1][0]*A.m[2][2] - A.m[1][2]*A.m[2][0])
 		+A.m[0][2]*(A.m[1][0]*A.m[2][1] - A.m[1][1]*A.m[2][0]);
-
+	
 	float invdet = 1/determinant;
 	r.m[0][0] =  (A.m[1][1]*A.m[2][2] - A.m[2][1]*A.m[1][2])*invdet;
 	r.m[1][0] = -(A.m[0][1]*A.m[2][2] - A.m[0][2]*A.m[2][1])*invdet;
@@ -199,7 +215,7 @@ matrix_inverse_transpose(matrix A) {
 	r.m[0][2] =  (A.m[1][0]*A.m[2][1] - A.m[2][0]*A.m[1][1])*invdet;
 	r.m[1][2] = -(A.m[0][0]*A.m[2][1] - A.m[2][0]*A.m[0][1])*invdet;
 	r.m[2][2] =  (A.m[0][0]*A.m[1][1] - A.m[1][0]*A.m[0][1])*invdet;
-
+	
 	return r;
 }
 
@@ -258,6 +274,40 @@ get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 }
 
 //~
+// Memory Allocator
+//
+
+typedef struct {
+	size_t size; 
+	size_t idx;
+	void *data;
+} Arena;
+
+static bool 
+MemArenaInit(Arena *arena, size_t size) {
+	void *data = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	arena->data = data;
+	arena->size = size; 
+	arena->idx = 0; 
+	
+	return data != NULL;
+}
+
+static void *
+MemArenaAlloc(Arena *arena, size_t size) {
+	Assert(arena->idx < arena->size && arena->data); 
+	
+	size_t bytes_free = arena->size - arena->idx; 
+	if (bytes_free > size) {
+		void *result = (char *)arena->data + arena->idx;
+		arena->idx += size;
+		return result;   
+	}
+	return NULL;
+}
+
+
+//~
 // String8
 // 
 
@@ -288,7 +338,6 @@ Str8Compare(String8 s1, String8 s2) {
 	return 1;
 }
 
-
 static s64 Str8GetHash(s64 seed, String8 str) {
 	s64 hash = seed;
 	for (int i = 0; i < str.size; i++) {
@@ -297,7 +346,6 @@ static s64 Str8GetHash(s64 seed, String8 str) {
 	}
 	return hash;
 }
-
 
 //
 // Font
@@ -345,9 +393,6 @@ const static UINT atlas[] = {
 	0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff,
 	0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xffffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
 };
-
-typedef struct int2 { int x, y; } int2;
-typedef struct float2 { float x, y; } float2;
 
 #define FAT_PIXEL_SIZE 2.f
 
@@ -524,23 +569,23 @@ static Game_Input g_raw_input_state;
 
 static void
 InputInitialize(HWND window) {
-
+	
 	// Rawinput API
 	{
-
+		
 		RAWINPUTDEVICE Rid[1];
         Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
         Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
         Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
         Rid[0].hwndTarget = window;
-
+		
         if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE) {
             //registration failed. Call GetLastError for the cause of the error.
             FatalError("Rawinput couldn't register a mouse\n");
 		}
-
+		
 	}
-
+	
 }
 
 static void
@@ -561,38 +606,38 @@ InputShutdown() {
 		}
 	}
 	
-	}
+}
 
 static bool
 InputUpdate(LPARAM lparam) {
-
+	
 	UINT dwSize;
-
+	
 	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
-
+	
 	LPBYTE lpb = new BYTE[dwSize];
 	if (lpb == NULL) {
 		return 0;
 	}
-
+	
 	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
 		OutputDebugString(TEXT("GetRawInputData does not return correct size !\n"));
 		return 0;
 	}
-
+	
 	RAWINPUT* raw = (RAWINPUT*)lpb;
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
-
+		
 		Mouse mouse = g_raw_input_state.mouse;
-			int delta_m = (int)raw->data.mouse.usButtonData;
-			//printf("wheel: %d\n", delta_m);
-
-			mouse.dx = raw->data.mouse.lLastX;
+		int delta_m = (int)raw->data.mouse.usButtonData;
+		//printf("wheel: %d\n", delta_m);
+		
+		mouse.dx = raw->data.mouse.lLastX;
 		mouse.dy = raw->data.mouse.lLastY;
 		
-            if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
-                mouse.wy += (int)raw->data.mouse.usButtonData;
-            }
+		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
+			mouse.wy += (int)raw->data.mouse.usButtonData;
+		}
 		
 		int buttons = mouse.buttons;
 		switch (raw->data.mouse.ulButtons) {
@@ -603,12 +648,12 @@ InputUpdate(LPARAM lparam) {
 			case RI_MOUSE_BUTTON_3_DOWN: buttons |= MouseMiddleButton; break;
 			case RI_MOUSE_BUTTON_3_UP:   buttons &= ~MouseMiddleButton; break;
 		}
-
+		
 		mouse.buttons = (Mouse_Buttons)buttons;
 		g_raw_input_state.mouse = mouse;
 	}
 	delete[] lpb;
-
+	
 	return 1;
 }
 
@@ -643,14 +688,14 @@ static bool key_left;
 bool show_free_camera = false;
 
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
-
+	
 	switch (message)
     {
 		case WM_DESTROY: {
 			PostQuitMessage(0);
 			return 0;
 		} break;
-
+		
 		case WM_KEYDOWN:
 		{
 			
@@ -658,15 +703,15 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			if ((char)wparam == 'S') { key_s = true; }
 			if ((char)wparam == 'A') { key_a = true; }
 			if ((char)wparam == 'D') { key_d = true; }
-
+			
 			if ((char)wparam == VK_UP)    { key_up = true; }
 			if ((char)wparam == VK_DOWN)  { key_down = true; }
 			if ((char)wparam == VK_RIGHT) { key_right = true; }
 			if ((char)wparam == VK_LEFT)  { key_left = true; }
-
+			
 			if ((char)wparam == VK_SPACE)   { key_space = true; }
 			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
-
+			
 			if (wparam == VK_TAB) { key_tab = true; }
 			
 			
@@ -677,25 +722,27 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			}
 			
 		} break;
-
+		
 		case WM_KEYUP:
 		{
 			key_w = (char)wparam == 'W' ? false : key_w;
 			key_s = (char)wparam == 'S' ? false : key_s;
 			key_a = (char)wparam == 'A' ? false : key_a;
 			key_d = (char)wparam == 'D' ? false : key_d;
-
+			
 			key_up    = (char)wparam == VK_UP ? false : key_up;
 			key_down  = (char)wparam == VK_DOWN ? false : key_down;
 			key_right = (char)wparam == VK_RIGHT ? false : key_right;
 			key_left  = (char)wparam == VK_LEFT ? false : key_left;
-
+			
 			key_space  = (char)wparam == VK_SPACE ? false : key_space;
 			key_ctrl   = (char)wparam == VK_CONTROL ? false : key_ctrl;
 			key_tab    = (wparam == VK_TAB) ? false : key_tab;
-
-			if (wparam == VK_TAB) key_tab_pressed = true;
-
+			
+			if (wparam == VK_TAB && (lparam & (1<<24)) == 0) {
+				key_tab_pressed = true;
+			}
+			
 		} break;
 		
 		case WM_ACTIVATE: {
@@ -707,14 +754,14 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 		//
 		// Rawinput
 		//
-
+		
 		case WM_INPUT: {
 			if (!InputUpdate(lparam)) {
 				FatalError("Program ran out of memory!");
 				return 0;
 			}
 		} break;
-
+		
 	}
 	return DefWindowProcA(window, message, wparam, lparam);
 }
@@ -743,17 +790,17 @@ typedef struct R_SpriteInst {
 
 typedef struct {
 	HWND window;
-
+	
 	ID3D11Device1 *device;
 	ID3D11DeviceContext1 *context;
 	IDXGISwapChain1 *swap_chain;
 	ID3D11RenderTargetView *frame_buffer_view;
-
+	
 	ID3D11DepthStencilState* depth_stencil_state;
 	ID3D11DepthStencilView *zbuffer;
 	ID3D11Texture2D *zbuffer_texture;
 	ID3D11RasterizerState1* rasterizer_cull_back;
-
+	
 	D3D11_VIEWPORT *viewport;
 	
 	b32 dirty; // window size changed
@@ -767,6 +814,7 @@ typedef struct {
 		ID3D11VertexShader *vshader;
 		ID3D11PixelShader *pshader;
 		ID3D11ShaderResourceView *srv[1];
+		ID3D11BlendState1* blend_state_use_alpha;
 		
 		R_QuadInst data[MAX_QUAD_COUNT];
 		int idx;
@@ -780,8 +828,8 @@ typedef struct {
 		ID3D11ShaderResourceView *srv[2];
 		ID3D11SamplerState* sampler; 
 		
-			R_SpriteInst data[MAX_SPRITES_COUNT];
-			int idx;
+		R_SpriteInst data[MAX_SPRITES_COUNT];
+		int idx;
 	} font;
 	
 } R_D3D11Context;
@@ -995,8 +1043,8 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	}
 	
 	r->window = window; 
-		r->device = device; 
-		r->context = context;
+	r->device = device; 
+	r->context = context;
 	r->swap_chain = swap_chain;
 	r->frame_buffer_view = frame_buffer_view;
 	r->depth_stencil_state = depth_stencil_state;
@@ -1046,6 +1094,21 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	}
 	
 	
+	ID3D11BlendState1 *blend_state_use_alpha = NULL;
+	{
+		D3D11_BLEND_DESC1 blend_state = {0};
+		blend_state.RenderTarget[0].BlendEnable = TRUE;
+		blend_state.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		blend_state.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		blend_state.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		blend_state.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		blend_state.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		blend_state.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		blend_state.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
+	}
+	
+	
 	ID3D11VertexShader *vshader = NULL;
 	ID3D11PixelShader *pshader = NULL;
 	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
@@ -1057,7 +1120,7 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->quads.pshader = pshader;
 	r->quads.vshader = vshader;
 	r->quads.srv[0]= quads_srv;
-	
+	r->quads.blend_state_use_alpha = blend_state_use_alpha;
 	//
 	// Font
 	//
@@ -1173,6 +1236,7 @@ RendererDeInit(R_D3D11Context *r) {
 	r->quads.buffers[0]->Release(); 
 	r->quads.buffers[1]->Release(); 
 	r->quads.srv[0]->Release(); 
+	r->quads.blend_state_use_alpha->Release();
 	
 	r->font.pshader->Release();
 	r->font.vshader->Release();
@@ -1186,31 +1250,31 @@ RendererDeInit(R_D3D11Context *r) {
 static void
 RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 	Assert(r);
-
+	
 	if (r->frame_buffer_view) {
 		r->context->ClearState();
 		r->frame_buffer_view->Release();
 		r->frame_buffer_view = NULL;
-
+		
 		r->zbuffer_texture->Release();
 		r->zbuffer->Release();
 	}
-
-
+	
+	
 	if (width != 0 && height != 0) {
 		HRESULT hr;
 		hr = r->swap_chain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
 		if (FAILED(hr)) FatalError("Failed to resize the swap chain!");
-
+		
 		// Create a new RenderTarget for the new back buffer texture
 		ID3D11Texture2D *backbuffer;
 		r->swap_chain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)&backbuffer);
 		r->device->CreateRenderTargetView(backbuffer, NULL, &r->frame_buffer_view);
 		backbuffer->Release();
-
+		
 		// Create Z-Buffer
 		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
-
+		
 		depth_buffer_desc.Width = width;
 		depth_buffer_desc.Height = height;
 		depth_buffer_desc.MipLevels = 1;
@@ -1221,7 +1285,7 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		r->device->CreateTexture2D(&depth_buffer_desc, NULL, &r->zbuffer_texture);
-
+		
 		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
 		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
 		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
@@ -1238,30 +1302,30 @@ static void
 RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, unsigned int data_size) {
 	Assert(r && buff && data); 
 	if (data_size > 0) {
-	D3D11_MAPPED_SUBRESOURCE mapped;
-	r->context->Map((ID3D11Resource *)buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-	memcpy(mapped.pData, data, data_size);
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		r->context->Map((ID3D11Resource *)buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		memcpy(mapped.pData, data, data_size);
 		r->context->Unmap((ID3D11Resource *)buff, 0);
 	}
 }
 
 static void
 RendererD3D11Present(R_D3D11Context *r) { 
-// present the backbuffer to the screen
-bool vsync = TRUE; 
-HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
-if (hr == DXGI_STATUS_OCCLUDED)
-{
-	// window is minimized, cannot vsync - instead sleep a bit
-	if (vsync)
+	// present the backbuffer to the screen
+	bool vsync = TRUE; 
+	HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
+	if (hr == DXGI_STATUS_OCCLUDED)
 	{
-		Sleep(10);
+		// window is minimized, cannot vsync - instead sleep a bit
+		if (vsync)
+		{
+			Sleep(10);
+		}
 	}
-}
-else if (FAILED(hr))
-{
-	FatalError("Failed to present swap chain! Device lost?");
-}
+	else if (FAILED(hr))
+	{
+		FatalError("Failed to present swap chain! Device lost?");
+	}
 }
 
 //~ 
@@ -1271,12 +1335,17 @@ else if (FAILED(hr))
 
 static void 
 DrawQuad(R_D3D11Context *r, Rect rect, Color color) {
-	Assert(r->quads.idx < MAX_QUAD_COUNT); 
-	r->quads.data[r->quads.idx].rect = rect;
-	r->quads.data[r->quads.idx].color = color;
-	r->quads.data[r->quads.idx].radius = 0;
-	r->quads.data[r->quads.idx].border = 0;
-	r->quads.idx++;
+	Assert(r->quads.idx < MAX_QUAD_COUNT);
+	
+	if (0 <= rect.maxx && rect.minx <= r->viewport->Width && 
+		0 <= rect.maxy && rect.miny <= r->viewport->Height) {
+		r->quads.data[r->quads.idx].rect = rect;
+		r->quads.data[r->quads.idx].color = color;
+		r->quads.data[r->quads.idx].radius = 10;
+		r->quads.data[r->quads.idx].border = 1;
+		r->quads.idx++;
+	}
+	
 }
 
 static void 
@@ -1322,10 +1391,13 @@ typedef enum {
 	UI_CLICKABLE  = 1 << 0,
     UI_SLIDERABLE = 1 << 1,
     UI_INPUTABLE  = 1 << 3,
-	UI_DRAWBOX    = 1 << 4,
-    UI_DRAWTEXT   = 1 << 5,
-	UI_DRAWBORDER = 1 << 6, 
-	UI_ANIMATE_HOT = 1 << 7
+    UI_DRAGGABLE  = 1 << 4,
+	UI_FLOAT_X    = 1 << 5,
+    UI_FLOAT_Y    = 1 << 6,
+	UI_DRAWBOX    = 1 << 7,
+    UI_DRAWTEXT   = 1 << 8,
+	UI_DRAWBORDER = 1 << 9, 
+	UI_ANIMATE_HOT = 1 << 10
 } UI_Flags;
 
 typedef struct {
@@ -1428,7 +1500,7 @@ typedef struct {
 
 static void
 UICoreLayoutConstant(UI_Widget *widget, int axis) {
-		if (!widget)  return; 
+	if (!widget)  return; 
 	UI_Layout *layout = &widget->layout;
 	switch (layout->semantic_size[axis].kind) {
 		case UI_SIZEKIND_NULL: break;
@@ -1455,7 +1527,7 @@ UICoreLayoutPreOrderUpwardDependednt(UI_Widget *widget, int axis) {
 	switch (layout->semantic_size[axis].kind) {
 		case UI_SIZEKIND_PERCENTOFPARENT: {
 			Assert(widget->parent);
-			widget->computed_size[axis] = layout->semantic_size[axis].value * widget->parent->computed_size[axis];
+			widget->computed_size[axis] = floorf(layout->semantic_size[axis].value * widget->parent->computed_size[axis]);
 		} break;
 	}
 	
@@ -1532,16 +1604,40 @@ static void
 UICoreLayoutRelPos(UI_Widget *widget, int axis) { 
 	if (!widget)  return; 
 	
-	if (widget->last) {
-		if (axis == widget->layout.axis) {
-			widget->computed_rel_pos[axis] = widget->last->computed_rel_pos[axis] + widget->last->computed_size[axis];
+	UI_Flags float_axis = (axis == UI_AXIS2_X) ? UI_FLOAT_X : UI_FLOAT_Y;
+	
+	
+	if (!(widget->flags & float_axis)) {
+		
+		
+		
+		if (widget->last) {
+			
+			// skip widgets with floating x,y relative positions
+			UI_Widget *temp = widget;
+			while (temp->last && (temp->last->flags & float_axis)) 
+				temp = temp->last;
+			
+			if (temp->last) {
+				// should contain a none floating x,y rel pos
+				if (axis == widget->layout.axis)
+					widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
+				
+			}
+			else {
+				// I should ask parent for rel pos
+				widget->computed_rel_pos[axis] = temp->parent->computed_rel_pos[axis];
+			}
+			
+			
+			
 		}
-		else {
-			widget->computed_rel_pos[axis] = widget->last->computed_rel_pos[axis];
+		else if (widget->parent) {
+			widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
 		}
-	}
-	else if (widget->parent) {
-		widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
+		
+		
+		
 	}
 	
 	
@@ -1559,14 +1655,14 @@ UICoreLayout(UI_Widget *widget, int axis) {
 	UICoreLayoutPreOrderUpwardDependednt(widget, axis); 
 	UICoreLayoutPostOrderDownwardsDependent(widget, axis);
 	UICoreLayoutRelPos(widget, axis); 
-	}
+}
 
 static void
 UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	if (!head) return;
 	
     for (; head; head = head->next) {
-	// Compute final rects for all widgets
+		// Compute final rects for all widgets
 		head->rect.minx = head->computed_rel_pos[0];
 		head->rect.miny = head->computed_rel_pos[1];
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
@@ -1577,9 +1673,28 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		//
 		
 		if (head->flags & UI_DRAWTEXT) {
-		 float pad = 5; 
-			DrawDefaultText(ui->r, head->text.data, (int)head->text.size, 
+			float pad = 5; 
+			String8 txt = head->text;
+			
+			float rect_width = head->rect.maxx - head->rect.minx - 2 * pad; 
+			float amount_to_show =  rect_width / DefaultTextWidth(txt);
+			int display_size = (int)((float)txt.size *  MIN(amount_to_show, 1));
+			
+			const char *display_txt = txt.data;
+			char dest[0x100]; 
+			if (amount_to_show < 1.f) {
+				display_txt = strcpy(dest, txt.data); 
+				dest[display_size-1] = '.';
+				dest[display_size-2] = '.';
+				display_txt = dest;
+			}
+			
+			
+			
+			DrawDefaultText(ui->r, display_txt, display_size, 
 							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
+			
+			
 		}
 		
 		if (head->flags >= UI_DRAWBOX) {
@@ -1588,7 +1703,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			float dt = 1.f/60.f; // TODO(ziv): move/remove this?
 			head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			if (!(head->flags & UI_SLIDERABLE)) {
-			head->active_t = lerp(head->active_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
+				head->active_t = lerp(head->active_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			}
 			
 			
@@ -1597,7 +1712,8 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			
 			Color background = { 0.05f, 0.1f, .2f, 1}; 
 			if (head->flags & UI_SLIDERABLE) {
-				background = { 0.05f, 0.3f, .1f, 1 };
+				float darken = 0.5;
+				background.r *= darken; background.g *= darken; background.b *= darken; 
 			}
 			Color hot = { 0.2f, 0.3f, .5f, 1};
 			Color active = GRAY;
@@ -1676,7 +1792,7 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 static void
 UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
 	ui->input = input;
-	ui->r = r;
+		ui->r = r;
 	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
 	ui->head_widget.id.alive = 1;
@@ -1707,14 +1823,14 @@ UIEnd(UI_Context *ui) {
 	
 	Assert(ui);
 	
-// layout
+	// layout
 	{
-	for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
-		UICoreLayout(&ui->head_widget, axis); 
-	}
+		for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
+			UICoreLayout(&ui->head_widget, axis); 
+		}
 		
 		// kind of this is where I draw 
-	UICoreLayoutFinalRect(ui, &ui->head_widget);
+		UICoreLayoutFinalRect(ui, &ui->head_widget);
 	}
 	
 }
@@ -1749,25 +1865,25 @@ UITopParent(UI_Context *ui) {
 
 
 static UI_Widget *
-	UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
-		Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
-			
-		//
-		// Get entry from hashmap if exists
-		//
-			
-		String8 strid = Str8Lit(text); 
-		s32 mask = (WIDGETS_COUNT-1);
-		s32 key = (s32)Str8GetHash(234982374, strid) & mask;
-		UI_Widget *entry = NULL;
-			
+UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
+	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
+	
+	//
+	// Get entry from hashmap if exists
+	//
+	
+	String8 strid = Str8Lit(text); 
+	s32 mask = (WIDGETS_COUNT-1);
+	s32 key = (s32)Str8GetHash(234982374, strid) & mask;
+	UI_Widget *entry = NULL;
+	
 	do {
 		entry = &ui->widgets[key++ & mask];
 	} while(!Str8Compare(strid, entry->id.value) && entry->id.value.size);
 	key--;
-	 
+	
 	if (Str8Compare(strid, entry->id.value)) {
-		//Assert(entry->flags == flags && !(entry->id & (1<<31)) && (entry->id & mask) == (id & mask));
+		Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
 		
 		entry->id.alive = 1;
 		return entry;
@@ -1778,7 +1894,7 @@ static UI_Widget *
     //
 	
     UI_Widget *parent = UITopParent(ui);
-		UI_Widget *widget = &ui->widgets[key & mask];
+	UI_Widget *widget = &ui->widgets[key & mask];
 	widget->id = { key, 1, strid };
 	widget->parent = parent;
     widget->child = NULL;
@@ -1804,14 +1920,20 @@ static UI_Widget *
             widget->last = NULL;
             parent->child = widget;
         }
-
+		
     }
     else {
         Assert(&ui->head_widget);
 		widget->parent = &ui->head_widget;
 		if (ui->head_widget.child) {
-			widget->next = ui->head_widget.child;
-			ui->head_widget.child->last = widget;
+			
+			// add to the very last node
+			UI_Widget *head = ui->head_widget.child; 
+			while (head->next) head = head->next; 
+			
+			head->next = widget; 
+			widget->last = head; 
+			
 		}
 		else {
 			ui->head_widget.child = widget;
@@ -1819,7 +1941,7 @@ static UI_Widget *
 		
 		
     }
-
+	
     return widget;
 }
 
@@ -1830,7 +1952,7 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 	
     Mouse mouse = ui->input->mouse;
     Rect rect = widget->rect;
-
+	
     // Find if mouse is inside UI hit-box
     if (rect.minx <= mouse.px &&
 		mouse.px <= rect.maxx &&
@@ -1852,24 +1974,32 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 		else {
 			ui->active = NULL; 
 		}
-
-        // widget slider widget->flags
-        if ((widget->flags & UI_SLIDERABLE)) {
-			if (mouse.buttons & MouseLeftButton) {
-				output.slider_value = (mouse.px-rect.minx)/(rect.maxx - rect.minx);
-				widget->active_t = output.slider_value;
-			}
-		}
+		
     }
-    else if (ui->hot == widget|| ui->active == widget) {
-        ui->hot = NULL;
+    else if ((ui->hot == widget || ui->active == widget) && 
+			 !(widget->flags & UI_SLIDERABLE) && 
+			 !(widget->flags & UI_DRAGGABLE)) {
+		ui->hot = NULL;
         ui->active = NULL;
-    }
+	}
+	
+	
+	if (widget->flags & UI_SLIDERABLE) {
+		if (ui->hot == widget && mouse.buttons & MouseLeftButton) {
+			float width = rect.maxx - rect.minx; 
+			float slider_value = (mouse.px-rect.minx)/width;
+			widget->active_t = MIN(slider_value, 1);
+		}
+		else if (!(mouse.buttons & MouseLeftButton) && ui->hot == widget){
+			ui->hot = NULL;
+		}
+	}
+	
 	
 	output.slider_value = widget->active_t;
-
+	
 	return output;
-
+	
 }
 
 //~ UI Builder Code
@@ -1899,50 +2029,46 @@ UIButton(UI_Context *ui, const char *text) {
 	if (parent) widget->layout = parent->layout;
 	
 	UI_Output output = UIInteractWidget(ui, widget);
-
+	
 	return output;
 }
 
 static float 
 UISlider(UI_Context *ui, const char *text) {
 	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER);
+	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_ANIMATE_HOT);
 	UI_Widget *parent = UITopParent(ui);
 	if (parent) widget->layout = parent->layout;
 	UI_Output output = UIInteractWidget(ui, widget);
 	
 	// Get another widget to draw the small rect idk
-
-
-	UI_Size semantic_size[] = {
-		{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value, 1.f }, 
-		{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
-	};
+	
+	
 	UI_Layout small_rect_layout = {
 		widget->layout.axis,
 		{
-			{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value, 1.f }, 
+			{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value+0.005f, 1.f }, 
 			{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
 		}
 	};
-
 	
-		// TODO(ziv): make this more robust
-		// currently there are ways and conditions 
-		// in which the widgets get messed up
-			
+	
+	// TODO(ziv): make this more robust
+	// currently there are ways and conditions 
+	// in which the widgets get messed up
+	
 	String8 str = Str8Lit(text); 
 	String8 postfix = Str8Lit("sub_widget");
-	char buffer[20];
+	char buffer[0x20];
 	memcpy(buffer, str.data, str.size); 
 	memcpy(buffer+str.size, postfix.data, postfix.size+1); 
 	
 	UIPushParent(ui, widget); 
-	UI_Widget *sub_widget = UIBuildWidget(ui, buffer, UI_DRAWBOX);
+	UI_Widget *sub_widget = UIBuildWidget(ui, buffer, UI_DRAWBOX );
 	sub_widget->layout = small_rect_layout;
+	
 	UIPopParent(ui);
-	 
-
+	
 	return output.slider_value;
 }
 
@@ -2116,16 +2242,16 @@ CameraMove(Camera *c, float x, float y, float z) {
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
 	int len = 0, dec = 0;
-
+	
 	while (str[len] == ' ' || str[len] == '\n') len++;
-
+	
 	if (str[len] == '-') len++;
 	while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
-
+	
 	for (int idx = len - 1; idx >= 0; idx--)
 	{
 		char chr = str[idx] - '0';
-
+		
 		if      (chr == '-' - '0') num = -num;
 		else if (chr == '.' - '0') dec = 0;
 		else if (dec) {
@@ -2137,30 +2263,30 @@ static float ObjParseFloat(char* str, size_t *length) {
 		    mul *= 10.0;
 		}
 	}
-
+	
 	*length = len;
 	return num;
 }
 
 static unsigned int ObjParseUINT(char *str, size_t *length) {
 	unsigned int len = 0, result = 0;
-
+	
 	while (str[len] == ' ' && str[len] != '\0') len++;
-
+	
 	while (((unsigned int)str[len] - '0') < 10) {
 		result = 10*result + str[len++]-'0';
 	}
-
+	
 	*length = len;
 	return result;
 }
 
 
 static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short *idest, size_t *i_cnt) {
-
+	
 	if (v_cnt == NULL || i_cnt == NULL)
 		return false;
-
+	
 	// Read .obj file
 	char *obj_buf;
 	{
@@ -2172,33 +2298,33 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 								  FILE_ATTRIBUTE_NORMAL, // normal file
 								  NULL);
 		Assert(file != INVALID_HANDLE_VALUE); // TODO(ziv): Make it trip the assertion when the file just doesn't exist
-
+		
 		DWORD file_size = GetFileSize(file, NULL);
 		obj_buf = (char *)malloc((file_size+1) * sizeof(char));
-
+		
 		DWORD bytes_read_cnt;
 		bool success = ReadFile(file, obj_buf, file_size, &bytes_read_cnt, NULL);
 		if (!success || file_size != bytes_read_cnt) {
 			return false;
 		}
-
+		
 		obj_buf[file_size] = '\0'; // NULL terminate the string
-
+		
 		Assert(CloseHandle(file)); 
 		
 	}
-
+	
 	int verticies_pos_count = 0;
 	int indicies_count = 0;
 	int normals_count = 0;
 	int texture_cords_count = 0;
-
+	
 	// count amount of verticies and indicies needed
 	{
-
+		
 		char *s = obj_buf;
 		while (*s) {
-
+			
 			if (*s == 'v') {
 				s++;
 				if (*s == ' ') verticies_pos_count++;
@@ -2209,34 +2335,34 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 				s++;
 				indicies_count += 3; // 3 indicies per face
 			}
-
+			
 			while(*s != '\0' && *s++ != '\n');
 		}
-
+		
 	}
-
+	
 	// when there is no output buffer, give the user the sizes of buffers required
 	if (idest == NULL || vdest == NULL) {
 		*v_cnt = indicies_count;
 		*i_cnt = indicies_count;
 		return true;
 	}
-
+	
 	float *shared = (float *)malloc( 1+(3*verticies_pos_count+3*normals_count+2*texture_cords_count)*sizeof(float) );
 	float *normals_buff = shared;
 	float *uv_buff      = normals_buff + (3*normals_count);
 	float *pos_buff     = uv_buff + (2*texture_cords_count);
 	int pos_idx = 0, uv_idx = 0, norm_idx = 0;
 	unsigned short idx = 0;
-
+	
 	Vertex *v = vdest;
-
+	
 	// parse obj file
 	{
 		size_t len = 0;
 		char *s = obj_buf;
 		while (*s) {
-
+			
 			if (*s == 'v') {
 				s++;
 				if (*s == ' ') {
@@ -2256,17 +2382,17 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len+1;
 					normals_buff[norm_idx++] = ObjParseFloat(s, &len); s+=len;
 				}
-
+				
 			}
 			else if (*s == 'f') {
 				s++;
-
+				
 				unsigned int vi, vt, vn;
 				for (int i = 0; i < 3; i++) {
 					vi = ObjParseUINT(s, &len); s+=len+1;
 					vt = ObjParseUINT(s, &len); s+=len+1;
 					vn = ObjParseUINT(s, &len); s+=len+1;
-
+					
 					memcpy(&v->pos, &pos_buff[(vi-1)*3], 3*sizeof(float));
 					memcpy(&v->norm,&normals_buff[(vn-1)*3], 3*sizeof(float));
 					memcpy(&v->uv,  &uv_buff[(vt-1)*2], 2*sizeof(float));
@@ -2280,19 +2406,19 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 							}
 						}
 					}
-
+					
 					if (match_index == (unsigned short)-1) { v++; *idest++ = idx++; }
 					else { *idest++ = match_index; }
 				}
 				s--;
-
+				
 			}
-
+			
 			while(*s != '\0' && *s++ != '\n');
 		}
-
+		
 	}
-
+	
 	// update new vertex count
 	*v_cnt = idx;
 	return true;
@@ -2307,32 +2433,33 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 	
+	
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
 	HWND window = Win32CreateWindow(); 
 	
 	InputInitialize(window);
-
+	
 	R_D3D11Context renderer; 
 	R_D3D11Context *r = &renderer; 
 	RendererInit(&renderer, window);
-
-
+	
+	
 	//~
 	// Model Data
 	//
-
+	
 	char model_path[] = "../resources/cube.obj";
-
+	
 	size_t verticies_count, indicies_count;
 	bool success = ObjLoadFile(model_path,NULL, &verticies_count, NULL, &indicies_count);
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
-
+	
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex));
 	unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
 	success = ObjLoadFile(model_path, verticies, &verticies_count, indicies, &indicies_count);
 	Assert(success && "Failed extracting model data");
-
+	
 	// Create Vertex And Index Buffers
 	ID3D11Buffer *vertex_buffer, *index_buffer;
 	{
@@ -2342,7 +2469,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		D3D11_SUBRESOURCE_DATA vertex_data  = { verticies };
 		r->device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
-
+		
 		D3D11_BUFFER_DESC index_descriptor = {};
 		index_descriptor.ByteWidth = (UINT)indicies_count*sizeof(unsigned short);
 		index_descriptor.StructureByteStride = sizeof(unsigned short); // TODO(ziv): check whether I will need to move to 32 bit
@@ -2375,7 +2502,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		matrix normal_transform;
 		float3 lightposition;
 	};
-
+	
 	// Vertex shader constant buffer
 	ID3D11Buffer *cbuffer;
 	{
@@ -2386,12 +2513,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer);
 	}
-
+	
 	struct PSConstantBuffer {
 		float3 point_light_position;
 		float3 sun_light_direction;
 	};
-
+	
 	// Pixel shader constant buffer
 	ID3D11Buffer *ps_constant_buffer;
 	{
@@ -2402,7 +2529,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &ps_constant_buffer);
 	}
-
+	
 	// Create Sampler State
 	ID3D11SamplerState* sampler_state;
 	{
@@ -2416,10 +2543,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		sampler_desc.BorderColor[2] = 1.0f;
 		sampler_desc.BorderColor[3] = 1.0f;
 		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
+		
 		r->device->CreateSamplerState(&sampler_desc, &sampler_state);
 	}
-
+	
 	// Texture
 	ID3D11ShaderResourceView *texture_view;
 	{
@@ -2428,7 +2555,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
 		Assert(bytes);
 		int pitch = 4 * tex_w;
-
+		
 		D3D11_TEXTURE2D_DESC texture_desc = {};
 		texture_desc.Width              = tex_w;
 		texture_desc.Height             = tex_h;
@@ -2438,41 +2565,58 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture_desc.SampleDesc.Count   = 1;
 		texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
 		texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-
+		
 		D3D11_SUBRESOURCE_DATA texture_data = {};
 		texture_data.pSysMem = bytes;
 		texture_data.SysMemPitch = pitch;
-
+		
 		ID3D11Texture2D* texture;
 		r->device->CreateTexture2D(&texture_desc, &texture_data, &texture);
 		r->device->CreateShaderResourceView(texture, NULL, &texture_view);
-
+		
 		texture->Release();
 		free(bytes);
 	}
-
+	
 	ShowWindow(window, SW_SHOW);
-
-
-
-	//~
-	// Main Game Loop
-	//
-
+	
+	
+	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
 	r->viewport = &viewport;
-
 	
-
+	// TODO(ziv): MOVE THIS CODE!!!
+	RECT rc_clip;           // new area for ClipCursor
+	RECT rc_old_clip;        // previous area for ClipCursor
+	GetClipCursor(&rc_old_clip);
+	GetWindowRect(window, &rc_clip);
+	
+	Game_Input input = {0};
+	UI_Context ui = {0};
+	UIInit(&ui, r, &input);
+	
+	Arena arena;
+	if (!MemArenaInit(&arena, 0x1000)) {
+		FatalError("Couldn't Allocated Memory");
+	}
+	
+	
+	
+	
+	//~
+	// Main Game Loop
+	//
+	
+	
 	// projection matrix variables
 	float w = viewport.Width / viewport.Height; // width (aspect ratio)
 	float h = 1.0f;                             // height
 	float n = 1.0f;                             // near
 	float f = 90.0f;                            // far
-
+	
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
@@ -2482,11 +2626,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// point light
 	float3 lightposition = {  0, 0, 2 };
 	
-	// TODO(ziv): MOVE THIS CODE!!!
-	RECT rc_clip;           // new area for ClipCursor
-	RECT rc_old_clip;        // previous area for ClipCursor
-	GetClipCursor(&rc_old_clip);
-	GetWindowRect(window, &rc_clip);
 	
 	// more things that I need I guess...
 	TimeInit();
@@ -2499,13 +2638,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.pos.z -= 5;
 	c.yaw = 3.14f/2;
 	
-	Game_Input input = {0};
-	
-	UI_Context ui = {0};
-	UIInit(&ui, r, &input);
 	
 	
 	//~
+	
+	
+	
+	
+	
 	
 	for (;;) {
 		
@@ -2528,7 +2668,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
-		
 		
 		// Handle window resize
 		r->dirty = 0;
@@ -2568,9 +2707,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			if (show_free_camera) {
 				// Confine the cursor to the application's window.
-				Assert(ClipCursor(&rc_clip));
-				bool success = ShowCursor(false);
-				Assert(success);
+				ClipCursor(&rc_clip);
+				ShowCursor(false);
 			}
 			else {
 				// Restore the cursor to its previous area.
@@ -2601,7 +2739,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			UI_AXIS2_Y,
 			{
 				{ UI_SIZEKIND_PERCENTOFPARENT, .5f, 1.f },
-                { UI_SIZEKIND_CHILDRENSUM, 1.f, 1.f }
+                { UI_SIZEKIND_PIXELS, 100.f, 1.f }
 			},
 		};
 		
@@ -2612,43 +2750,61 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", 0));
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		{
-		static bool clicked1 = 0;
-		if (UIButton(&ui,"File").clicked) {
-			clicked1 = !clicked1;
-		}
-        if (clicked1) {
-
+			static bool clicked1 = 0;
+			if (UIButton(&ui,"File").clicked) {
+				clicked1 = !clicked1;
+			}
+			if (clicked1) {
+				
 				bool clicked = 0;
-			clicked = UIButton(&ui, "Move Up").activated;
+				clicked = UIButton(&ui, "Move Up").activated;
 				if (clicked) { 
 					c.pos = c.pos + c.up * -0.1f;
-					 }
-			clicked = UIButton(&ui, "Move Down").activated;
+				}
+				clicked = UIButton(&ui, "Move Down").activated;
 				if (clicked) { 
 					c.pos = c.pos + c.up * 0.1f;
-					  }
-			clicked = UIButton(&ui, "Tab 4").activated;
-			if (clicked) { printf("button clicked4\n"); }
-			clicked = UIButton(&ui, "Tab 5").activated;
-			if (clicked) { printf("button clicked5\n"); }
-			clicked = UIButton(&ui, "Tab 6").activated;
-			if (clicked) { printf("button clicked6\n"); } 
-
-			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
-			rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
-			UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
-				{
-			UIButton(&ui, "SMOETHING NOT WRONG"); 
 				}
-					UIPopParent(&ui);
+				clicked = UIButton(&ui, "Tab 4").activated;
+				if (clicked) { printf("button clicked4\n"); }
+				clicked = UIButton(&ui, "Tab 5").activated;
+				if (clicked) { printf("button clicked5\n"); }
+				clicked = UIButton(&ui, "Tab 6").activated;
+				if (clicked) { printf("button clicked6\n"); } 
+				
+				rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
+				rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
+				UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
+				{
+					UIButton(&ui, "SMOETHING NOT WRONG"); 
+				}
+				UIPopParent(&ui);
 				
 			}
-		
-		value = UISlider(&ui, "speed");
+			
+			value = UISlider(&ui, "speed");
 			
 		}
 		UIPopParent(&ui);
 		UIPopParent(&ui);
+
+		static int x = 150;
+		static int y = 100;
+		
+		
+		rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT,  0.5f, 1.f };
+		UI_Widget *panel = UICreateRect(&ui, rect_layout, x, y, "panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX | UI_CLICKABLE | UI_DRAGGABLE);
+		UI_Output out = UIInteractWidget(&ui, panel);
+		if (out.activated) {
+			x += (int)input.mouse.dx;
+			y += (int)input.mouse.dy;
+		}
+		
+		UIPushParent(&ui, panel); 
+		UIPopParent(&ui);
+
+		
+		
 		
 		UIEnd(&ui);
 		
@@ -2683,7 +2839,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		
-		#if 0
+#if 0
 		
 		Rect my_rc= { 100, 100, 100+150, 200 }; 
 		DrawQuad(r, my_rc, GRAY);
@@ -2701,7 +2857,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		int chars_to_print = (int)((float)txt_len * MIN(percent_to_remove, 1)); 
 		
 		DrawDefaultText(r, txt, chars_to_print, 100, 100);
-		#endif 
+#endif 
 		
 		//~
 		// Render Game
@@ -2778,6 +2934,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			// there is no need to upload different data to the gpu. 
 			// which would reduce the data transfers to the gpu. 
 			
+			
 			RendererD3D11UpdateBuffer(r, r->quads.buffers[0], r->quads.data, r->quads.idx*sizeof(r->quads.data[0])); 
 			if (r->dirty) { // if reisized update window constants
 				float quadss_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
@@ -2791,6 +2948,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->RSSetViewports(1, r->viewport);
 			r->context->PSSetShader(r->quads.pshader, NULL, 0);
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			
+			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			UINT sampleMask   = 0xffffffff;
+			r->context->OMSetBlendState(r->quads.blend_state_use_alpha, blendFactor, sampleMask);
+			
 			r->context->DrawInstanced(4, r->quads.idx, 0, 0);
 		}
 		
@@ -2821,6 +2983,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->PSSetSamplers(0, 1, &r->font.sampler);
 			
 			r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
+			
 			r->context->DrawInstanced(4, r->font.idx , 0, 0); // 4 vertices per instance, each instance is a sprite
 		}
 		

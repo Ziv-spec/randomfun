@@ -81,5 +81,7 @@ float4 ps_main(PS_INPUT p) : SV_Target {
 		point_light_color = (ambient + diffuse + specular)* attenuation;
 	}
 
-	return texture0.Sample(sampler0, p.uv) * (point_light_color + directional_light_color);
+	float4 color = texture0.Sample(sampler0, p.uv) * (point_light_color + directional_light_color);
+	color.a = 1;	
+	return color;
 }
