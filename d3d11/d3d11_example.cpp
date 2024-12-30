@@ -555,6 +555,175 @@ typedef struct {
 static Game_Input g_raw_input_state;
 
 
+// Create a event thingy? 
+
+enum OS_Event_Kind { 
+	OS_EVENT_KIND_NULL, 
+	OS_EVENT_KIND_QUIT, 
+	OS_EVENT_KIND_MOUSEMOVE, 
+	OS_EVENT_KIND_RAW_MOUSEMOVE, 
+	OS_EVENT_KIND_MOUSE_BUTTON_DOWN, 
+	OS_EVENT_KIND_MOUSE_BUTTON_UP,
+};
+
+typedef struct {
+	OS_Event_Kind kind; 
+	int value[2];
+} OS_Event;
+
+typedef struct {
+	OS_Event *list;
+	int idx;
+} OS_Events;
+
+#define MAX_EVENTS_SIZE 0x100
+static OS_Event g_events[MAX_EVENTS_SIZE];
+static int g_events_idx;
+
+static void
+OSPostEvent(OS_Event e) {
+	g_events[g_events_idx++] = e;
+}
+
+static OS_Event
+OSTopEvent() {
+	if (g_events_idx <= 0) {
+		return g_events[g_events_idx];
+	}
+	return g_events[g_events_idx-1];
+}
+
+static void
+OSEatEvent(OS_Event *e) {
+	e->kind = OS_EVENT_KIND_NULL; // this is a signal to skip the event
+}
+
+
+#if 1
+
+
+static void
+InputInitialize(HWND window) {
+	
+	// Rawinput API
+	{
+		
+		RAWINPUTDEVICE Rid[1];
+        Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+        Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+        Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
+        Rid[0].hwndTarget = window;
+		
+        if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE) {
+            //registration failed. Call GetLastError for the cause of the error.
+            FatalError("Rawinput couldn't register a mouse\n");
+		}
+		
+	}
+	
+}
+
+static void
+InputShutdown() {
+	
+	// Rawinput
+	{
+		RAWINPUTDEVICE Rid[1];
+		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+		Rid[0].hwndTarget = 0;
+		
+		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
+		{
+			//registration failed. Call GetLastError for the cause of the error.
+			FatalError("Rawinput couldn't register a mouse\n");
+		}
+	}
+	
+}
+
+static int2 mouse_delta; 
+static int mouse_wheel_delta; 
+
+static bool
+InputUpdate(LPARAM lparam) {
+	
+	UINT dwSize;
+	
+	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+	
+	LPBYTE lpb = new BYTE[dwSize];
+	if (lpb == NULL) {
+		return 0;
+	}
+	
+	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
+		OutputDebugString(TEXT("GetRawInputData does not return correct size !\n"));
+		return 0;
+	}
+	
+	RAWINPUT* raw = (RAWINPUT*)lpb;
+	if (raw->header.dwType == RIM_TYPEMOUSE) {
+		
+		mouse_delta.x += raw->data.mouse.lLastX; 
+		mouse_delta.y += raw->data.mouse.lLastY; 
+		
+				if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
+			mouse_wheel_delta += raw->data.mouse.usButtonData;
+		}
+		
+		static int os_mouse_button[] = { MouseLeftButton, MouseRightButton, MouseMiddleButton };
+		static int raw_buttons[] = {
+RI_MOUSE_BUTTON_1_DOWN,RI_MOUSE_BUTTON_1_UP,
+RI_MOUSE_BUTTON_2_DOWN,RI_MOUSE_BUTTON_2_UP,
+RI_MOUSE_BUTTON_3_DOWN,RI_MOUSE_BUTTON_3_UP
+		};
+		for (int i = 0; i < ArrayLength(raw_buttons); i++) {
+			if (raw->data.mouse.ulButtons & raw_buttons[i]) {
+				OS_Event button_event = {
+					(i & 1) ? OS_EVENT_KIND_MOUSE_BUTTON_UP : OS_EVENT_KIND_MOUSE_BUTTON_DOWN,
+					os_mouse_button[i/2]
+				};
+				OSPostEvent(button_event);
+			}
+		}
+		
+	}
+	delete[] lpb;
+	
+	return 1;
+}
+
+static OS_Events OSProcessEvents() {
+	
+	
+	g_events_idx = 0;
+	mouse_delta.x = 0;
+	mouse_delta.y = 0;
+	
+	MSG msg;
+	while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+		TranslateMessage(&msg);
+		DispatchMessageA(&msg);
+	}
+	
+	if (mouse_delta.x != 0 || mouse_delta.y != 0) {
+		OS_Event mousemove = { 
+			OS_EVENT_KIND_RAW_MOUSEMOVE, 
+			mouse_delta.x, mouse_delta.y
+		};
+		OSPostEvent(mousemove);
+		
+	}
+	
+	return { g_events, g_events_idx };
+}
+
+
+
+#else 
+
 // RAWINPUT implementation (should work on all windows pc's)
 
 // Terms used by rawinput api
@@ -667,7 +836,7 @@ static Game_Input InputGetState() {
 	
 	return g_raw_input_state;
 }
-
+#endif
 
 static bool key_w; // up
 static bool key_s; // down
@@ -692,7 +861,8 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 	switch (message)
     {
 		case WM_DESTROY: {
-			PostQuitMessage(0);
+			OSPostEvent({ OS_EVENT_KIND_QUIT });
+			//PostQuitMessage(0);
 			return 0;
 		} break;
 		
@@ -754,6 +924,11 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 		//
 		// Rawinput
 		//
+		
+		case WM_MOUSEMOVE: {
+			POINTS p = MAKEPOINTS(lparam);
+			OSPostEvent({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
+		} break; 
 		
 		case WM_INPUT: {
 			if (!InputUpdate(lparam)) {
@@ -1479,7 +1654,8 @@ typedef struct UI_Theme {
 #define MAX_WIDGET_STACK_SIZE 4
 
 typedef struct {
-	Game_Input *input;
+	
+	OS_Events *input;
 	R_D3D11Context *r;
 	
 	//
@@ -1494,8 +1670,6 @@ typedef struct {
 	
 	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
 	int stack_idx;
-	
-	UI_Theme theme;
 } UI_Context;
 
 static void
@@ -1790,7 +1964,7 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 
 
 static void
-UIInit(UI_Context *ui, R_D3D11Context *r, Game_Input *input) {
+UIInit(UI_Context *ui, R_D3D11Context *r, OS_Events *input) {
 	ui->input = input;
 		ui->r = r;
 	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
@@ -1950,7 +2124,7 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
     UI_Output output = {0};
 	
 	
-    Mouse mouse = ui->input->mouse;
+    //Mouse mouse = ui->input->mouse;
     Rect rect = widget->rect;
 	
     // Find if mouse is inside UI hit-box
@@ -2594,9 +2768,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	GetClipCursor(&rc_old_clip);
 	GetWindowRect(window, &rc_clip);
 	
-	Game_Input input = {0};
 	UI_Context ui = {0};
-	UIInit(&ui, r, &input);
+	OS_Events events;
+	UIInit(&ui, r, &events);
 	
 	Arena arena;
 	if (!MemArenaInit(&arena, 0x1000)) {
@@ -2649,25 +2823,36 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	for (;;) {
 		
-		//
-		// Handle Input
-		//
+		events = OSProcessEvents();
 		
-		// sometimes dx,dy don't change since the mouse has not moved
-		// but their deltas stay. To fix this problem of "driftying" 
-		// I setting at the beginning of every frame these deltas to 0
-		g_raw_input_state.mouse.dx = 0;
-		g_raw_input_state.mouse.dy = 0;
 		
-		MSG msg;
-		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) {
+		// event loop
+		for (int i = 0; i < events.idx; i++) {
+			OS_Event e = events.list[i];
+			
+			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
+				printf("raw mouse move %d %d\n", e.value[0], e.value[1]); 
+			}
+			else if (e.kind == OS_EVENT_KIND_MOUSEMOVE) {
+				printf("mouse move %d %d\n", e.value[0], e.value[1]); 
+			}
+			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+				if (e.value[0] == MouseRightButton) {
+				printf("button clicked RIghtButton\n"); 
+				}
+			}
+			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
+				if (e.value[0] == MouseRightButton) {
+					printf("button clicked RIghtButton\n"); 
+				}
+			}
+			else if (e.kind == OS_EVENT_KIND_QUIT) {
 				goto release_resources;
 			}
 			
-			TranslateMessage(&msg);
-			DispatchMessageA(&msg);
 		}
+		
+		
 		
 		// Handle window resize
 		r->dirty = 0;
@@ -2689,9 +2874,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			Sleep(14); continue;
 		}
 		
-		
-		// Get Input From User
-		input = InputGetState();
 		
 		
 		
@@ -2791,6 +2973,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		static int x = 150;
 		static int y = 100;
 		
+		// TODO(ziv): make panel widget (whihc accepts float *x, float *y) 
+		// since I would want the panel to change these values when it chagnes 
+		// the panel position allowing communication of change to user
 		
 		rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT,  0.5f, 1.f };
 		UI_Widget *panel = UICreateRect(&ui, rect_layout, x, y, "panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX | UI_CLICKABLE | UI_DRAGGABLE);
