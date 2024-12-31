@@ -7,12 +7,13 @@
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
 
-#include <stdint.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include <string.h>
 
 #pragma comment(lib, "user32")
 #pragma comment(lib, "d3d11")
@@ -28,6 +29,9 @@ static int window_height = 600;
 
 #define MAX_SPRITES_COUNT 0x1000
 #define MAX_QUAD_COUNT    0x100
+
+#define WIDGETS_COUNT 0x100
+#define MAX_WIDGET_STACK_SIZE 4
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -61,29 +65,27 @@ typedef int     b32;
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
 
 // TODO(ziv):
-/*
-* [x] Obj loading (with position, textures, normals)
-* [x] Obj dynamic transformation
-* [x] Obj dynamic lighting(global illumination + point light)
-* [x] Texture mapping
-	* [x] Camera
-		* [x] Normal Camera
-		* [x] Free Camera (The only thing left is free movement for which raw input/direct input needed
-* [x] Face Culling
-* [x] z-buffer
-* [ ] Font Rendering
-* [ ] General UI
-* [ ] Shadow Mapping? - or precompute all shadow information
-* [ ] Input
-* [ ] Obj Outlines?
-* [ ] Mouse screen to world projection
-* [ ] Update on Resize for fluid screen resize handling?
-* [ ] Pixelated look
-* [ ] editor for the game
-
+// [ ] ===== OS =====
+//   [x] implement fullscreen alt+enter
+//   [ ] Memory allocation system
+//   [ ] Update on Resize for fluid screen resize handling?
+//   [ ] Input
+//    [ ] make input as events
+//    [x] mouse input
+//    [ ] keyboard input
+//    [ ] controller input
 //
-// [x] implement fullscreen alt+enter
-// [ ] UI
+// [ ] ===== Renderer ===== (things I know how to do, no necessarily things which a "renderer" is able to do
+ //   [x] Texture mapping
+//   [x] Obj dynamic lighting(global illumination + point light)
+ //   [x] Font Rendering (bitmap version)
+//   [x] Face Culling
+ //   [x] z-buffer
+//   [ ] Draw
+//     [x] DrawQuad (drawing a general syleized quad for UI)
+//     [ ] fix drawing issuess with border / radius (working on it fixed alpha blending i think)//
+//
+// [ ] ===== UI =====
 //   [x] finally make the push-pop utilities for higherarchy building
 //   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
  //   [x] theme - uploaded to gpu once, rendered using it
@@ -100,28 +102,33 @@ typedef int     b32;
 //   [x] make widget allocator smarter (apperently it was)
 //   [x] prune out widgets that are no longer part of higherarchy
 //   [x] add support for rounded corners, custom color (per vertex?)
-//   [x] make text confirm to widget dimenions
+//   [x] make text confirm to widget dimenions (kind of, this might need a change)
+//   [x] allow widgets to have different positions on screen (not all relative to 0,0)
 //   [ ] resolve sizing conflicts and adhere to it's strictness
 //   [x] add slider widget (think about how to render that)
 //     [x] make slider colors not be funny
-//   [ ] fix drawing issuess with border / radius (working on it fixed alpha blending i think)
-//   [ ] Make hash of id smarter (support for ##id)
-// [ ] OS
-//   [ ] Input
-//     [ ] make input events
- //     [ ] allow for eating events (for ui purposes)
-//   [ ] Renderer
-//   [ ] Draw
-// [ ] Memory allocation system
+//   [x] Make hash of id smarter (support for ###unique_id)
+//   [ ] use var args for functions accepting strings
+//
+// [x] ===== Camera =====
+//   [x] Normal Camera
+//   [x] Free Camera
+//   [x] Mouse screen to world projection
+//
+// [ ] editor for the game
+//
+// [ ] ===== Game =====
+//   [x] Obj loading (with position, textures, normals)
+ //   [x] Obj dynamic transformation
+//   [ ] Obj Outlines?
+	  //   [ ] Pixelated look
+ //   [ ] Shadow Mapping? - or precompute all shadow information
 //
 
 //  ============== goals for today ==============
 // [ ] resolve sizing conflicts
-// [x] allow widgets to have different positions on screen (not all relative to 0,0)
 // [ ] make a panel widget that moves using this not all relative thingy 
-// [ ] make input system as events and shit
-// [x] don't draw quads that are not on the screen (in DrawQaud func)
-*/
+// [ ] make input system as events and shit (working)
 
 static void FatalError(const char* message)
 {
@@ -338,11 +345,11 @@ Str8Compare(String8 s1, String8 s2) {
 	return 1;
 }
 
-static s64 Str8GetHash(s64 seed, String8 str) {
+static s64 Str8GetHash(String8 str, s64 seed) {
 	s64 hash = seed;
 	for (int i = 0; i < str.size; i++) {
 		hash ^= str.data[i]*seed;
-		hash <<= str.data[i] & 0xf;
+		hash <<= str.data[i] & 0x1f;
 	}
 	return hash;
 }
@@ -496,6 +503,13 @@ Time() {
 	return (double)time.QuadPart * g_inv_freq;
 }
 
+static s64
+TimeMicroseconds() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return time.QuadPart;
+}
+
 //~
 // Input
 //
@@ -554,7 +568,6 @@ typedef struct {
 
 static Game_Input g_raw_input_state;
 
-
 // Create a event thingy? 
 
 enum OS_Event_Kind { 
@@ -580,11 +593,6 @@ typedef struct {
 static OS_Event g_events[MAX_EVENTS_SIZE];
 static int g_events_idx;
 
-static void
-OSPostEvent(OS_Event e) {
-	g_events[g_events_idx++] = e;
-}
-
 static OS_Event
 OSTopEvent() {
 	if (g_events_idx <= 0) {
@@ -594,13 +602,27 @@ OSTopEvent() {
 }
 
 static void
+OSPostEvent(OS_Event e) {
+	g_events[g_events_idx++] = e;
+}
+
+static void
 OSEatEvent(OS_Event *e) {
 	e->kind = OS_EVENT_KIND_NULL; // this is a signal to skip the event
 }
 
 
-#if 1
+// RAWINPUT implementation (should work on all windows pc's)
 
+// Terms used by rawinput api
+// HID - Human Interface Device
+
+// In the RawInput API you must register the devices you
+// want to get data from. Then you can poll for data which
+// happens from WM_INPUT 
+//
+// By default no application recieves rawinput. You must
+// register the device to begin recieving rawinput.
 
 static void
 InputInitialize(HWND window) {
@@ -719,124 +741,6 @@ static OS_Events OSProcessEvents() {
 	
 	return { g_events, g_events_idx };
 }
-
-
-
-#else 
-
-// RAWINPUT implementation (should work on all windows pc's)
-
-// Terms used by rawinput api
-// HID - Human Interface Device
-
-// In the RawInput API you must register the devices you
-// want to get data from. Then you can poll for data which
-// happens from WM_INPUT 
-//
-// By default no application recieves rawinput. You must
-// register the device to begin recieving rawinput.
-
-static void
-InputInitialize(HWND window) {
-	
-	// Rawinput API
-	{
-		
-		RAWINPUTDEVICE Rid[1];
-        Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
-        Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-        Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
-        Rid[0].hwndTarget = window;
-		
-        if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE) {
-            //registration failed. Call GetLastError for the cause of the error.
-            FatalError("Rawinput couldn't register a mouse\n");
-		}
-		
-	}
-	
-}
-
-static void
-InputShutdown() {
-	
-	// Rawinput
-	{
-		RAWINPUTDEVICE Rid[1];
-		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
-		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
-		Rid[0].hwndTarget = 0;
-		
-		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
-		{
-			//registration failed. Call GetLastError for the cause of the error.
-			FatalError("Rawinput couldn't register a mouse\n");
-		}
-	}
-	
-}
-
-static bool
-InputUpdate(LPARAM lparam) {
-	
-	UINT dwSize;
-	
-	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
-	
-	LPBYTE lpb = new BYTE[dwSize];
-	if (lpb == NULL) {
-		return 0;
-	}
-	
-	if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
-		OutputDebugString(TEXT("GetRawInputData does not return correct size !\n"));
-		return 0;
-	}
-	
-	RAWINPUT* raw = (RAWINPUT*)lpb;
-	if (raw->header.dwType == RIM_TYPEMOUSE) {
-		
-		Mouse mouse = g_raw_input_state.mouse;
-		int delta_m = (int)raw->data.mouse.usButtonData;
-		//printf("wheel: %d\n", delta_m);
-		
-		mouse.dx = raw->data.mouse.lLastX;
-		mouse.dy = raw->data.mouse.lLastY;
-		
-		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
-			mouse.wy += (int)raw->data.mouse.usButtonData;
-		}
-		
-		int buttons = mouse.buttons;
-		switch (raw->data.mouse.ulButtons) {
-			case RI_MOUSE_BUTTON_1_DOWN: buttons |= MouseLeftButton; break;
-			case RI_MOUSE_BUTTON_1_UP:   buttons &= ~MouseLeftButton; break;
-			case RI_MOUSE_BUTTON_2_DOWN: buttons |= MouseRightButton; break;
-			case RI_MOUSE_BUTTON_2_UP:   buttons &= ~MouseRightButton; break;
-			case RI_MOUSE_BUTTON_3_DOWN: buttons |= MouseMiddleButton; break;
-			case RI_MOUSE_BUTTON_3_UP:   buttons &= ~MouseMiddleButton; break;
-		}
-		
-		mouse.buttons = (Mouse_Buttons)buttons;
-		g_raw_input_state.mouse = mouse;
-	}
-	delete[] lpb;
-	
-	return 1;
-}
-
-static Game_Input InputGetState() {
-	
-	POINT cursor_position; 
-	GetCursorPos(&cursor_position);
-	ScreenToClient(g_window, &cursor_position); 
-	g_raw_input_state.mouse.px = cursor_position.x; 
-	g_raw_input_state.mouse.py = cursor_position.y;
-	
-	return g_raw_input_state;
-}
-#endif
 
 static bool key_w; // up
 static bool key_s; // down
@@ -1552,16 +1456,6 @@ DrawDefaultText(R_D3D11Context *r, const char *text, size_t len,  float x, float
 // The building of the graph and interaction with it happens on the same function yet the interaction with the graph happens on the next frame.
 //
 
-
-
-static Color RED      = { 1, 0, 0, 1 };
-static Color LIGHTRED = { 1, .1f, .1f, 1};
-static Color DARKRED = { .6f, .1f, .1f, 1};
-
-#define LIGHTGRAY  Color{ 200.f/255.f, 200.f/255.f, 200.f/255.f, 255.f/255.f }
-#define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
-#define DARKGRAY   Color{ 80.f/255.f, 80.f/255.f, 80.f/255.f, 255.f/255.f}
-
 typedef enum {
 	UI_CLICKABLE  = 1 << 0,
     UI_SLIDERABLE = 1 << 1,
@@ -1650,27 +1544,63 @@ typedef struct UI_Theme {
 	float border; // size
 } UI_Theme; 
 
-#define WIDGETS_COUNT 0x100
-#define MAX_WIDGET_STACK_SIZE 4
-
 typedef struct {
-	
-	OS_Events *input;
+	OS_Events *events;
 	R_D3D11Context *r;
+	Arena arena;
 	
-	//
+	float mouse_pos[2];
+	
 	// UI Graph
-	//
-	
 	// NOTE(ziv): widget[0] will default to the first widget built
     UI_Widget widgets[WIDGETS_COUNT];
 	UI_Widget head_widget;
-	UI_Widget_Handle last;
     UI_Widget *hot, *active;
 	
 	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
 	int stack_idx;
 } UI_Context;
+
+
+static void
+UICorePruneDeadWidgets(UI_Widget *head) {
+	
+	if (!head) return; 
+	
+	if (!head->id.alive) { // dead
+		
+		if (head->last) {
+			
+			head->last->next = head->next;
+			if (head->next) {
+				head->next->last = head->last;
+			}
+			
+			head->last = NULL; 
+		}
+		else if (head->next) {
+			if (head->parent) {
+				head->parent->child = head->next;
+			}
+		}
+		else if (head->parent) {
+			head->parent->child = NULL; 
+		}
+		
+		head->id = UIID{0}; 
+		head->text = { 0, NULL }; 
+		
+	}
+	head->id.alive = 0; // reset the alive flag
+	
+	
+	UI_Widget *child = head->child; 
+	for (; child; child = child->next) {
+		
+		UICorePruneDeadWidgets(child);
+	}
+	
+}
 
 static void
 UICoreLayoutConstant(UI_Widget *widget, int axis) {
@@ -1783,8 +1713,6 @@ UICoreLayoutRelPos(UI_Widget *widget, int axis) {
 	
 	if (!(widget->flags & float_axis)) {
 		
-		
-		
 		if (widget->last) {
 			
 			// skip widgets with floating x,y relative positions
@@ -1811,10 +1739,7 @@ UICoreLayoutRelPos(UI_Widget *widget, int axis) {
 		}
 		
 		
-		
 	}
-	
-	
 	
 	UI_Widget *child = widget->child;
 	for (; child; child = child->next) {
@@ -1828,6 +1753,7 @@ UICoreLayout(UI_Widget *widget, int axis) {
 	UICoreLayoutConstant(widget, axis);
 	UICoreLayoutPreOrderUpwardDependednt(widget, axis); 
 	UICoreLayoutPostOrderDownwardsDependent(widget, axis);
+	// solve for constraints on a axis
 	UICoreLayoutRelPos(widget, axis); 
 }
 
@@ -1845,31 +1771,6 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 		//
 		// Render widgets
 		//
-		
-		if (head->flags & UI_DRAWTEXT) {
-			float pad = 5; 
-			String8 txt = head->text;
-			
-			float rect_width = head->rect.maxx - head->rect.minx - 2 * pad; 
-			float amount_to_show =  rect_width / DefaultTextWidth(txt);
-			int display_size = (int)((float)txt.size *  MIN(amount_to_show, 1));
-			
-			const char *display_txt = txt.data;
-			char dest[0x100]; 
-			if (amount_to_show < 1.f) {
-				display_txt = strcpy(dest, txt.data); 
-				dest[display_size-1] = '.';
-				dest[display_size-2] = '.';
-				display_txt = dest;
-			}
-			
-			
-			
-			DrawDefaultText(ui->r, display_txt, display_size, 
-							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
-			
-			
-		}
 		
 		if (head->flags >= UI_DRAWBOX) {
 			
@@ -1914,6 +1815,26 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			DrawQuad(ui->r, head->rect, final); 
 		}
 		
+		if (head->flags & UI_DRAWTEXT) {
+			float pad = 5; 
+			String8 txt = head->text;
+			
+			float rect_width = head->rect.maxx - head->rect.minx - 2 * pad; 
+			float amount_to_show =  rect_width / DefaultTextWidth(txt);
+			int display_size = (int)((float)txt.size *  MIN(amount_to_show, 1));
+			
+			const char *display_txt = txt.data;
+			char dest[0x100]; 
+			if (amount_to_show < 1.f) {
+				display_txt = strcpy(dest, txt.data); 
+				dest[display_size-1] = '.';
+				dest[display_size-2] = '.';
+				display_txt = dest;
+			}
+			
+			DrawDefaultText(ui->r, display_txt, display_size, 
+							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
+		}
 		
 		
 		if (head->child) {
@@ -1922,60 +1843,21 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	}
 }
 
-static void
-UICorePruneDeadWidgets(UI_Widget *head) {
-	
-	if (!head) return; 
-	
-	if (!head->id.alive) { // dead
-		
-		if (head->last) {
-			
-			head->last->next = head->next;
-			if (head->next) {
-				head->next->last = head->last;
-			}
-			
-			head->last = NULL; 
-		}
-		else if (head->next) {
-			if (head->parent) {
-				head->parent->child = head->next;
-			}
-		}
-		else if (head->parent) {
-			head->parent->child = NULL; 
-		}
-		
-		head->id = UIID{0}; 
-		head->text = { 0, NULL }; 
-		
-	}
-	head->id.alive = 0; // reset the alive flag
-	
-	
-	UI_Widget *child = head->child; 
-	for (; child; child = child->next) {
-		
-		UICorePruneDeadWidgets(child);
-	}
-	
-}
-
 
 static void
-UIInit(UI_Context *ui, R_D3D11Context *r, OS_Events *input) {
-	ui->input = input;
+UIInit(UI_Context *ui, R_D3D11Context *r, OS_Events *events) {
+	ui->events = events;
 		ui->r = r;
 	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
 	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
 	ui->head_widget.id.alive = 1;
-}
+	// TODO(ziv): check what in the world should I be doing here
+	MemArenaInit(&ui->arena, 0x1000); // allocate page size
+	}
 
 
 static void
 UIBegin(UI_Context *ui, b32 dirty) {
-	//memset(ui->boxs, 0, WIDGETS_COUNT *sizeof(ui->boxs[0]));
 	
 	if (dirty) {
 		ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
@@ -1983,26 +1865,47 @@ UIBegin(UI_Context *ui, b32 dirty) {
 		ui->head_widget.id.alive = 1;
 	}
 	
+	// some standard input thingy
+	{
+		// TODO(ziv): abstract this into a os system
+		bool window_not_focused = ui->r->window != GetActiveWindow();
+		if (window_not_focused) {
+			ui->mouse_pos[0] = -100;
+			ui->mouse_pos[1] = -100;
+		}
+		else {
+			POINT cursor_pos;
+			GetCursorPos(&cursor_pos);
+			ScreenToClient(ui->r->window, &cursor_pos);
+			ui->mouse_pos[0] = (float)cursor_pos.x;
+			ui->mouse_pos[1] = (float)cursor_pos.y;
+		}
+		
+	}
+	
+	
+	
+}
+
+static void
+UIEnd(UI_Context *ui) {
+	Assert(ui);
+	
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->head_widget.id.alive = 1;
 		UICorePruneDeadWidgets(&ui->head_widget);
 	}
 	
-}
-
-
-static void
-UIEnd(UI_Context *ui) {
-	
-	Assert(ui);
-	
 	// layout
 	{
 		for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
 			UICoreLayout(&ui->head_widget, axis); 
 		}
-		
+		}
+	
+	// draw
+	{
 		// kind of this is where I draw 
 		UICoreLayoutFinalRect(ui, &ui->head_widget);
 	}
@@ -2037,7 +1940,6 @@ UITopParent(UI_Context *ui) {
 	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : NULL;
 }
 
-
 static UI_Widget *
 UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
 	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
@@ -2048,7 +1950,7 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
 	
 	String8 strid = Str8Lit(text); 
 	s32 mask = (WIDGETS_COUNT-1);
-	s32 key = (s32)Str8GetHash(234982374, strid) & mask;
+	s32 key = (s32)Str8GetHash(strid, 234982374) & mask;
 	UI_Widget *entry = NULL;
 	
 	do {
@@ -2074,7 +1976,30 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
     widget->child = NULL;
     widget->next = NULL;
     widget->flags = flags;
-	widget->text = strid;
+	
+	// ignore ### seperation
+	String8 display_text = strid;
+	for (int i = 0; i < strid.size; i++) {
+		if (i+3 < strid.size && 
+			strid.data[i] == '#' && 
+			strid.data[i+1] == '#' && 
+			strid.data[i+2] == '#') {
+			
+			// TODO(ziv): Don't use an arena allocator 
+			// use something smarter to reuse the space
+			// currently everytime a node is pruned 
+			// and then created it allocated more memory
+			// but never frees it.
+			char *data = (char *)MemArenaAlloc(&ui->arena, i+1);
+				memcpy(data, strid.data, i); data[i] = '\0';
+				
+				display_text.data = data; 
+				display_text.size = (size_t)i; 
+				break;
+			}
+	}
+	
+	widget->text = display_text;
 	
     // Push widget into hierarchy
     if (parent) {
@@ -2123,27 +2048,40 @@ static UI_Output
 UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
     UI_Output output = {0};
 	
+	static int mouse_buttons_down = 0;
+	
+	OS_Event *down = NULL; 
+	OS_Event *up = NULL;
+	
+	for (int i = 0; i < ui->events->idx; i++) {
+		OS_Event e = ui->events->list[i];
+		if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+			mouse_buttons_down |= e.value[0];
+		}
+		else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
+			mouse_buttons_down &= ~e.value[0];
+		}
+	}
 	
     //Mouse mouse = ui->input->mouse;
     Rect rect = widget->rect;
-	
     // Find if mouse is inside UI hit-box
-    if (rect.minx <= mouse.px &&
-		mouse.px <= rect.maxx &&
-		rect.miny <= mouse.py &&
-		mouse.py <= rect.maxy) {
+    if (rect.minx <= ui->mouse_pos[0] &&
+		ui->mouse_pos[0] <= rect.maxx &&
+		rect.miny <= ui->mouse_pos[1] &&
+		ui->mouse_pos[1] <= rect.maxy) {
 		
 		ui->hot = widget;
 		
         // widget is active?
         if ((widget->flags & UI_CLICKABLE &&
-			 mouse.buttons & MouseLeftButton)) {
+			  mouse_buttons_down & MouseLeftButton)) {
             ui->active = widget;
             output.activated = 1;
         }
 		else if (ui->active) {
 			output.clicked = 1;
-			ui->active = NULL; 
+			ui->active = NULL;
 		}
 		else {
 			ui->active = NULL; 
@@ -2158,17 +2096,18 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 	}
 	
 	
-	if (widget->flags & UI_SLIDERABLE) {
-		if (ui->hot == widget && mouse.buttons & MouseLeftButton) {
+	if (widget->flags & UI_SLIDERABLE  && ui->hot == widget) {
+		if (mouse_buttons_down & MouseLeftButton) {
 			float width = rect.maxx - rect.minx; 
-			float slider_value = (mouse.px-rect.minx)/width;
+			float slider_value = (ui->mouse_pos[0]-rect.minx)/width;
 			widget->active_t = MIN(slider_value, 1);
 		}
-		else if (!(mouse.buttons & MouseLeftButton) && ui->hot == widget){
+		else {
 			ui->hot = NULL;
 		}
+		
+		
 	}
-	
 	
 	output.slider_value = widget->active_t;
 	
@@ -2176,7 +2115,9 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 	
 }
 
+//
 //~ UI Builder Code
+//
 
 static UI_Widget *
 UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, const char *text, u32 flags) {
@@ -2240,7 +2181,6 @@ UISlider(UI_Context *ui, const char *text) {
 	UIPushParent(ui, widget); 
 	UI_Widget *sub_widget = UIBuildWidget(ui, buffer, UI_DRAWBOX );
 	sub_widget->layout = small_rect_layout;
-	
 	UIPopParent(ui);
 	
 	return output.slider_value;
@@ -2260,6 +2200,7 @@ typedef struct {
 	/// In
 	// camera
 	float3 pos;
+	float3 off;
 	float pitch, yaw;
 	
 	// projection
@@ -2274,6 +2215,8 @@ typedef struct {
 	matrix view_inv;
 	matrix proj_inv;
 	
+	float3 loc; 
+	
 	// movement vectors
 	float3 right, left;
 	float3 up, down;
@@ -2282,9 +2225,11 @@ typedef struct {
 
 static void
 CameraInit(Camera *c) {
-	c->fov = 0.25f*(float)M_PI;
-	c->n = .01f;
-	c->f = 1000.f;
+	
+	c->aspect_ratio = 3.0f/2.0f;
+    c->fov = (float)M_PI / 2.0f; // 45 degrees fov
+    c->n = 0.5f;
+    c->f = 1000;
 	
 	c->proj = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 	c->view = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
@@ -2294,8 +2239,14 @@ static void
 CameraBuild(Camera *c) {
 	Assert(c);
 	
-	// Build the lookat matrix
-	float3 some_up_vector = { 0, 1, 0 };
+	//
+	// D3D11 uses a left-handed coordinate system:
+	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/coordinate-systems?redirectedfrom=MSDN
+	// 
+	// Along side that it also uses a column major matricies
+	// https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-per-component-math#matrix-ordering
+	// 
+	
 	
 	// The lookat matrix is a matrix created from a 'single' vector
 	// pointing in the forward direction of the player looking at the
@@ -2305,22 +2256,65 @@ CameraBuild(Camera *c) {
 	// The view matrix created from this space is the inverse translation
 	// and inverse rotations done by the camera itself [2].
 	
+	// Build the lookat matrix
+	float3 some_up_vector = { 0, 1, 0 };
+	
 	// this camera is pointing in the inverse direction of it's target
-	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) });
-	float3 rv = f3normalize(f3cross(some_up_vector, fv));
-	float3 uv = f3normalize(f3cross(fv, rv));
+	float3 fv = f3normalize({ cosf(c->yaw)*cosf(c->pitch), sinf(c->pitch), sinf(c->yaw)*cosf(c->pitch) }); // z forward
+	float3 rv = f3normalize(f3cross(some_up_vector, fv));                                                  // x right
+	float3 uv = f3normalize(f3cross(fv, rv));                                                              // y up
 	
-	float3 p = c->pos;
+	//
+	// row major vs column major
+	// 
+	//     | 1 2 3 |
+	// M = | 4 5 6 |
+	//     | 7 8 9 |
+	//
+	// M row major    [1, 2, 3, 4, 5, 6, 7, 8, 9]
+	// M column major [1, 4, 7, 2, 5, 8, 3, 6, 9]
+	// 
+	// matrix multiplication row major
+	//     | 1 2 3 |    | 1 |   | 1*1 + 2*2 + 3*3 |
+	//     | 4 5 6 | *  | 2 | = | 4*1 + 5*2 + 6*3 | = | 14, 32, 50 |
+	//     | 7 8 9 |    | 3 |   | 7*1 + 8*2 + 9*3 |
+	// 
+	// matrix multiplication column  major
+	//     | 1 2 3 |    | 1 |   | 1*1 + 4*2 + 7*3 |
+	//     | 4 5 6 | *  | 2 | = | 2*1 + 5*2 + 6*3 | =  | 30, 36, 42 |
+	//     | 7 8 9 |    | 3 |   | 3*1 + 8*2 + 9*3 |
+	//
+	// all computation is row major and you can transpose the end matrix to get column major
+	// Adding translation:
+	// 
+	//     | 1 0 0 t |    | x |   | 1*x + 0*y + 0*z + t*1 |   | t+x |
+	//     | 0 1 0 t | *  | y | = | 0*x + 1*y + 0*z + t*1 | = | t+y |
+	//     | 0 0 1 t |    | z |   | 0*x + 0*y + 1*z + t*1 |   | t+z |
+	//     | 0 0 0 1 |    | 1 |   | 0*x + 0*y + 0*z + 1*1 |   |   1 |
 	
-	matrix cmat = {
+	c->view = {
 		rv.x, uv.x, fv.x, 0,
 		rv.y, uv.y, fv.y, 0,
 		rv.z, uv.z, fv.z, 0,
-		-(rv.x*p.x+rv.y*p.y+rv.z*p.z), -(uv.x*p.x+uv.y*p.y+uv.z*p.z), -(fv.x*p.x+fv.y*p.y+fv.z*p.z), 1
+		0,    0,    0,    1
 	};
 	
-	c->view = cmat;
-	c->view_inv = matrix_transpose(cmat);
+	// the translation vector is the camera position projected onto the camera space
+	c->view.m[3][0] = -f3dot(c->pos, rv) - c->off.x; 
+	c->view.m[3][1] = -f3dot(c->pos, uv) - c->off.y;
+	c->view.m[3][2] = -f3dot(c->pos, fv) - c->off.z;
+	
+	
+	c->view_inv = {
+		rv.x, rv.y, rv.z, 0,
+		uv.x, uv.y, uv.z, 0,
+		fv.x, fv.y, fv.z, 0,
+		0,    0,    0,    1
+	};
+	c->view_inv.m[3][0] = f3dot(c->off, rv) + c->pos.x; 
+	c->view_inv.m[3][1] = f3dot(c->off, uv) + c->pos.y;
+	c->view_inv.m[3][2] = f3dot(c->off, fv) + c->pos.z;
+	
 	
 	c->forward.x = c->view_inv.m[2][0];
 	c->forward.y = c->view_inv.m[2][1];
@@ -2346,43 +2340,69 @@ CameraBuild(Camera *c) {
 	c->down.y = -c->view_inv.m[1][1];
 	c->down.z = -c->view_inv.m[1][2];
 	
+	c->loc.x = c->view_inv.m[3][0];
+	c->loc.y = c->view_inv.m[3][1];
+	c->loc.z = c->view_inv.m[3][2];
 	
 	
-	// TODO(ziv): @IMPORTANT Fix the projection matrix that I use in here
-    // Build the projection matrix
-	
+	//
 	// In this case the projection matrix which we are building
 	// is mapping object's in the players thrustum inside a
-	// -1 to 1 cordinate space [2].
-	float hfov = 1.0f/tanf(c->fov*0.5f);
+	// -1 to 1 cordinate space
+	// 
+	// Understanding d3d11 projection matrix: 
+	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/projection-transform
+	// https://learn.microsoft.com/en-us/windows/win32/dxtecharts/the-direct3d-transformation-pipeline
+	//
+	// To get the correct projection matrix:  
+	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixperspectivefovlh
+	// 
 	
-	c->proj = matrix{0};
+	float hfov = 1.0f/tanf(c->fov*0.5f);
+	ZeroMemory(&c->proj, sizeof(matrix));
+	//cn = 1 and cf = 0:
 	c->proj.m[0][0] = 1.0f/(c->aspect_ratio*hfov);
 	c->proj.m[1][1] = 1.0f/hfov;
-	c->proj.m[2][3] = -1.0f;
+	c->proj.m[2][2] = c->f/(c->f - c->n);
+	c->proj.m[3][2] = -(c->f*c->n)/(c->f - c->n);
+	c->proj.m[2][3] = 1.0f;
 	
-	// cn = -1 and cf = 1:
-	c->proj.m[2][2] = -(c->f + c->n) / (c->f - c->n);
-	c->proj.m[3][2] = -(2.0f * c->f * c->n) / (c->f - c->n);
-	
-	/*
-	 //cn = 0 and cf = 1:
-	c->proj.m[2][2] = -(c->f) / (c->f - c->n);
-	c->proj.m[3][2] = -(c->f * c->n) / (c->f - c->n);
-
-	 //cn = -1 and cf = 0:
-	c->proj.m[2][2] = (c->n) / (c->n - c->f);
-	c->proj.m[3][2] = (c->f * c->n) / (c->n - c->f);
-    */
+	// Since perspective matrices have a fixed layout, it makes sense
+	// to calculate the specific perspective inverse instead of relying on a default
+	// matrix inverse function. Actually calculating the matrix for any perspective
+	// matrix is quite straight forward:
+	//   I.......identity matrix
+	//   p.......perspective matrix
+	//   I(p)....inverse perspective matrix
+	// 
+	// 1.) Fill a variable inversion matrix and perspective layout matrix into the
+	//   inversion formula: I(p) * p = I
+	//    |x0  x1  x2  x3 |   |a 0 0 0|   |1 0 0 0|
+	//    |x4  x5  x6  x7 | * |0 b 0 0| = |0 1 0 0|
+	//    |x8  x9  x10 x11|   |0 0 c d|   |0 0 1 0|
+	//    |x12 x13 x14 x15|   |0 0 e 0|   |0 0 0 1|
+	//
+	// 2.) Multiply inversion matrix times perspective matrix
+	//   |x0*a  x1*b  x2*c+x3*e   x2*d |   |1 0 0 0|
+	//   |x4*a  x5*b  x6*c+x7*e   x6*d | = |0 1 0 0|
+	//   |x8*a  x9*b  x10*c+x11*e x10*d|   |0 0 1 0|
+	//   |x12*a x13*b x14*c+x15*e x14*d|   |0 0 0 1|
+	//
+	// 3.) Finally substitute each x value: e.g: x0*a = 1 => x0 = 1/a so I(p) at column 0, row 0 is 1/a.
+	//           |1/a 0 0 0|
+	//   I(p) =  |0 1/b 0 0|
+	//           |0 0 0 1/e|
+	//           |0 0 1/d -c/de|
 	
 	// Inverse of the Projection Matrix
-	memset(c->proj_inv.m, 0, sizeof(c->proj_inv.m));
+	ZeroMemory(&c->proj_inv, sizeof(matrix));
 	c->proj_inv.m[0][0] = 1.0f/c->proj.m[0][0];
 	c->proj_inv.m[1][1] = 1.0f/c->proj.m[1][1];
 	c->proj_inv.m[2][3] = 1.0f/c->proj.m[3][2];
 	c->proj_inv.m[3][2] = 1.0f/c->proj.m[2][3];
 	c->proj_inv.m[3][3] = -c->proj.m[2][2];
 	c->proj_inv.m[3][3] /= (c->proj.m[3][2] * c->proj.m[2][3]);
+	
 }
 
 static void
@@ -2406,6 +2426,60 @@ CameraMove(Camera *c, float x, float y, float z) {
 		// player requrests.
 		c->pos.y = cy;
 	}
+}
+
+static void 
+CameraScreenToWorld(Camera *c, float width, float height, 
+					float3 *res, float screen_x, float screen_y, float camera_z) {
+	// Goal:  Viewport => NDC => Clip => View => World
+	
+	// Viewport => NDC => Clip
+	float x = (screen_x / width * 2.0f) - 1.0f;
+    float y = (screen_y / height) * 2.0f - 1.0f;
+    float z = 2.0f * camera_z - 1.0f;
+	
+	
+	// Clip => View
+	// here we use the inverse projection, and inverse view 
+	// and just multiply everything together by our point 
+	// vector from clip space to transform it into world 
+	// space
+	
+	float ax = c->proj_inv.m[0][0]*x;
+    float by = c->proj_inv.m[1][1]*y;
+    float dz = c->proj_inv.m[2][3]*z;
+    float w = c->proj_inv.m[3][3] + dz;
+	
+    res->x = c->proj_inv.m[3][2] * c->view_inv.m[2][0];
+    res->x += c->proj_inv.m[3][3] * c->view_inv.m[3][0];
+    res->x += ax * c->view_inv.m[0][0];
+    res->x += by * c->view_inv.m[1][0];
+    res->x += dz * c->view_inv.m[3][0];
+	
+    res->y = c->proj_inv.m[3][2] * c->view_inv.m[2][1];
+    res->y += c->proj_inv.m[3][3] * c->view_inv.m[3][1];
+    res->y += ax * c->view_inv.m[0][1];
+    res->y += by * c->view_inv.m[1][1];
+    res->y += dz * c->view_inv.m[3][1];
+	
+    res->z = c->proj_inv.m[3][2] * c->view_inv.m[2][2];
+    res->z += c->proj_inv.m[3][3] * c->view_inv.m[3][2];
+    res->z += ax * c->view_inv.m[0][2];
+    res->z += by * c->view_inv.m[1][2];
+    res->z += dz * c->view_inv.m[3][2];
+    res->x /= w; res->y /= w; res->z /= w;
+}
+
+static void
+CameraPickingRay(Camera *c, float w, float h,
+				 float mouse_x, float mouse_y, float3 *orig, float3 *dir)
+{
+    float3 world; 
+    CameraScreenToWorld(c, w, h, &world, mouse_x, mouse_y, 0);
+	
+    *orig = c->loc;
+	float3 direction = world - c->loc;
+	*dir = f3normalize(direction);
 }
 
 
@@ -2806,59 +2880,34 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	double start_frame = Time(), end_frame;
 	
 	// Camera
+	
 	Camera c = {0};
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	c.yaw = 3.14f/2;
-	
-	
+	c.off = {0, 1, 0}; 
 	
 	//~
 	
 	
-	
-	
-	
-	
 	for (;;) {
-		
-		events = OSProcessEvents();
 		
 		
 		// event loop
+		events = OSProcessEvents();
 		for (int i = 0; i < events.idx; i++) {
 			OS_Event e = events.list[i];
-			
-			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
-				printf("raw mouse move %d %d\n", e.value[0], e.value[1]); 
-			}
-			else if (e.kind == OS_EVENT_KIND_MOUSEMOVE) {
-				printf("mouse move %d %d\n", e.value[0], e.value[1]); 
-			}
-			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
-				if (e.value[0] == MouseRightButton) {
-				printf("button clicked RIghtButton\n"); 
-				}
-			}
-			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
-				if (e.value[0] == MouseRightButton) {
-					printf("button clicked RIghtButton\n"); 
-				}
-			}
-			else if (e.kind == OS_EVENT_KIND_QUIT) {
+			if (e.kind == OS_EVENT_KIND_QUIT) {
 				goto release_resources;
 			}
-			
 		}
 		
-		
-		
-		// Handle window resize
 		r->dirty = 0;
 		r->quads.idx = 0; 
 		r->font.idx = 0 ;
 		
+		// Handle window resize
 		RECT rect;
 		GetClientRect(window, &rect);
 		LONG width = rect.right - rect.left;
@@ -2933,7 +2982,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
 		{
 			static bool clicked1 = 0;
-			if (UIButton(&ui,"File").clicked) {
+			if (UIButton(&ui,"File###1123").clicked) {
 				clicked1 = !clicked1;
 			}
 			if (clicked1) {
@@ -2947,9 +2996,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				if (clicked) { 
 					c.pos = c.pos + c.up * 0.1f;
 				}
-				clicked = UIButton(&ui, "Tab 4").activated;
+				clicked = UIButton(&ui, "File").activated;
 				if (clicked) { printf("button clicked4\n"); }
-				clicked = UIButton(&ui, "Tab 5").activated;
+				clicked = UIButton(&ui, "Tab 5###something in here is bad").activated;
 				if (clicked) { printf("button clicked5\n"); }
 				clicked = UIButton(&ui, "Tab 6").activated;
 				if (clicked) { printf("button clicked6\n"); } 
@@ -2980,18 +3029,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT,  0.5f, 1.f };
 		UI_Widget *panel = UICreateRect(&ui, rect_layout, x, y, "panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX | UI_CLICKABLE | UI_DRAGGABLE);
 		UI_Output out = UIInteractWidget(&ui, panel);
-		if (out.activated) {
-			x += (int)input.mouse.dx;
-			y += (int)input.mouse.dy;
-		}
-		
-		UIPushParent(&ui, panel); 
-		UIPopParent(&ui);
-
-		
-		
-		
-		UIEnd(&ui);
+			if (out.activated) {
+				//x += (int)input.mouse.dx;
+				//y += (int)input.mouse.dy;
+			}
+					
+			UIPushParent(&ui, panel); 
+			UIPopParent(&ui);
+	UIEnd(&ui);
 		
 		
 		
@@ -2999,50 +3044,31 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//~
 		// Update Game State
 		//
-		
-		
-		float speed = 1+10*value;
 		end_frame = Time();
-		if (show_free_camera) { 
-			float dt = (float)(end_frame - start_frame);
-			float dx = (float)input.mouse.dx;
-			float dy = (float)-input.mouse.dy;
+		float dt = (float)(end_frame - start_frame);
+		
+		
+		for (int i = 0; i < events.idx; i++) {
+			OS_Event e = events.list[i]; 
 			
-			for (int i = 0; i < 4; i++) {
-				dx += input.gamepads[i].right_thumbstick_x*speed;
-				dy += input.gamepads[i].right_thumbstick_y*speed;
+			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
+				if (show_free_camera) { 
+					float dx = (float)e.value[0];
+					float dy = (float)-e.value[1];
+					
+					c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
+					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
+				}
+				
 			}
-			
-			c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
-			c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
-			CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
 		}
 		
+		float speed = 1+10*value;
+					CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
 		CameraBuild(&c);
 		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 		
-		
-		
-#if 0
-		
-		Rect my_rc= { 100, 100, 100+150, 200 }; 
-		DrawQuad(r, my_rc, GRAY);
-		
-		char txt[] =  "this is sometext to render";
-		float txt_width = DefaultTextWidth(Str8Lit(txt));;
-		float box_width = 150;
-		
-		float percent_to_remove = box_width / txt_width; 
-		
-		int txt_len = 0;
-		while (txt[txt_len++]); 
-		txt_len--;
-		
-		int chars_to_print = (int)((float)txt_len * MIN(percent_to_remove, 1)); 
-		
-		DrawDefaultText(r, txt, chars_to_print, 100, 100);
-#endif 
 		
 		//~
 		// Render Game
@@ -3052,19 +3078,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		{
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
 			
-			// fov
-			float w = viewport.Width / viewport.Height; // width (aspect ratio)
-			matrix projection = {
-				2 * n / w, 0, 0, 0,
-				0, 2 * n / h, 0, 0,
-				0, 0, f / (f - n), 1, 0,
-				0, n * f / (n - f), 0
-			};
-			
 			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
-			vs_cbuf.projection       = projection;
+			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererD3D11UpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
 			
@@ -3172,19 +3189,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->DrawInstanced(4, r->font.idx , 0, 0); // 4 vertices per instance, each instance is a sprite
 		}
 		
-		RendererD3D11Present(r);
+		RendererD3D11Present(r); // present the resulting image to the screen
 		start_frame = end_frame; // update time for dt calc
 	}
 	
 	
 	release_resources:
 	
-	InputShutdown(); // rawinput
-	
-	
 	//
 	// Release resources
 	//
+	
+	InputShutdown(); // rawinput
 	
 	index_buffer->Release();
 	vertex_buffer->Release();

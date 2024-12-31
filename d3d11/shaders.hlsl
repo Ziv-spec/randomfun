@@ -1,7 +1,7 @@
 
 cbuffer vs_constant_buffer : register(b0) {
-	float4x4 transform;  // model-view transform
-	float4x4 projection;
+	row_major float4x4 transform;  // model-view transform
+	row_major float4x4 projection;
 	float4x4 normal_transform;
 };
 
@@ -26,9 +26,9 @@ struct PS_INPUT {
 PS_INPUT vs_main(VS_INPUT v) {
 	PS_INPUT output; 
 
-	output.eye_position = mul(transform, float4(v.pos, 1)).xyz; 
+	output.eye_position = mul(float4(v.pos, 1), transform).xyz; 
 	output.normal = mul(normal_transform, float4(v.norm, 0)).xyz; 
-	output.pos = mul(mul(projection, transform), float4(v.pos, 1));
+	output.pos = mul(float4(v.pos, 1), mul(transform, projection));
 	output.uv = v.uv;
 
 	return output;
@@ -42,7 +42,7 @@ cbuffer ps_constnat_buffer : register(b0) {
 
 float4 ps_main(PS_INPUT p) : SV_Target {
 	
-	// Understanding the phong model:
+	// Understanding thje phong model:
 	// attenuation * light * (k_d * cos(theta) + K_s * cos(phi)^alpha + k_am * ambient)
 
 	// directional light
