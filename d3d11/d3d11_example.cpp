@@ -60,7 +60,6 @@ typedef int     b32;
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
-// https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5   - camera gist for understanding all about cameras
 // https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
 
@@ -83,7 +82,7 @@ typedef int     b32;
  //   [x] z-buffer
 //   [ ] Draw
 //     [x] DrawQuad (drawing a general syleized quad for UI)
-//     [ ] fix drawing issuess with border / radius (working on it fixed alpha blending i think)//
+//     [x] fix drawing issuess with border / radius 
 //
 // [ ] ===== UI =====
 //   [x] finally make the push-pop utilities for higherarchy building
@@ -1420,8 +1419,8 @@ DrawQuad(R_D3D11Context *r, Rect rect, Color color) {
 		0 <= rect.maxy && rect.miny <= r->viewport->Height) {
 		r->quads.data[r->quads.idx].rect = rect;
 		r->quads.data[r->quads.idx].color = color;
-		r->quads.data[r->quads.idx].radius = 10;
-		r->quads.data[r->quads.idx].border = 1;
+		r->quads.data[r->quads.idx].radius = 0;
+		r->quads.data[r->quads.idx].border = 2;
 		r->quads.idx++;
 	}
 	
@@ -2438,7 +2437,6 @@ CameraScreenToWorld(Camera *c, float width, float height,
     float y = (screen_y / height) * 2.0f - 1.0f;
     float z = 2.0f * camera_z - 1.0f;
 	
-	
 	// Clip => View
 	// here we use the inverse projection, and inverse view 
 	// and just multiply everything together by our point 
@@ -2860,11 +2858,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	// projection matrix variables
-	float w = viewport.Width / viewport.Height; // width (aspect ratio)
-	float h = 1.0f;                             // height
-	float n = 1.0f;                             // near
-	float f = 90.0f;                            // far
-	
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
@@ -2886,7 +2879,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	c.yaw = 3.14f/2;
-	c.off = {0, 1, 0}; 
+	c.off = {0, 0, 0}; 
 	
 	//~
 	
@@ -3019,6 +3012,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		UIPopParent(&ui);
 		UIPopParent(&ui);
 
+/* 
 		static int x = 150;
 		static int y = 100;
 		
@@ -3033,9 +3027,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				//x += (int)input.mouse.dx;
 				//y += (int)input.mouse.dy;
 			}
-					
 			UIPushParent(&ui, panel); 
 			UIPopParent(&ui);
+ */
+					
 	UIEnd(&ui);
 		
 		
