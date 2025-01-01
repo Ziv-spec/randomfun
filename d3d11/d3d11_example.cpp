@@ -53,6 +53,11 @@ typedef int16_t u16;
 typedef int8_t  u8;
 typedef int     b32;
 
+typedef struct { int x, y; } int2;
+typedef struct { float x, y; } float2;
+typedef struct { float minx, miny, maxx, maxy; } Rect;
+typedef struct { float r, g, b, a; } Color;
+
 // Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
 // https://ameye.dev/notes/rendering-outlines/                       - 5 ways to draw an outline
@@ -83,6 +88,10 @@ typedef int     b32;
 //   [ ] Draw
 //     [x] DrawQuad (drawing a general syleized quad for UI)
 //     [x] fix drawing issuess with border / radius 
+//   [ ] Create all types of buffers and store them (interface is a handle)
+//   [ ] Bind all types of buffers
+//   [ ] Allow Updating of buffers (uploading to gpu)
+//   [ ] Dynamic updating of resources when file changes (to shaders, textures, models)
 //
 // [ ] ===== UI =====
 //   [x] finally make the push-pop utilities for higherarchy building
@@ -128,17 +137,16 @@ typedef int     b32;
 // [ ] resolve sizing conflicts
 // [ ] make a panel widget that moves using this not all relative thingy 
 // [ ] make input system as events and shit (working)
+// [ ] Expand renderer capabilities 
+//   [x] create buffers (constant/structured)
+//   [x] create pixel and vertex shaders
+//   [x] hot reload shaders as needed 
 
 static void FatalError(const char* message)
 {
     MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
     ExitProcess(0);
 }
-
-typedef struct { int x, y; } int2;
-typedef struct { float x, y; } float2;
-typedef struct { float minx, miny, maxx, maxy; } Rect;
-typedef struct { float r, g, b, a; } Color;
 
 //~
 // Math
@@ -353,6 +361,26 @@ static s64 Str8GetHash(String8 str, s64 seed) {
 	return hash;
 }
 
+typedef struct {
+	size_t size;
+	wchar_t *data;
+} String16;
+
+static String16
+Str8ToStr16(Arena *arena, String8 str) {
+	Assert(arena && str.data && str.size > 0); 
+	
+	size_t size = (str.size+1)*sizeof(wchar_t);
+	wchar_t *data  = (wchar_t *)MemArenaAlloc(arena, size); 
+	for (int i = 0; i < size; i++) {
+		data[i] = str.data[i];
+	}
+	
+	String16 result = { size, data };
+	return result;
+}
+
+
 //
 // Font
 //
@@ -481,6 +509,18 @@ Win32ToggleFullScreen(HWND window)
 					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 	}
 }
+
+inline FILETIME
+Win32GetLastFileWriteTime(const char *file_name) {
+	FILETIME last_write_time = {0};
+	WIN32_FILE_ATTRIBUTE_DATA data;
+	if (GetFileAttributesExA(file_name, GetFileExInfoStandard, &data)) {
+		last_write_time = data.ftLastWriteTime;
+	}
+	return last_write_time;
+}
+
+
 
 //~
 // Time
@@ -866,8 +906,50 @@ typedef struct R_SpriteInst {
 	int2 atlas_pos;
 } R_SpriteInst;
 
+
+typedef int PSHandle;
+typedef int VSHandle;
+typedef int BFHandle;
+
+
+#define FORMAT_TABLE \
+X(R_FORMAT_R16_UINT,            DXGI_FORMAT_R16_UINT),\
+X(R_FORMAT_UNKNOWN,             DXGI_FORMAT_UNKNOWN), \
+X(R_FORMAT_B8G8R8A8_UNORM,      DXGI_FORMAT_B8G8R8A8_UNORM),\
+X(R_FORMAT_R32G32_FLOAT,        DXGI_FORMAT_R32G32_FLOAT),\
+X(R_FORMAT_R32G32B32_FLOAT,     DXGI_FORMAT_R32G32B32_FLOAT),\
+X(R_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB),\
+X(R_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+
+#define X(a, b) a
+enum R_Format {
+	FORMAT_TABLE
+};
+#undef X
+
+const static DXGI_FORMAT g_renderer_to_dxgi_format[] = {
+#define X(a, b) b
+	FORMAT_TABLE
+#undef X
+};
+
+enum R_InputClassification {
+	R_INPUT_PER_VERTEX_DATA   = 0,
+	R_INPUT_PER_INSTANCE_DATA = 1
+};
+
+typedef struct {
+	char *semantic_name;
+	R_Format format;
+	u32 input_slot; 
+	u32 aligned_byte_offset;
+	R_InputClassification input_slot_class;
+} R_LayoutFormat; 
+
 typedef struct {
 	HWND window;
+	
+	Arena *arena;
 	
 	ID3D11Device1 *device;
 	ID3D11DeviceContext1 *context;
@@ -910,7 +992,253 @@ typedef struct {
 		int idx;
 	} font;
 	
+	
+	ID3D11VertexShader *vs_array[0x10]; 
+	VSHandle vs_handles[0x10];
+	struct {
+		const char *file_name;
+		const char *entry_point;
+		FILETIME last_write_time;
+		R_LayoutFormat *format;
+		unsigned int format_size;
+	} vs_file_names_and_time[0x10];
+	int vs_idx;
+	
+	ID3D11PixelShader *ps_array[0x10]; 
+	PSHandle ps_handles[0x10];
+	struct {
+		const char *file_name;
+		const char *entry_point;
+		FILETIME last_write_time;
+	} ps_file_names_and_time[0x10];
+	int ps_idx;
+	
+	ID3D11Buffer *buffer_array[0x10]; 
+	ID3D11ShaderResourceView *srv_array[0x10]; 
+	BFHandle buffer_handles[0x10];
+	int buffer_idx;
+	
 } R_D3D11Context;
+
+static void 
+RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
+							R_LayoutFormat format[], unsigned int format_size,
+							ID3D11VertexShader **vshader, ID3D11InputLayout  **layout) {
+	// Create Vertex Shader
+	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+	ID3DBlob *error;
+	ID3DBlob *vblob;
+	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "vs_5_0", flags, 0, &vblob, &error))) {
+		const char *message = (const char *)error->GetBufferPointer();
+		OutputDebugStringA(message);
+		Assert(!"Failed to compile vertex shader!");
+	}
+	r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
+	
+	if (format && format_size > 0) {
+		// Vertex Shader Fromat Descriptor
+		D3D11_INPUT_ELEMENT_DESC *vs_format_desc = (D3D11_INPUT_ELEMENT_DESC *)malloc(format_size * sizeof(D3D11_INPUT_ELEMENT_DESC)); 
+		
+		for (unsigned int i = 0; i < format_size; i++) {
+			vs_format_desc[i].SemanticName = format[i].semantic_name; 
+			vs_format_desc[i].SemanticIndex = 0;
+			vs_format_desc[i].Format = g_renderer_to_dxgi_format[format[i].format];
+			vs_format_desc[i].InputSlot = format[i].input_slot;
+			vs_format_desc[i].AlignedByteOffset = format[i].aligned_byte_offset;
+			vs_format_desc[i].InputSlotClass = (D3D11_INPUT_CLASSIFICATION)format[i].input_slot_class;
+			vs_format_desc[i].InstanceDataStepRate = 0;
+		};
+		
+		r->device->CreateInputLayout(vs_format_desc, format_size, vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
+	}
+	vblob->Release();
+}
+
+
+
+static void 
+RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point, ID3D11PixelShader **pshader) {
+	
+	{
+	// Create Pixel Shader 
+	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+	ID3DBlob *error;
+	ID3DBlob *pblob;
+	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "ps_5_0", flags, 0, &pblob, &error))) {
+		const char *message = (const char *)error->GetBufferPointer();
+		OutputDebugStringA(message);
+		Assert(!"Failed to compile pixel shader!");
+	}
+	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
+	pblob->Release();
+	}
+	
+	
+}
+
+static VSHandle
+RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
+					   R_LayoutFormat format[], unsigned int format_size) {
+	
+	
+	VSHandle handle = r->vs_idx;
+	r->vs_handles[r->vs_idx] = handle;
+	r->vs_file_names_and_time[r->vs_idx].file_name = file;
+	r->vs_file_names_and_time[r->vs_idx].entry_point= entry_point;
+	r->vs_file_names_and_time[r->vs_idx].format = format;
+	r->vs_file_names_and_time[r->vs_idx].format_size = format_size;
+	r->vs_idx++;
+	return handle;
+}
+
+static PSHandle
+RendererCreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point) {
+	
+	
+	PSHandle handle = r->ps_idx;
+	r->ps_handles[r->ps_idx] = handle;
+	r->ps_file_names_and_time[r->ps_idx].file_name= file;
+	r->ps_file_names_and_time[r->ps_idx].entry_point = entry_point;
+	r->ps_idx++;
+	
+	return handle;
+}
+
+// Buffer Creation Flags
+#define BUFFER_FLAGS_TABLE \
+X(R_BIND_VERTEX_BUFFER, D3D11_BIND_VERTEX_BUFFER),     \
+X(R_BIND_INDEX_BUFFER, D3D11_BIND_INDEX_BUFFER),       \
+X(R_BIND_CONSTANT_BUFFER, D3D11_BIND_CONSTANT_BUFFER), \
+X(R_BIND_SHADER_RESOURCE, D3D11_BIND_SHADER_RESOURCE), \
+X(R_USAGE_DEFAULT, D3D11_USAGE_DEFAULT),               \
+X(R_USAGE_IMMUTABLE, D3D11_USAGE_IMMUTABLE),           \
+X(R_USAGE_DYNAMIC, D3D11_USAGE_DYNAMIC),               \
+X(R_USAGE_STAGING, D3D11_USAGE_STAGING),               \
+X(R_CPU_ACCESS_WRITE, D3D11_CPU_ACCESS_WRITE),         \
+X(R_CPU_ACCESS_READ, D3D11_CPU_ACCESS_READ),           \
+X(R_RESOURCE_MISC_BUFFER_STRUCTURED, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED), \
+
+
+#define X(a, b) a
+enum R_BUFFER_FLAGS {
+	BUFFER_FLAGS_TABLE
+};
+#undef X
+
+const static int g_renderer_to_d3d11_buffer_flags[] = {
+#define X(a, b) b
+	BUFFER_FLAGS_TABLE
+#undef X
+};
+
+// Last 2 bits of handle 
+#define TYPE_VERTEX_BUFFER          (0)
+#define TYPE_INDEX_BUFFER           (1)
+#define TYPE_CONSTANT_BUFFER        (2)
+#define TYPE_SHADER_RESOURCE_BUFFER (3)
+
+
+
+static BFHandle
+RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsigned int elem_count,
+					 u8 usage, u8 bind, u32 cpu_access, u32 misc) {
+
+	ID3D11Buffer *buffer = NULL;
+	ID3D11ShaderResourceView* buffer_srv = NULL;
+	{
+		
+		D3D11_BUFFER_DESC desc = {0};
+		
+		desc.ByteWidth = (elem_size * elem_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
+		desc.Usage = (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[usage];
+		desc.BindFlags = g_renderer_to_d3d11_buffer_flags[bind];
+		desc.CPUAccessFlags = g_renderer_to_d3d11_buffer_flags[cpu_access];
+		desc.MiscFlags = misc ? g_renderer_to_d3d11_buffer_flags[misc] : 0;
+		desc.StructureByteStride = elem_size;
+		
+		D3D11_SUBRESOURCE_DATA subresource_data = {data};
+		r->device->CreateBuffer(&desc, data ? &subresource_data : NULL, &buffer);
+		
+		if (misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
+			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
+			rv_desc.Format = DXGI_FORMAT_UNKNOWN;
+			rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+			rv_desc.Buffer.NumElements = elem_count;
+			r->device->CreateShaderResourceView(buffer, &rv_desc, &buffer_srv);
+		}
+		
+	}
+	
+	// last 5 bits refer to the type of buffer it is
+	BFHandle handle = r->buffer_idx | (bind << (32-5));
+	r->buffer_array[r->buffer_idx] = buffer;
+	r->srv_array[r->buffer_idx] = buffer_srv;
+	r->buffer_handles[r->buffer_idx] = handle;
+	r->buffer_idx++; 
+	
+	return handle;
+	
+}
+
+static void
+RendererUpdateBuffer(R_D3D11Context *r, BFHandle handle, void *data, unsigned int size) {
+	Assert(r && size && data); 
+	
+	int idx = handle & ((1 << (32-5))-1);
+	ID3D11Resource *buff = r->buffer_array[idx];
+	Assert(buff);
+	
+	
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		r->context->Map(buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		memcpy(mapped.pData, data, size);
+		r->context->Unmap(buff, 0);
+}
+
+static void
+RendererPSSetShader(R_D3D11Context *r, PSHandle handle) {
+	if (handle == r->ps_handles[handle])  r->context->PSSetShader(r->ps_array[handle], NULL, 0);
+}
+static void
+RendererVSSetShader(R_D3D11Context *r, VSHandle handle) {
+	if (handle == r->vs_handles[handle])  r->context->VSSetShader(r->vs_array[handle], NULL, 0);
+}
+
+static void
+RendererVSSetBuffer(R_D3D11Context *r, BFHandle handle) {
+	int idx = handle & ((1 << (32-5))-1);
+	if (handle != r->buffer_handles[idx]) return;
+	
+	int last_5_bits = handle >> (32-5);
+	if (last_5_bits == TYPE_CONSTANT_BUFFER) {
+		// TODO(ziv): start slot, amount of buffers, buffers
+		r->context->VSSetConstantBuffers(0, 1, &r->buffer_array[idx]);
+	}
+	else if (last_5_bits == TYPE_SHADER_RESOURCE_BUFFER) {
+		r->context->VSSetShaderResources(0, 1, &r->srv_array[idx]);
+	}
+	
+	
+}
+
+static void
+RendererDrawInstanced(R_D3D11Context *r, unsigned int vertex_count_per_instance, unsigned int instance_count, 
+					  unsigned int start_vertex_location, unsigned int start_instance_location) {
+	// TODO(ziv): add support for more topologies
+	r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	r->context->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
+}
+
 
 static void
 RendererD3D11GetShaders(R_D3D11Context *r,
@@ -919,6 +1247,7 @@ RendererD3D11GetShaders(R_D3D11Context *r,
 						ID3D11InputLayout **layout, 
 						const D3D11_INPUT_ELEMENT_DESC vs_format_desc[], 
 						unsigned int format_desc_length) {
+	
 	HRESULT hr;
 	// Create Vertex And Pixel Shaders
 	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
@@ -957,6 +1286,9 @@ RendererD3D11GetShaders(R_D3D11Context *r,
 
 static void
 RendererInit(R_D3D11Context *r, HWND window) {
+	
+	r->arena = (Arena *)malloc(sizeof(Arena));
+	MemArenaInit(r->arena, 0x1000); 
 	
 	//
 	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
@@ -1138,40 +1470,6 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	// Quad
 	//
 	
-	// Instanced Quad Drawing
-	ID3D11Buffer *quads_buf; // structurd buffer
-	ID3D11ShaderResourceView* quads_srv;
-	{
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = MAX_QUAD_COUNT*sizeof(R_QuadInst);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(R_QuadInst);
-		r->device->CreateBuffer(&desc, NULL, &quads_buf);
-		
-		D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
-		rv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		rv_desc.Buffer.NumElements = MAX_QUAD_COUNT;
-		r->device->CreateShaderResourceView(quads_buf, &rv_desc, &quads_srv);
-	}
-	
-	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-	ID3D11Buffer *cbuffer;
-	{
-		
-		D3D11_BUFFER_DESC desc = {0};
-		desc.ByteWidth = sizeof(widgets_constants);
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		D3D11_SUBRESOURCE_DATA data = {widgets_constants};
-		r->device->CreateBuffer(&desc, &data, &cbuffer);
-	}
-	
-	
 	ID3D11BlendState1 *blend_state_use_alpha = NULL;
 	{
 		D3D11_BLEND_DESC1 blend_state = {0};
@@ -1186,43 +1484,10 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
 	}
 	
-	
-	ID3D11VertexShader *vshader = NULL;
-	ID3D11PixelShader *pshader = NULL;
-	RendererD3D11GetShaders(r, &vshader, L"../widgets.hlsl",
-							&pshader, L"../widgets.hlsl",
-							NULL, NULL, 0);
-	
-	r->quads.buffers[0] = quads_buf;
-	r->quads.buffers[1] = cbuffer;
-	r->quads.pshader = pshader;
-	r->quads.vshader = vshader;
-	r->quads.srv[0]= quads_srv;
 	r->quads.blend_state_use_alpha = blend_state_use_alpha;
 	//
 	// Font
 	//
-	
-	// Font Constant Buffer
-	ID3D11Buffer* font_constant_buffer;
-	{
-		// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
-		float font_constant_data[4] = {
-			2.0f / window_width,
-			-2.0f / window_height,
-			1.0f / ATLAS_WIDTH,
-			1.0f / ATLAS_HEIGHT
-		};
-		
-		D3D11_BUFFER_DESC constant_buffer_desc = {};
-		constant_buffer_desc.ByteWidth = sizeof(font_constant_data) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
-		constant_buffer_desc.Usage     = D3D11_USAGE_DYNAMIC; 
-		constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		constant_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		
-		D3D11_SUBRESOURCE_DATA font_data = { font_constant_data };
-		r->device->CreateBuffer(&constant_buffer_desc, &font_data, &font_constant_buffer);
-	}
 	
 	// Texture Atlas
 	ID3D11ShaderResourceView* atlas_resource_view;
@@ -1247,26 +1512,6 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		atlas_texture->Release();
 	}
 	
-	// Sprite Buffer
-	ID3D11Buffer* sprite_buffer;
-	ID3D11ShaderResourceView* sprite_resource_view;
-	{
-		D3D11_BUFFER_DESC sprite_buffer_desc = {};
-		sprite_buffer_desc.ByteWidth           = MAX_SPRITES_COUNT * sizeof(R_SpriteInst);
-		sprite_buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
-		sprite_buffer_desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
-		sprite_buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
-		sprite_buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // Structured Buffer contains elements of equal size. Inside the shader you can access members using an index
-		sprite_buffer_desc.StructureByteStride = sizeof(R_SpriteInst);
-		r->device->CreateBuffer(&sprite_buffer_desc, NULL, &sprite_buffer);
-		
-		// A shader resource view wraps textures in a format that the shaders can access them
-		D3D11_SHADER_RESOURCE_VIEW_DESC sprite_shader_resource_view_desc = {};
-		sprite_shader_resource_view_desc.Format             = DXGI_FORMAT_UNKNOWN;
-		sprite_shader_resource_view_desc.ViewDimension      = D3D11_SRV_DIMENSION_BUFFER; // indicates the resource is a buffer
-		sprite_shader_resource_view_desc.Buffer.NumElements = MAX_SPRITES_COUNT;
-		r->device->CreateShaderResourceView(sprite_buffer, &sprite_shader_resource_view_desc, &sprite_resource_view);
-	}
 	
 	// Point Sampler
 	ID3D11SamplerState* font_sampler;
@@ -1288,12 +1533,7 @@ RendererInit(R_D3D11Context *r, HWND window) {
 							&font_pshader, L"../font.hlsl", 
 							NULL, NULL, 0); 
 	
-	r->font.pshader = font_pshader;
-	r->font.vshader = font_vshader;
 	r->font.sampler = font_sampler;
-	r->font.buffers[0] = sprite_buffer;
-	r->font.buffers[1] = font_constant_buffer;
-	r->font.srv[0] = sprite_resource_view;
 	r->font.srv[1] = atlas_resource_view;
 	
 }
@@ -1309,19 +1549,8 @@ RendererDeInit(R_D3D11Context *r) {
 	r->zbuffer_texture->Release();
 	r->rasterizer_cull_back->Release();
 	
-	r->quads.vshader->Release(); 
-	r->quads.pshader->Release(); 
-	r->quads.buffers[0]->Release(); 
-	r->quads.buffers[1]->Release(); 
-	r->quads.srv[0]->Release(); 
 	r->quads.blend_state_use_alpha->Release();
-	
-	r->font.pshader->Release();
-	r->font.vshader->Release();
 	r->font.sampler->Release();
-	r->font.buffers[0]->Release();
-	r->font.buffers[1]->Release();
-	r->font.srv[0]->Release();
 	r->font.srv[1]->Release();
 }
 
@@ -2475,9 +2704,8 @@ CameraPickingRay(Camera *c, float w, float h,
     float3 world; 
     CameraScreenToWorld(c, w, h, &world, mouse_x, mouse_y, 0);
 	
-    *orig = c->loc;
-	float3 direction = world - c->loc;
-	*dir = f3normalize(direction);
+	*orig = c->loc;
+	*dir = f3normalize(world - c->loc);
 }
 
 
@@ -2686,7 +2914,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	InputInitialize(window);
 	
-	R_D3D11Context renderer; 
+	R_D3D11Context renderer = {0}; 
 	R_D3D11Context *r = &renderer; 
 	RendererInit(&renderer, window);
 	
@@ -2724,7 +2952,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		D3D11_SUBRESOURCE_DATA index_data = { indicies };
 		r->device->CreateBuffer(&index_descriptor, &index_data, &index_buffer);
 	}
-	
 	
 	// Vertex Shader Fromat Descriptor
 	const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
@@ -2850,6 +3077,37 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 	
 	
+	// font information
+	PSHandle font_pshader = RendererCreatePSShader(r, "../font.hlsl", "ps_main");
+	VSHandle font_vshader = RendererCreateVSShader(r, "../font.hlsl", "vs_main", NULL, 0);
+	
+	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
+	float font_constant_data[4] = {
+		2.0f / window_width,
+		-2.0f / window_height,
+		1.0f / ATLAS_WIDTH,
+		1.0f / ATLAS_HEIGHT
+	};
+	
+	BFHandle font_constant_buffer = RendererCreateBuffer(r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
+														 R_USAGE_DYNAMIC, R_BIND_CONSTANT_BUFFER, R_CPU_ACCESS_WRITE, 0);
+	BFHandle font_sprite_buffer = RendererCreateBuffer(r, NULL, sizeof(R_SpriteInst), MAX_SPRITES_COUNT, 
+													   R_USAGE_DYNAMIC, R_BIND_SHADER_RESOURCE, R_CPU_ACCESS_WRITE, 
+													   R_RESOURCE_MISC_BUFFER_STRUCTURED);
+	
+	
+	// widgets information
+	VSHandle widgets_vshader = RendererCreateVSShader(r, "../widgets.hlsl", "vs_main", NULL, 0);
+	PSHandle widgets_pshader = RendererCreatePSShader(r, "../widgets.hlsl", "ps_main");
+	
+	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+	BFHandle widgets_cbuffer = RendererCreateBuffer(r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
+													R_USAGE_DYNAMIC,  R_BIND_CONSTANT_BUFFER,  R_CPU_ACCESS_WRITE, 0);
+	
+	BFHandle widgets_quads_buffer = RendererCreateBuffer(r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT,
+														 R_USAGE_DYNAMIC,  R_BIND_SHADER_RESOURCE,  R_CPU_ACCESS_WRITE,
+														 R_RESOURCE_MISC_BUFFER_STRUCTURED);
+	
 	
 	
 	//~
@@ -2914,6 +3172,38 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
 			Sleep(14); continue;
+		}
+		
+		// Update pixel and vertex shaders when changed
+		{
+		for (int i = 0; i < r->vs_idx; i++) {
+			FILETIME last_write_time = Win32GetLastFileWriteTime(r->vs_file_names_and_time[i].file_name);
+			if (CompareFileTime(&last_write_time,&r->vs_file_names_and_time[i].last_write_time) != 0) {
+				r->vs_file_names_and_time[i].last_write_time = last_write_time;
+				ID3D11InputLayout  *layout = NULL;
+				ID3D11VertexShader *vshader = NULL;
+				RendererD3D11CreateVSShader(r, r->vs_file_names_and_time[i].file_name, r->vs_file_names_and_time[i].entry_point, 
+											r->vs_file_names_and_time[i].format, 
+											r->vs_file_names_and_time[i].format_size, 
+											 &vshader, &layout);
+				if (r->vs_array[i]) r->vs_array[i]->Release();
+				r->vs_array[i] = vshader;
+				
+			}
+			
+		}
+		
+		for (int i = 0; i < r->ps_idx; i++) {
+			FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
+			if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
+				r->ps_file_names_and_time[i].last_write_time = last_write_time;
+				ID3D11PixelShader *pshader = NULL;
+				RendererD3D11CreatePSShader(r, r->ps_file_names_and_time[i].file_name, r->ps_file_names_and_time[i].entry_point, 
+											&pshader);
+				if (r->ps_array[i]) r->ps_array[i]->Release();
+				r->ps_array[i] = pshader;
+			}
+		}
 		}
 		
 		
@@ -3130,58 +3420,54 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			// TODO(ziv): make sure that if graph has not changed fron last time
 			// there is no need to upload different data to the gpu. 
 			// which would reduce the data transfers to the gpu. 
-			
-			
-			RendererD3D11UpdateBuffer(r, r->quads.buffers[0], r->quads.data, r->quads.idx*sizeof(r->quads.data[0])); 
-			if (r->dirty) { // if reisized update window constants
-				float quadss_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-				RendererD3D11UpdateBuffer(r, r->quads.buffers[1], quadss_constants, sizeof(quadss_constants)*1);
-			}
-			
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-			r->context->VSSetShader(r->quads.vshader, NULL, 0);
-			r->context->VSSetShaderResources(0, 1, r->quads.srv);
-			r->context->VSSetConstantBuffers(0, 1, &r->quads.buffers[1]);
+			if (r->quads.idx > 0) {
+				
+				// update buffers
+				float quads_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+				RendererUpdateBuffer(r, widgets_quads_buffer, r->quads.data, r->quads.idx*sizeof(r->quads.data[0]));
+				RendererUpdateBuffer(r, widgets_cbuffer, quads_constants, sizeof(quads_constants));
+				
+				// render the quads
+				RendererVSSetShader(r, widgets_vshader); 
+				RendererVSSetBuffer(r, widgets_cbuffer);
+				RendererVSSetBuffer(r, widgets_quads_buffer);
+				
+				// TODO(ziv): Figure out how to control the viewport nad rendertargets
 			r->context->RSSetViewports(1, r->viewport);
-			r->context->PSSetShader(r->quads.pshader, NULL, 0);
+				RendererPSSetShader(r, widgets_pshader); 
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 			
 			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			UINT sampleMask   = 0xffffffff;
-			r->context->OMSetBlendState(r->quads.blend_state_use_alpha, blendFactor, sampleMask);
-			
-			r->context->DrawInstanced(4, r->quads.idx, 0, 0);
+				r->context->OMSetBlendState(r->quads.blend_state_use_alpha, blendFactor, sampleMask);
+				
+				RendererDrawInstanced(r, 4, r->quads.idx, 0, 0);
+				
+			}
 		}
 		
 		// Draw Font
 		{
-			
+
 			if (r->dirty) {
 				// update constants buffer
 				float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
-				RendererD3D11UpdateBuffer(r, r->font.buffers[1], font_constant_data, sizeof(font_constant_data)); 
+				RendererUpdateBuffer(r, font_constant_buffer, font_constant_data, sizeof(font_constant_data));
 			}
+			RendererUpdateBuffer(r, font_sprite_buffer, r->font.data, r->font.idx*sizeof(r->font.data[0])); 
 			
-			D3D11_MAPPED_SUBRESOURCE sprite_mapped;
-			r->context->Map(r->font.buffers[0], 0, D3D11_MAP_WRITE_DISCARD, 0, &sprite_mapped);
-			memcpy(sprite_mapped.pData, r->font.data, r->font.idx*sizeof(r->font.data[0]));
-			r->context->Unmap(r->font.buffers[0], 0);
 			
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); // so we can render sprite quad using 4 vertices
-			
-			r->context->VSSetShader(r->font.vshader, NULL, 0);
-			r->context->VSSetShaderResources(0, 1, &r->font.srv[0]);
-			r->context->VSSetConstantBuffers(0, 1, &r->font.buffers[1]);
+			RendererVSSetShader(r, font_vshader);
+			RendererVSSetBuffer(r, font_constant_buffer);
+			RendererVSSetBuffer(r, font_sprite_buffer);
 			
 			r->context->RSSetViewports(1, r->viewport);
-			
-			r->context->PSSetShader(r->font.pshader, NULL, 0);
+			RendererPSSetShader(r, font_pshader);
 			r->context->PSSetShaderResources(1, 1, &r->font.srv[1]);
 			r->context->PSSetSamplers(0, 1, &r->font.sampler);
-			
 			r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
+			RendererDrawInstanced(r, 4, r->font.idx, 0, 0);
 			
-			r->context->DrawInstanced(4, r->font.idx , 0, 0); // 4 vertices per instance, each instance is a sprite
 		}
 		
 		RendererD3D11Present(r); // present the resulting image to the screen
