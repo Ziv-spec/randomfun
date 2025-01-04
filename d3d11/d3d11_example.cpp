@@ -129,6 +129,8 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] fix bug when two buttons with the same hash get pruned and then created (creation step would add old pruned button)
 //   [x] make layout be simpler Equip semantics (for user facing code)
 //   [x] remove UI_Layout it doesn't help really and makes things combersome and less understandable
+//   [x] use var args for functions accepting strings
+//   [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
 //
 // [x] ===== Camera =====
 //   [x] Normal Camera
@@ -147,8 +149,6 @@ typedef struct { float r, g, b, a; } Color;
 
 //  ============== goals for today ==============
 
-// [x] use var args for functions accepting strings
-// [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
@@ -1821,12 +1821,16 @@ typedef struct {
 
 static UI_Context *ui = NULL;
 
+static int pruned = 0;
+
 static void
 UICorePruneDeadWidgets(UI_Widget *head) {
 	
 	if (!head) return; 
 	
 	if (!head->id.alive) { // dead
+		
+		pruned = 1;
 		
 		if (head->last) {
 			// remove from middle
@@ -2271,15 +2275,68 @@ UIBegin(UI_Context *ui, b32 dirty) {
 	
 }
 
+
+#if _DEBUG
+// NOTE(ziv): THIS IS JUST FOR DEBUGGING PURPOSES!!!!
+// I AM SAVED BY THIS FROM LITERAL TORTURE BY THIS BUG THAT 
+// HAUNTS MY DREAMS. 
+
+static void
+UIHelperPrintNodeGraph(UI_Widget *head, int level) {
+	if (!head) return; 
+	
+	// convert back to you c string
+	char buff[100]; 
+	memcpy(buff, head->id.value.data, head->id.value.size); 
+	buff[head->id.value.size] = '\0';
+	
+	for (int i = 0; i < level; i++) {
+		printf(" ");
+	}
+	
+	if (level == 0) {
+		printf("window\n"); 
+	}
+	else {
+		printf("%s %s key=%d\n", buff, head->id.alive ? "ALIVE" : "DEAD", head->id.key);
+	}
+	
+	UI_Widget *child = head->child; 
+	for (; child; child = child->next) {
+		UIHelperPrintNodeGraph(child, level+1);
+	}
+}
+
+static void 
+UIHelperPrintWidgetGraph() {
+	UI_Widget *head = &ui->head_widget; 
+	UIHelperPrintNodeGraph(head, 0); 
+}
+#endif 
+
 static void
 UIEnd(UI_Context *ui) {
 	Assert(ui);
+	if (pruned) {
+		pruned = 0; 
+		printf("Before Prune\n"); 
+		UIHelperPrintWidgetGraph(); 
+		
+	}
 	
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->head_widget.id.alive = 1;
 		UICorePruneDeadWidgets(&ui->head_widget);
 	}
+	
+	if (pruned) {
+	printf("After Prune\n"); 
+	UIHelperPrintWidgetGraph(); 
+	printf("\n\n\n\n\n\n\n\n");
+	}
+	
+	
 	
 	// layout
 	{
@@ -2344,9 +2401,13 @@ UIMakeWidget(String8 text, u32 flags) {
 	key--;
 	
 	if (Str8Compare(strid, entry->id.value)) {
-		Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
-		entry->id.alive = 1;
-		return entry;
+		// Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
+
+		if (!entry->id.alive) {
+			entry->id.alive = 1;
+			return entry;
+		}
+		
 	}
 	
     //
@@ -2358,7 +2419,8 @@ UIMakeWidget(String8 text, u32 flags) {
 	// TODO(ziv): This should not be allocated in this arena thingy. should actually have 
 	// something to manage these strings since the way they are allocated and things is 
 	// more malloc/free style (which maybe I should use malloc/free idk). 
-	String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
+	//String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
+	String8 id_string_copy = Str8Copy((char *)malloc(strid.size), strid);
 	widget->id = { key, 1, id_string_copy  };
 	widget->parent = parent;
     widget->child = NULL;
@@ -2384,7 +2446,8 @@ UIMakeWidget(String8 text, u32 flags) {
 			// currently everytime a node is pruned 
 			// and then created it allocated more memory
 			// but never frees it.
-			char *data = (char *)MemArenaAlloc(&ui->arena, i+1);
+			//char *data = (char *)MemArenaAlloc(&ui->arena, i+1);
+			char *data = (char *)malloc(i+1);
 				memcpy(data, strid.data, i); data[i] = '\0';
 				
 				display_text.data = data; 
@@ -2404,16 +2467,34 @@ UIMakeWidget(String8 text, u32 flags) {
 			while (temp->next && temp->next->id.alive) temp = temp->next;
             
 			if (parent->child->id.alive) {
-			UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
+				
+				if (temp->id.alive) {
+				UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
 			lhs->next = mid; 
 			mid->last = lhs; 
 			mid->next = rhs;
-			if (rhs) { rhs->last = mid; }
+					if (rhs) { rhs->last = mid; }
+				}
+				else {
+					printf("WDF==================================================T\n");
+				}
 			}
 			else {
+				// cursed place
+				if (temp->id.alive) {
 				widget->next = temp; 
 				temp->last = widget;
+				parent->child = widget;
+				}
+				else {
+					printf("------------------------------------------------------------\n");
+					
+					UIHelperPrintWidgetGraph(); 
+					widget->next = parent->child->next;
 					parent->child = widget;
+					UIHelperPrintWidgetGraph(); 
+					
+				}
 			}
 
 			
@@ -3497,11 +3578,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
-			
+
+/* 			
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
-			
+			 */
+
 			if (UIButton("Show Panel").clicked) {
 				show_panel = 1;
 			}
