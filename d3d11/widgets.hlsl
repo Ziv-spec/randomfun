@@ -37,6 +37,7 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 }
 
 
+// https://iquilezles.org/articles/distfunctions2d/
 float BoarderdRectSDF(float2 pixel, float2 halfsize, float radius) {
 	return length(max(abs(pixel)-halfsize+radius, 0.))-radius;
 }
@@ -49,10 +50,10 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 
 	float2 half_size = size * 0.5;
 	float distance  = BoarderdRectSDF(pos2-loc-half_size, size-half_size-o.border, max(o.radius-o.border, 0));
-	float t_rect_inside = smoothstep(0, 1, distance); 
+	float t_rect_inside = smoothstep(0, .1, distance); 
 	
 	float distance2 = BoarderdRectSDF(pos2-loc-half_size, size-half_size, o.radius);
-	float t_rect_outside = 1-smoothstep(0, 1, distance2); 
+	float t_rect_outside = 1-smoothstep(-0.75, 0.5, distance2); 
 
 	float4 background_color = o.color;
 	float4 color = lerp(background_color, float4(0.1,0.2,0.3,1), t_rect_inside);

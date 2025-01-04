@@ -31,7 +31,7 @@ static int window_height = 600;
 #define MAX_QUAD_COUNT    0x100
 
 #define WIDGETS_COUNT 0x100
-#define MAX_WIDGET_STACK_SIZE 4
+#define MAX_WIDGET_STACK_SIZE 5
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -39,6 +39,7 @@ static int window_height = 600;
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define ABS(a)    ((a) < (0) ? (-a) : (a))
 
 #define STR2(x) #x
 #define STR(x) STR2(x)
@@ -67,6 +68,14 @@ typedef struct { float r, g, b, a; } Color;
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
 // https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
+
+// [1] https://learn.microsoft.com/en-us/windows/
+// [2] https://learn.microsoft.com/en-us/windows/win32/direct3d9/coordinate-systems?redirectedfrom=MSDN
+// [3] https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-per-component-math#matrix-ordering
+// [4] https://learnopengl.com/Getting-started/Camera
+// [5] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
+// [6] https://www.rfleury.com/p/ui-part-1-the-interaction-medium
+// [7] https://floooh.github.io/2018/06/17/handles-vs-pointers.html
 
 // TODO(ziv):
 // [ ] ===== OS =====
@@ -112,11 +121,14 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] add support for rounded corners, custom color (per vertex?)
 //   [x] make text confirm to widget dimenions (kind of, this might need a change)
 //   [x] allow widgets to have different positions on screen (not all relative to 0,0)
-//   [ ] resolve sizing conflicts and adhere to it's strictness
+//   [x] resolve sizing conflicts and adhere to it's strictness
 //   [x] add slider widget (think about how to render that)
 //     [x] make slider colors not be funny
 //   [x] Make hash of id smarter (support for ###unique_id)
-//   [ ] use var args for functions accepting strings
+//   [x] make a panel widget that moves using this not all relative (to show capability not real widget)
+//   [x] fix bug when two buttons with the same hash get pruned and then created (creation step would add old pruned button)
+//   [x] make layout be simpler Equip semantics (for user facing code)
+//   [x] remove UI_Layout it doesn't help really and makes things combersome and less understandable
 //
 // [x] ===== Camera =====
 //   [x] Normal Camera
@@ -134,13 +146,16 @@ typedef struct { float r, g, b, a; } Color;
 //
 
 //  ============== goals for today ==============
-// [ ] resolve sizing conflicts
-// [ ] make a panel widget that moves using this not all relative thingy 
+
+// [ ] use var args for functions accepting strings
+// [ ] make internal strings be a copy of strings given (so that state would no be effected by user code)
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
 //   [x] create pixel and vertex shaders
 //   [x] hot reload shaders as needed 
+//   [ ] Create textures 
+//   [ ] Create blend states
 
 static void FatalError(const char* message)
 {
@@ -355,8 +370,9 @@ Str8Compare(String8 s1, String8 s2) {
 static s64 Str8GetHash(String8 str, s64 seed) {
 	s64 hash = seed;
 	for (int i = 0; i < str.size; i++) {
-		hash ^= str.data[i]*seed;
 		hash <<= str.data[i] & 0x1f;
+		hash ^= str.data[i]*seed;
+		hash >>= 2;
 	}
 	return hash;
 }
@@ -885,7 +901,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 }
 
 //~
-// D3D11 Renderer
+// D3D11 Renderer (uses handles as a medium for resource aquasition[7]) 
 //
 
 struct Vertex {
@@ -907,9 +923,9 @@ typedef struct R_SpriteInst {
 } R_SpriteInst;
 
 
-typedef int PSHandle;
-typedef int VSHandle;
-typedef int BFHandle;
+typedef struct { int val; } PSHandle;
+typedef struct { int val; } VSHandle;
+typedef struct { int val; } BFHandle;
 
 
 #define FORMAT_TABLE \
@@ -962,32 +978,21 @@ typedef struct {
 	ID3D11RasterizerState1* rasterizer_cull_back;
 	
 	D3D11_VIEWPORT *viewport;
-	
 	b32 dirty; // window size changed
-	
 	
 	// Widget rendering
 	
 	// widgets
 	struct {
-		ID3D11Buffer *buffers[2];
-		ID3D11VertexShader *vshader;
-		ID3D11PixelShader *pshader;
-		ID3D11ShaderResourceView *srv[1];
 		ID3D11BlendState1* blend_state_use_alpha;
-		
 		R_QuadInst data[MAX_QUAD_COUNT];
 		int idx;
 	} quads;
 	
 	// Font rendering
 	struct {
-		ID3D11Buffer *buffers[2];
-		ID3D11VertexShader *vshader;
-		ID3D11PixelShader *pshader;
 		ID3D11ShaderResourceView *srv[2];
 		ID3D11SamplerState* sampler; 
-		
 		R_SpriteInst data[MAX_SPRITES_COUNT];
 		int idx;
 	} font;
@@ -1031,7 +1036,7 @@ RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *ent
 #else
 	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
-	ID3DBlob *error;
+	ID3DBlob *error  = NULL;
 	ID3DBlob *vblob;
 	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "vs_5_0", flags, 0, &vblob, &error))) {
 		const char *message = (const char *)error->GetBufferPointer();
@@ -1072,7 +1077,7 @@ RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *ent
 #else
 	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
-	ID3DBlob *error;
+		ID3DBlob *error = NULL;
 	ID3DBlob *pblob;
 	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "ps_5_0", flags, 0, &pblob, &error))) {
 		const char *message = (const char *)error->GetBufferPointer();
@@ -1091,7 +1096,7 @@ RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_po
 					   R_LayoutFormat format[], unsigned int format_size) {
 	
 	
-	VSHandle handle = r->vs_idx;
+	VSHandle handle = { r->vs_idx };
 	r->vs_handles[r->vs_idx] = handle;
 	r->vs_file_names_and_time[r->vs_idx].file_name = file;
 	r->vs_file_names_and_time[r->vs_idx].entry_point= entry_point;
@@ -1105,7 +1110,7 @@ static PSHandle
 RendererCreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point) {
 	
 	
-	PSHandle handle = r->ps_idx;
+	PSHandle handle = { r->ps_idx };
 	r->ps_handles[r->ps_idx] = handle;
 	r->ps_file_names_and_time[r->ps_idx].file_name= file;
 	r->ps_file_names_and_time[r->ps_idx].entry_point = entry_point;
@@ -1180,7 +1185,7 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsi
 	}
 	
 	// last 5 bits refer to the type of buffer it is
-	BFHandle handle = r->buffer_idx | (bind << (32-5));
+	BFHandle handle = { r->buffer_idx | (bind << (32-5)) };
 	r->buffer_array[r->buffer_idx] = buffer;
 	r->srv_array[r->buffer_idx] = buffer_srv;
 	r->buffer_handles[r->buffer_idx] = handle;
@@ -1192,9 +1197,9 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsi
 
 static void
 RendererUpdateBuffer(R_D3D11Context *r, BFHandle handle, void *data, unsigned int size) {
-	Assert(r && size && data); 
+	Assert(r && data); 
 	
-	int idx = handle & ((1 << (32-5))-1);
+	int idx = handle.val & ((1 << (32-5))-1);
 	ID3D11Resource *buff = r->buffer_array[idx];
 	Assert(buff);
 	
@@ -1207,19 +1212,19 @@ RendererUpdateBuffer(R_D3D11Context *r, BFHandle handle, void *data, unsigned in
 
 static void
 RendererPSSetShader(R_D3D11Context *r, PSHandle handle) {
-	if (handle == r->ps_handles[handle])  r->context->PSSetShader(r->ps_array[handle], NULL, 0);
+	if (handle.val == r->ps_handles[handle.val].val)  r->context->PSSetShader(r->ps_array[handle.val], NULL, 0);
 }
 static void
 RendererVSSetShader(R_D3D11Context *r, VSHandle handle) {
-	if (handle == r->vs_handles[handle])  r->context->VSSetShader(r->vs_array[handle], NULL, 0);
+	if (handle.val== r->vs_handles[handle.val].val)  r->context->VSSetShader(r->vs_array[handle.val], NULL, 0);
 }
 
 static void
 RendererVSSetBuffer(R_D3D11Context *r, BFHandle handle) {
-	int idx = handle & ((1 << (32-5))-1);
-	if (handle != r->buffer_handles[idx]) return;
+	int idx = handle.val & ((1 << (32-5))-1);
+	if (handle.val!= r->buffer_handles[idx].val) return;
 	
-	int last_5_bits = handle >> (32-5);
+	int last_5_bits = handle.val >> (32-5);
 	if (last_5_bits == TYPE_CONSTANT_BUFFER) {
 		// TODO(ziv): start slot, amount of buffers, buffers
 		r->context->VSSetConstantBuffers(0, 1, &r->buffer_array[idx]);
@@ -1526,13 +1531,6 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
 	}
 	
-	// Vertex And Pixel Shaders
-	ID3D11VertexShader* font_vshader;
-	ID3D11PixelShader* font_pshader;
-	RendererD3D11GetShaders(r, &font_vshader, L"../font.hlsl", 
-							&font_pshader, L"../font.hlsl", 
-							NULL, NULL, 0); 
-	
 	r->font.sampler = font_sampler;
 	r->font.srv[1] = atlas_resource_view;
 	
@@ -1552,6 +1550,26 @@ RendererDeInit(R_D3D11Context *r) {
 	r->quads.blend_state_use_alpha->Release();
 	r->font.sampler->Release();
 	r->font.srv[1]->Release();
+	
+	
+	for (int i = 0; i < r->vs_idx; i++) {
+		if (r->vs_array[i]) r->vs_array[i]->Release(); 
+	}
+	
+	for (int i = 0; i < r->ps_idx; i++) {
+		if (r->ps_array[i]) r->ps_array[i]->Release(); 
+	}
+	
+	for (int i = 0; i < r->buffer_idx; i++) {
+		if (r->buffer_array[i]) r->buffer_array[i]->Release(); 
+		if (r->srv_array[i]) r->srv_array[i]->Release(); 
+		
+	}
+	
+	
+	
+	
+	
 }
 
 static void
@@ -1648,7 +1666,7 @@ DrawQuad(R_D3D11Context *r, Rect rect, Color color) {
 		0 <= rect.maxy && rect.miny <= r->viewport->Height) {
 		r->quads.data[r->quads.idx].rect = rect;
 		r->quads.data[r->quads.idx].color = color;
-		r->quads.data[r->quads.idx].radius = 0;
+		r->quads.data[r->quads.idx].radius = 5;
 		r->quads.data[r->quads.idx].border = 2;
 		r->quads.idx++;
 	}
@@ -1670,7 +1688,7 @@ DrawDefaultText(R_D3D11Context *r, const char *text, size_t len,  float x, float
 // UI Core
 //
 
-// The UI system work in the following manner:
+// The UI system works exactly the same as in ryan fleury's ui library[6]:
 // Core API on which handles all behaviour, layout, core drawing
 // Wrappers around that core API which are the default widgets themselves
 // Extensions to the core API that have custom drawing and layout scheme
@@ -1729,11 +1747,6 @@ enum UI_Axis {
 // where padding blocks are used to make the opposite alighnments
 
 typedef struct {
-	UI_Axis axis; // layout axis
-	UI_Size semantic_size[UI_AXIS2_COUNT];
-} UI_Layout;
-
-typedef struct {
 	s32 key, alive;
 	String8 value;
 } UIID;
@@ -1747,7 +1760,8 @@ struct UI_Widget {
 	String8 text;
 	
 	// 28 -> 20 (new layout)
-	UI_Layout layout;
+	UI_Axis axis; // layout axis
+	UI_Size semantic_size[UI_AXIS2_COUNT];
 	
 	// 32 -> 8 (u16)
 	UI_Widget *parent;
@@ -1789,6 +1803,7 @@ typedef struct {
 	int stack_idx;
 } UI_Context;
 
+static UI_Context *ui = NULL;
 
 static void
 UICorePruneDeadWidgets(UI_Widget *head) {
@@ -1798,20 +1813,21 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 	if (!head->id.alive) { // dead
 		
 		if (head->last) {
-			
+			// remove from middle
 			head->last->next = head->next;
 			if (head->next) {
 				head->next->last = head->last;
 			}
-			
 			head->last = NULL; 
 		}
 		else if (head->next) {
+			// remove left node
 			if (head->parent) {
 				head->parent->child = head->next;
 			}
 		}
 		else if (head->parent) {
+			// remove only child
 			head->parent->child = NULL; 
 		}
 		
@@ -1820,7 +1836,6 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 		
 	}
 	head->id.alive = 0; // reset the alive flag
-	
 	
 	UI_Widget *child = head->child; 
 	for (; child; child = child->next) {
@@ -1833,17 +1848,15 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 static void
 UICoreLayoutConstant(UI_Widget *widget, int axis) {
 	if (!widget)  return; 
-	UI_Layout *layout = &widget->layout;
-	switch (layout->semantic_size[axis].kind) {
+	switch (widget->semantic_size[axis].kind) {
 		case UI_SIZEKIND_NULL: break;
-		case UI_SIZEKIND_PIXELS: { widget->computed_size[axis] = layout->semantic_size[axis].value; } break;
+		case UI_SIZEKIND_PIXELS: { widget->computed_size[axis] = widget->semantic_size[axis].value; } break;
 		case UI_SIZEKIND_TEXTCONTENT: {
 			if (widget->text.size) {
 				widget->computed_size[axis] = axis == UI_AXIS2_X ? DefaultTextWidth(widget->text) : DefaultTextHeight(widget->text);
 				widget->computed_size[axis] += 10;
 			}
 		} break;
-		
 	}
 	
 	UI_Widget *child = widget->child;
@@ -1855,11 +1868,15 @@ UICoreLayoutConstant(UI_Widget *widget, int axis) {
 static void
 UICoreLayoutPreOrderUpwardDependednt(UI_Widget *widget, int axis) {
 	if (!widget)  return; 
-	UI_Layout *layout = &widget->layout;
-	switch (layout->semantic_size[axis].kind) {
+	switch (widget->semantic_size[axis].kind) {
 		case UI_SIZEKIND_PERCENTOFPARENT: {
 			Assert(widget->parent);
-			widget->computed_size[axis] = floorf(layout->semantic_size[axis].value * widget->parent->computed_size[axis]);
+			if (widget->flags) {
+				widget->computed_size[axis] = floorf(widget->semantic_size[axis].value * widget->parent->computed_size[axis]);
+			}
+			else {
+				widget->computed_size[axis] = widget->parent->computed_size[axis];
+		}
 		} break;
 	}
 	
@@ -1878,8 +1895,7 @@ UICoreLayoutPostOrderDownwardsDependent(UI_Widget *widget, int axis) {
 		UICoreLayoutPostOrderDownwardsDependent(child, axis);
 	}
 	
-	UI_Layout *layout = &widget->layout;
-	switch (layout->semantic_size[axis].kind) {
+	switch (widget->semantic_size[axis].kind) {
 		case UI_SIZEKIND_CHILDRENSUM: {
 			
 			if (!widget->child) {
@@ -1926,52 +1942,172 @@ UICoreLayoutPostOrderDownwardsDependent(UI_Widget *widget, int axis) {
 			widget->computed_size[axis] = max;
 			
 		} break;
-		
-		
 	}
 	
 }
-
 static void
 UICoreLayoutRelPos(UI_Widget *widget, int axis) { 
 	if (!widget)  return; 
 	
 	UI_Flags float_axis = (axis == UI_AXIS2_X) ? UI_FLOAT_X : UI_FLOAT_Y;
 	
+	if ((widget->flags & float_axis)) goto skip_computing_rel_pos; 
 	
-	if (!(widget->flags & float_axis)) {
-		
+	
 		if (widget->last) {
 			
-			// skip widgets with floating x,y relative positions
+		// skip widgets with floating x,y relative positions
+		// to get the last non floating widget
 			UI_Widget *temp = widget;
 			while (temp->last && (temp->last->flags & float_axis)) 
 				temp = temp->last;
 			
 			if (temp->last) {
 				// should contain a none floating x,y rel pos
-				if (axis == widget->layout.axis)
-					widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
-				
+				if (axis == widget->axis) {
+					if (widget->last->axis == axis) {
+						widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
+					}
+					else {
+						// conflicting layouts 
+						
+						// seek parent for axis. 
+						// if we are on that axis
+						// great now we can add it 
+						// if we are not on that axis
+						// bad. don't do shit
+
+						if (widget->parent->axis == axis) {
+							widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
+						}
+						else {
+							widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis];
+						}
+						
+					}
+				}
+				else {
+					
+					widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] ;
+					if (axis == widget->parent->axis) {
+						widget->computed_rel_pos[axis] +=  temp->last->computed_size[axis];
+					}
+					
+				}
 			}
 			else {
-				// I should ask parent for rel pos
+			// this is the last widget that doesn't have floating x and y 
+			// so I take the parent's size 
 				widget->computed_rel_pos[axis] = temp->parent->computed_rel_pos[axis];
 			}
-			
 			
 			
 		}
 		else if (widget->parent) {
 			widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
 		}
+	
+	skip_computing_rel_pos:
+	UI_Widget *child = widget->child;
+	for (; child; child = child->next) {
+		UICoreLayoutRelPos(child, axis);
+	}
+}
+
+static void
+UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
+	if (!widget)  return; 
+	
+	// 
+	// Go down and if you have a parent, figure out the total size 
+	// of his children. then adjust yourself accordingly, and for each 
+	// of the children do the same. 
+	// (so everybody updates themselves in accordance to the updated scheme) 
+	// 
+	// I need to know the sizes of everyone and percent from parent's sizes
+	//
+	
+	
+	float children_overflow = 0;
+	float children_overflowed_count = 0;
+	if (widget->axis == axis) {
 		
+		// clamp widgets size to parent's size to prevent overflow
+		if (widget->parent) {
+			if (widget->computed_size[axis] > widget->parent->computed_size[axis]) {
+				widget->computed_size[axis] = widget->parent->computed_size[axis];
+			}
+		}
+		
+		
+		// I don't overflow (parent said) 
+		// I need to figure out if children overflow
+		
+		float size_on_axis = 0; 
+		int child_count = 0; 
+		UI_Widget *child = widget->child;
+		while (child) {
+			
+			if (child->flags & (UI_FLOAT_X | UI_FLOAT_Y)) {
+				child = child->next;
+				continue; 
+			}
+			
+			size_on_axis += child->computed_size[axis]; 
+			
+			child = child->next;
+			child_count++;
+		}
+		
+		if (size_on_axis > widget->computed_size[axis]) {
+			float overflow = (size_on_axis - widget->computed_size[axis]); 
+			
+			for (int i = 0; overflow > 0 && i < 3; i++) {
+				UI_Widget *temp = widget->child;
+				while (temp) {
+					
+					// go over all children and apply
+					float diff = overflow / (float)child_count; 
+					float max_removeable_amount = temp->computed_size[axis]*(1-temp->semantic_size[axis].strictness);
+					float abs_diff = ABS(diff); 
+					float amount_to_apply = MIN(abs_diff, max_removeable_amount);
+					temp->computed_size[axis] -= amount_to_apply;
+					
+					if (temp->child) {
+						// parent sizing changed, I need to update children sizing (if they depend on it)
+						
+						UI_Widget *child = temp->child; 
+						while (child) {
+						if (child->semantic_size[axis].kind == UI_SIZEKIND_PERCENTOFPARENT) {
+							child->computed_size[axis] = temp->computed_size[axis]*child->semantic_size[axis].value; 
+							}
+							child = child->next; 
+						}
+						
+					}
+					
+					overflow -= amount_to_apply;
+					child_count--;
+					temp = temp->next; 
+				}
+			}
+			
+			
+		}
+		
+	}
+	else if (widget->parent) {
+		
+		// clamp widgets size to parent's size to prevent overflow
+		if (widget->computed_size[axis] > widget->parent->computed_size[axis]) {
+			widget->computed_size[axis] = widget->parent->computed_size[axis];
+		}
 		
 	}
 	
 	UI_Widget *child = widget->child;
 	for (; child; child = child->next) {
-		UICoreLayoutRelPos(child, axis);
+		UICoreLayoutResolveConstraints(child, axis);
 	}
 }
 
@@ -1981,7 +2117,7 @@ UICoreLayout(UI_Widget *widget, int axis) {
 	UICoreLayoutConstant(widget, axis);
 	UICoreLayoutPreOrderUpwardDependednt(widget, axis); 
 	UICoreLayoutPostOrderDownwardsDependent(widget, axis);
-	// solve for constraints on a axis
+	UICoreLayoutResolveConstraints(widget, axis);
 	UICoreLayoutRelPos(widget, axis); 
 }
 
@@ -2022,7 +2158,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			Color active = GRAY;
 			Color final = {0};
 			if (head == ui->active) {
-				head->active_t = (head->flags & UI_ANIMATE_HOT) ? head->active_t : 1;
+				head->active_t = (head->flags & UI_ANIMATE_HOT) ? head->active_t : 0;
 				final.r = lerp(background.r, active.r, head->active_t);
 				final.g = lerp(background.g, active.g, head->active_t);
 				final.b = lerp(background.b, active.b, head->active_t);
@@ -2073,14 +2209,18 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 
 
 static void
-UIInit(UI_Context *ui, R_D3D11Context *r, OS_Events *events) {
-	ui->events = events;
-		ui->r = r;
-	ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
-	ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
-	ui->head_widget.id.alive = 1;
+UIInit(UI_Context *ctx, R_D3D11Context *r, OS_Events *events) {
+	memset(ctx, 0, sizeof(UI_Context));
+	ctx->events = events;
+		ctx->r = r;
+	ctx->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
+	ctx->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
+	ctx->head_widget.id.alive = 1;
 	// TODO(ziv): check what in the world should I be doing here
-	MemArenaInit(&ui->arena, 0x1000); // allocate page size
+	MemArenaInit(&ctx->arena, 0x1000); // allocate page size
+	
+	ui = ctx;
+	
 	}
 
 
@@ -2142,7 +2282,7 @@ UIEnd(UI_Context *ui) {
 
 
 static void
-UIPushParent(UI_Context *ui, UI_Widget *parent) {
+UIPushParent(UI_Widget *parent) {
 	
 	if (ui->stack_idx < MAX_WIDGET_STACK_SIZE) {
 		ui->stack[ui->stack_idx++] = parent;
@@ -2156,7 +2296,7 @@ UIPushParent(UI_Context *ui, UI_Widget *parent) {
 }
 
 static inline UI_Widget *
-UIPopParent(UI_Context *ui) {
+UIPopParent() {
 	if (ui->stack_idx == 0) {
 		FatalError("Poping more times than should be possible");
 	}
@@ -2164,12 +2304,12 @@ UIPopParent(UI_Context *ui) {
 }
 
 static inline UI_Widget *
-UITopParent(UI_Context *ui) { 
+UITopParent() { 
 	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : NULL;
 }
 
 static UI_Widget *
-UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
+UIMakeWidget(const char *text, u32 flags) {
 	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
 	
 	//
@@ -2184,10 +2324,11 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
 	do {
 		entry = &ui->widgets[key++ & mask];
 	} while(!Str8Compare(strid, entry->id.value) && entry->id.value.size);
+	
 	key--;
 	
 	if (Str8Compare(strid, entry->id.value)) {
-		Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
+		//Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
 		
 		entry->id.alive = 1;
 		return entry;
@@ -2197,19 +2338,25 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
     // Create and add the widget to the graph
     //
 	
-    UI_Widget *parent = UITopParent(ui);
+    UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[key & mask];
 	widget->id = { key, 1, strid };
 	widget->parent = parent;
     widget->child = NULL;
     widget->next = NULL;
     widget->flags = flags;
+	if (parent) {
+		widget->axis= parent->axis;
+		widget->semantic_size[0] = parent->semantic_size[0];
+		widget->semantic_size[1] = parent->semantic_size[1];
+	}
+	
 	
 	// ignore ### seperation
 	String8 display_text = strid;
 	for (int i = 0; i < strid.size; i++) {
 		if (i+3 < strid.size && 
-			strid.data[i] == '#' && 
+			strid.data[i]   == '#' && 
 			strid.data[i+1] == '#' && 
 			strid.data[i+2] == '#') {
 			
@@ -2233,15 +2380,25 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
     if (parent) {
         // connect to parents children
         if (parent->child) {
-            UI_Widget *temp = parent->child;
             
+			UI_Widget *temp = parent->child;
 			while (temp->next && temp->next->id.alive) temp = temp->next;
             
+			if (parent->child->id.alive) {
+			
 			UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
 			lhs->next = mid; 
 			mid->last = lhs; 
 			mid->next = rhs;
 			if (rhs) { rhs->last = mid; }
+			}
+			else {
+				widget->next = temp; 
+				temp->last = widget;
+				parent->child = widget;
+			}
+
+			
         }
         else {
             widget->last = NULL;
@@ -2273,7 +2430,7 @@ UIBuildWidget(UI_Context *ui, const char *text, u32 flags) {
 }
 
 static UI_Output
-UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
+UIInteractWidget(UI_Widget *widget) {
     UI_Output output = {0};
 	
 	static int mouse_buttons_down = 0;
@@ -2291,10 +2448,13 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 		}
 	}
 	
-    //Mouse mouse = ui->input->mouse;
-    Rect rect = widget->rect;
+	
+	Rect rect = widget->rect;
     // Find if mouse is inside UI hit-box
-    if (rect.minx <= ui->mouse_pos[0] &&
+	if (ui->active && (ui->active->flags & UI_DRAGGABLE) && mouse_buttons_down & MouseLeftButton) {
+		// TODO(ziv): REALLY?
+	}
+    else if (rect.minx <= ui->mouse_pos[0] &&
 		ui->mouse_pos[0] <= rect.maxx &&
 		rect.miny <= ui->mouse_pos[1] &&
 		ui->mouse_pos[1] <= rect.maxy) {
@@ -2307,18 +2467,18 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
             ui->active = widget;
             output.activated = 1;
         }
-		else if (ui->active) {
-			output.clicked = 1;
-			ui->active = NULL;
+		else  {
+			if (widget == ui->active)  output.clicked = 1;
+			
+			if (widget->flags & UI_CLICKABLE) {
+				ui->active = NULL;
+			}
 		}
-		else {
-			ui->active = NULL; 
-		}
+		
 		
     }
     else if ((ui->hot == widget || ui->active == widget) && 
-			 !(widget->flags & UI_SLIDERABLE) && 
-			 !(widget->flags & UI_DRAGGABLE)) {
+			 !(widget->flags & (UI_SLIDERABLE|UI_DRAGGABLE))) {
 		ui->hot = NULL;
         ui->active = NULL;
 	}
@@ -2329,13 +2489,13 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 			float width = rect.maxx - rect.minx; 
 			float slider_value = (ui->mouse_pos[0]-rect.minx)/width;
 			widget->active_t = MIN(slider_value, 1);
+			widget->active_t = MAX(widget->active_t, 0);
 		}
 		else {
 			ui->hot = NULL;
 		}
-		
-		
 	}
+	
 	
 	output.slider_value = widget->active_t;
 	
@@ -2343,57 +2503,67 @@ UIInteractWidget(UI_Context *ui, UI_Widget *widget) {
 	
 }
 
+//~ 
+// Helpers (sugar for internal operations)
+// 
+
+static inline void UIEquipWidth(UI_Widget *widget, UI_Size size) { widget->semantic_size[0] = size; }
+static inline void UIEquipHeight(UI_Widget *widget, UI_Size size) { widget->semantic_size[1] = size; }
+static inline void UIEquipChildAxis(UI_Widget *widget, UI_Axis axis) { widget->axis = axis; }
+static inline UI_Size UITextContent(float strictness) { return { UI_SIZEKIND_TEXTCONTENT, 0.f, strictness}; } 
+static inline UI_Size UIChildrenSum(float strictness) { return { UI_SIZEKIND_CHILDRENSUM, 0.f, strictness};  }
+static inline UI_Size UIPixels(float size, float strictness) { return { UI_SIZEKIND_PIXELS, size, strictness}; }
+static inline UI_Size UIParentSize(float percent_of_parent, float strictness)  { 
+	return { UI_SIZEKIND_PERCENTOFPARENT, percent_of_parent , strictness}; 
+}
+
 //
 //~ UI Builder Code
 //
 
 static UI_Widget *
-UICreateRect(UI_Context *ui, UI_Layout layout, int x, int y, const char *text, u32 flags) {
-	UI_Widget *widget = UIBuildWidget(ui, text, flags);
-	widget->layout = layout;
+UICreateRect(UI_Size width, UI_Size height, int x, int y, const char *text, u32 flags) {
+	UI_Widget *widget = UIMakeWidget(text, flags);
+	widget->semantic_size[0] = width;
+	widget->semantic_size[1] = height;
+	
 	widget->computed_rel_pos[UI_AXIS2_X] = (float)x;
 	widget->computed_rel_pos[UI_AXIS2_Y] = (float)y;
 	return widget;
 }
 
 static UI_Widget *
-UILayout(UI_Context *ui, UI_Layout layout, const char *text) {
-    Assert(ui);
-	UI_Widget *widget = UIBuildWidget(ui, text, 0);
-	widget->layout = layout;
+UILayout(UI_Axis axis, UI_Size size_x, UI_Size size_y, const char *text) {
+	UI_Widget *widget = UIMakeWidget(text, 0);
+	widget->axis = axis;
+	widget->semantic_size[0] = size_x;
+	widget->semantic_size[1] = size_y;
     return widget;
 }
 
 static UI_Output
-UIButton(UI_Context *ui, const char *text) {
+UIButton(const char *text) {
 	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWTEXT | UI_DRAWBORDER | UI_ANIMATE_HOT);
-	UI_Widget *parent = UITopParent(ui);
-	if (parent) widget->layout = parent->layout;
-	
-	UI_Output output = UIInteractWidget(ui, widget);
+	UI_Widget *widget = UIMakeWidget(text, UI_CLICKABLE | 
+									  UI_DRAWBOX | UI_DRAWTEXT | UI_DRAWBORDER | UI_ANIMATE_HOT);
+	UI_Output output = UIInteractWidget(widget);
 	
 	return output;
 }
 
-static float 
-UISlider(UI_Context *ui, const char *text) {
+static UI_Widget *
+UILabel(const char *text) {
 	
-	UI_Widget *widget = UIBuildWidget(ui, text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_ANIMATE_HOT);
-	UI_Widget *parent = UITopParent(ui);
-	if (parent) widget->layout = parent->layout;
-	UI_Output output = UIInteractWidget(ui, widget);
+	UI_Widget *widget = UIMakeWidget(text, UI_DRAWTEXT);
+	//UI_Output output = UIInteractWidget(widget);
+	return widget; 
+}
+
+static UI_Output
+UISlider(const char *text) {
 	
-	// Get another widget to draw the small rect idk
-	
-	
-	UI_Layout small_rect_layout = {
-		widget->layout.axis,
-		{
-			{ UI_SIZEKIND_PERCENTOFPARENT, output.slider_value+0.005f, 1.f }, 
-			{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
-		}
-	};
+	UI_Widget *widget = UIMakeWidget(text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_ANIMATE_HOT);
+	UI_Output output = UIInteractWidget(widget);
 	
 	
 	// TODO(ziv): make this more robust
@@ -2402,25 +2572,30 @@ UISlider(UI_Context *ui, const char *text) {
 	
 	String8 str = Str8Lit(text); 
 	String8 postfix = Str8Lit("sub_widget");
-	char buffer[0x20];
+	char *buffer = (char *)malloc(20);
 	memcpy(buffer, str.data, str.size); 
 	memcpy(buffer+str.size, postfix.data, postfix.size+1); 
 	
-	UIPushParent(ui, widget); 
-	UI_Widget *sub_widget = UIBuildWidget(ui, buffer, UI_DRAWBOX );
-	sub_widget->layout = small_rect_layout;
-	UIPopParent(ui);
+	UIPushParent(widget); 
+	UI_Widget *sub_widget = UIMakeWidget(buffer, UI_DRAWBOX );
+	UIEquipChildAxis(widget, widget->axis);
+	sub_widget->semantic_size[0] = { UI_SIZEKIND_PERCENTOFPARENT, output.slider_value+0.005f, 1.f };
+	sub_widget->semantic_size[1] = { UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f };
 	
-	return output.slider_value;
+	UIPopParent();
+	
+	return output;
+}
+
+
+static void
+UIPad(const char *text) {
+	
 }
 
 
 //~
 // Camera
-//
-// Resources:
-// [1] https://learnopengl.com/Getting-started/Camera
-// [2] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
 //
 
 typedef struct {
@@ -2467,13 +2642,10 @@ static void
 CameraBuild(Camera *c) {
 	Assert(c);
 	
-	//
-	// D3D11 uses a left-handed coordinate system:
-	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/coordinate-systems?redirectedfrom=MSDN
-	// 
-	// Along side that it also uses a column major matricies
-	// https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-per-component-math#matrix-ordering
-	// 
+	
+	
+	// NOTE(ziv): D3D11 uses a left-handed coordinate system[2]
+	// Along side that it also uses a column major matricies[3]
 	
 	
 	// The lookat matrix is a matrix created from a 'single' vector
@@ -2482,7 +2654,7 @@ CameraBuild(Camera *c) {
 	// In this case I create the forward vector using the pitch and yaw
 	// values and from it I compute the space in which the camera lies.
 	// The view matrix created from this space is the inverse translation
-	// and inverse rotations done by the camera itself [2].
+	// and inverse rotations done by the camera itself [4].
 	
 	// Build the lookat matrix
 	float3 some_up_vector = { 0, 1, 0 };
@@ -2582,7 +2754,7 @@ CameraBuild(Camera *c) {
 	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/projection-transform
 	// https://learn.microsoft.com/en-us/windows/win32/dxtecharts/the-direct3d-transformation-pipeline
 	//
-	// To get the correct projection matrix:  
+	// To get the correct projection matrix (for d3d11):  
 	// https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixperspectivefovlh
 	// 
 	
@@ -2900,6 +3072,7 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 
 
 
+
 #ifdef _DEBUG
 int main()
 #else
@@ -2918,6 +3091,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	R_D3D11Context *r = &renderer; 
 	RendererInit(&renderer, window);
 	
+	
+	TimeInit();
+	double start_building = Time(); 
 	
 	//~
 	// Model Data
@@ -3051,7 +3227,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		free(bytes);
 	}
 	
-	ShowWindow(window, SW_SHOW);
+	
 	
 	
 	
@@ -3067,14 +3243,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	GetClipCursor(&rc_old_clip);
 	GetWindowRect(window, &rc_clip);
 	
-	UI_Context ui = {0};
+	
 	OS_Events events;
-	UIInit(&ui, r, &events);
+	UI_Context ui_context;
+	UIInit(&ui_context, r, &events);
 	
 	Arena arena;
 	if (!MemArenaInit(&arena, 0x1000)) {
 		FatalError("Couldn't Allocated Memory");
 	}
+	
+	
 	
 	
 	// font information
@@ -3095,10 +3274,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 													   R_USAGE_DYNAMIC, R_BIND_SHADER_RESOURCE, R_CPU_ACCESS_WRITE, 
 													   R_RESOURCE_MISC_BUFFER_STRUCTURED);
 	
-	
 	// widgets information
-	VSHandle widgets_vshader = RendererCreateVSShader(r, "../widgets.hlsl", "vs_main", NULL, 0);
 	PSHandle widgets_pshader = RendererCreatePSShader(r, "../widgets.hlsl", "ps_main");
+	VSHandle widgets_vshader = RendererCreateVSShader(r, "../widgets.hlsl", "vs_main", NULL, 0);
 	
 	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 	BFHandle widgets_cbuffer = RendererCreateBuffer(r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
@@ -3107,7 +3285,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	BFHandle widgets_quads_buffer = RendererCreateBuffer(r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT,
 														 R_USAGE_DYNAMIC,  R_BIND_SHADER_RESOURCE,  R_CPU_ACCESS_WRITE,
 														 R_RESOURCE_MISC_BUFFER_STRUCTURED);
-	
 	
 	
 	//~
@@ -3127,7 +3304,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	// more things that I need I guess...
-	TimeInit();
 	double start_frame = Time(), end_frame;
 	
 	// Camera
@@ -3141,8 +3317,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	//~
 	
+	ShowWindow(window, SW_SHOW);
+	
+	
 	
 	for (;;) {
+		start_building = Time();
 		
 		
 		// event loop
@@ -3174,36 +3354,39 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			Sleep(14); continue;
 		}
 		
+		
+		//
 		// Update pixel and vertex shaders when changed
+		//
 		{
-		for (int i = 0; i < r->vs_idx; i++) {
-			FILETIME last_write_time = Win32GetLastFileWriteTime(r->vs_file_names_and_time[i].file_name);
-			if (CompareFileTime(&last_write_time,&r->vs_file_names_and_time[i].last_write_time) != 0) {
-				r->vs_file_names_and_time[i].last_write_time = last_write_time;
-				ID3D11InputLayout  *layout = NULL;
-				ID3D11VertexShader *vshader = NULL;
-				RendererD3D11CreateVSShader(r, r->vs_file_names_and_time[i].file_name, r->vs_file_names_and_time[i].entry_point, 
-											r->vs_file_names_and_time[i].format, 
-											r->vs_file_names_and_time[i].format_size, 
-											 &vshader, &layout);
-				if (r->vs_array[i]) r->vs_array[i]->Release();
-				r->vs_array[i] = vshader;
+			for (int i = 0; i < r->vs_idx; i++) {
+				FILETIME last_write_time = Win32GetLastFileWriteTime(r->vs_file_names_and_time[i].file_name);
+				if (CompareFileTime(&last_write_time,&r->vs_file_names_and_time[i].last_write_time) != 0) {
+					r->vs_file_names_and_time[i].last_write_time = last_write_time;
+					ID3D11InputLayout  *layout = NULL;
+					ID3D11VertexShader *vshader = NULL;
+					RendererD3D11CreateVSShader(r, r->vs_file_names_and_time[i].file_name, r->vs_file_names_and_time[i].entry_point, 
+												r->vs_file_names_and_time[i].format, 
+												r->vs_file_names_and_time[i].format_size, 
+												&vshader, &layout);
+					if (r->vs_array[i]) r->vs_array[i]->Release();
+					r->vs_array[i] = vshader;
+					
+				}
 				
 			}
 			
-		}
-		
-		for (int i = 0; i < r->ps_idx; i++) {
-			FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
-			if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
-				r->ps_file_names_and_time[i].last_write_time = last_write_time;
-				ID3D11PixelShader *pshader = NULL;
-				RendererD3D11CreatePSShader(r, r->ps_file_names_and_time[i].file_name, r->ps_file_names_and_time[i].entry_point, 
-											&pshader);
-				if (r->ps_array[i]) r->ps_array[i]->Release();
-				r->ps_array[i] = pshader;
+			for (int i = 0; i < r->ps_idx; i++) {
+				FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
+				if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
+					r->ps_file_names_and_time[i].last_write_time = last_write_time;
+					ID3D11PixelShader *pshader = NULL;
+					RendererD3D11CreatePSShader(r, r->ps_file_names_and_time[i].file_name, r->ps_file_names_and_time[i].entry_point, 
+												&pshader);
+					if (r->ps_array[i]) r->ps_array[i]->Release();
+					r->ps_array[i] = pshader;
+				}
 			}
-		}
 		}
 		
 		
@@ -3240,88 +3423,196 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//~
 		// UI
 		//
-		
-		UI_Layout layout_t = {
-			UI_AXIS2_Y,
-			{
-				{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f },
-                { UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
-			},
-		};
-		
-		UI_Layout rect_layout = {
-			UI_AXIS2_Y,
-			{
-				{ UI_SIZEKIND_PERCENTOFPARENT, .5f, 1.f },
-                { UI_SIZEKIND_PIXELS, 100.f, 1.f }
-			},
-		};
+
 		
 		float value = 0; 
 		
-		UIBegin(&ui, r->dirty);
+		UIBegin(ui, r->dirty);
 		
-		UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none", 0));
-		UIPushParent(&ui, UILayout(&ui, layout_t, "YO")); 
+		static b32 show_panel = 0; 
+		
+		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
+		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
+		if (UIButton("Panel").clicked) {
+			show_panel = !show_panel; // toggle show panel
+		}
+		
+		if (show_panel) {
+				if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
+			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
+			
+			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
+			UIEquipWidth(UILabel("speed:"), UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
+			UIPopParent();
+			
+		}
+		UIPopParent();
+		UIPopParent();
+		
+		
+		
+		
+		
+		UIEnd(ui);
+		
+		
+		
+		
+		
+		
+		
+#if 0
+		UIBegin(ui, r->dirty);
+		
+		static int hide_panel = 0;
+		
+				UI_Layout layout_t = {
+					UI_AXIS2_Y,
+					{
+						{ UI_SIZEKIND_PERCENTOFPARENT, 1.0f, 1.f },
+						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
+					},
+				};
+				
+				UI_Layout rect_layout = {
+					UI_AXIS2_Y,
+					{
+						{ UI_SIZEKIND_PIXELS, 200.f, 1.f },
+						{ UI_SIZEKIND_PIXELS, 100.f, 1.f }
+					},
+				};
+		
+		UIPushParent(UICreateRect( rect_layout, 0, 0, "initial top bar", UI_DRAWBORDER));
+		UIPushParent(UILayout( layout_t, "YO")); 
 		{
-			static bool clicked1 = 0;
-			if (UIButton(&ui,"File###1123").clicked) {
+			static bool clicked1 = 1;
+			if (UIButton("File###1123").clicked) {
 				clicked1 = !clicked1;
 			}
 			if (clicked1) {
 				
 				bool clicked = 0;
-				clicked = UIButton(&ui, "Move Up").activated;
+				clicked = UIButton("Move Up").activated;
 				if (clicked) { 
 					c.pos = c.pos + c.up * -0.1f;
 				}
-				clicked = UIButton(&ui, "Move Down").activated;
+				clicked = UIButton("Move Down").activated;
 				if (clicked) { 
 					c.pos = c.pos + c.up * 0.1f;
 				}
-				clicked = UIButton(&ui, "File").activated;
-				if (clicked) { printf("button clicked4\n"); }
-				clicked = UIButton(&ui, "Tab 5###something in here is bad").activated;
+					if (UIButton("File").clicked) { 
+					hide_panel = 0;
+				}
+				clicked = UIButton("Tab 5###something in here is bad").activated;
 				if (clicked) { printf("button clicked5\n"); }
-				clicked = UIButton(&ui, "Tab 6").activated;
+				clicked = UIButton("Tab 6").activated;
 				if (clicked) { printf("button clicked6\n"); } 
 				
-				rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
+				rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 400.f, 1.f}; 
 				rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
-				UIPushParent(&ui, UICreateRect(&ui, rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
+				UIPushParent(UICreateRect( rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
 				{
-					UIButton(&ui, "SMOETHING NOT WRONG"); 
+					UIButton("SMOETHING NOT WRONG"); 
 				}
-				UIPopParent(&ui);
+				UIPopParent();
 				
 			}
 			
-			value = UISlider(&ui, "speed");
+			
+			value = UISlider( "speed");
 			
 		}
-		UIPopParent(&ui);
-		UIPopParent(&ui);
-
-/* 
+		UIPopParent();
+		UIPopParent();
+#endif 
+		
+		#if 0
 		static int x = 150;
 		static int y = 100;
+		
+		static int relx = 0; 
+		static int rely = 0; 
 		
 		// TODO(ziv): make panel widget (whihc accepts float *x, float *y) 
 		// since I would want the panel to change these values when it chagnes 
 		// the panel position allowing communication of change to user
 		
-		rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PERCENTOFPARENT,  0.5f, 1.f };
-		UI_Widget *panel = UICreateRect(&ui, rect_layout, x, y, "panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX | UI_CLICKABLE | UI_DRAGGABLE);
-		UI_Output out = UIInteractWidget(&ui, panel);
-			if (out.activated) {
-				//x += (int)input.mouse.dx;
-				//y += (int)input.mouse.dy;
-			}
-			UIPushParent(&ui, panel); 
-			UIPopParent(&ui);
- */
+		if (!hide_panel) {
+			UI_Layout panel_layout = {
+				UI_AXIS2_Y, 
+				{ 
+					{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 0.f }, 
+					{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
+				}
+			};
+			
+			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS,  200.f, 1.f };
+			UI_Widget *panel = UICreateRect( rect_layout, x, y, "floating panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX);
+			UI_Output out = UIInteractWidget(panel);
+			UIPushParent(panel); 
+			UIPushParent(UILayout( layout_t, "floating panel layout")); 
+			{
+				
+				UI_Layout panel_button_layout = {
+					UI_AXIS2_X, 
+					{ 
+						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
+						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
+					}
+				};
+				
+				if (UIButton("button").activated) {
+					hide_panel = 1;
+				}
+
+				UIPushParent(UILayout( panel_button_layout, "panel_top_bar_layout_buttons"));
+				{
+					UI_Output alksdjflkj = UIButton("X###1");
+					if (alksdjflkj .clicked) {
+						printf("close panel clicked \n");
+						hide_panel = 1;
+					}
+					if (alksdjflkj.activated) {
+						printf("close panel activated \n");
+					}
 					
-	UIEnd(&ui);
+					UI_Layout panel_bar_layout = {
+						UI_AXIS2_X, 
+						{ 
+							{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 0.f }, 
+							{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
+						}
+					};
+					
+					UI_Widget *rect1 = UICreateRect( panel_bar_layout , x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
+					UIInteractWidget(rect1);
+					if (rect1 == ui->active) {
+						x = (int)ui->mouse_pos[0]-relx; 
+						y = (int)ui->mouse_pos[1]-rely; 
+					}
+					else {
+						relx = (int)ui->mouse_pos[0] - (int) panel->computed_rel_pos[0]; 
+						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
+					}
+					
+					
+					UIButton("X###3");
+				}
+				UIPopParent(); 
+
+
+				if (UIButton("some button").activated) {
+					printf("sombuttone\n");
+				}
+
+				
+			}
+			UIPopParent(); 
+			UIPopParent();
+		}
+		UIEnd(ui);
+		#endif 
+		
 		
 		
 		
@@ -3349,7 +3640,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		float speed = 1+10*value;
-					CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
+		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
 		CameraBuild(&c);
 		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
@@ -3433,13 +3724,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				RendererVSSetBuffer(r, widgets_quads_buffer);
 				
 				// TODO(ziv): Figure out how to control the viewport nad rendertargets
-			r->context->RSSetViewports(1, r->viewport);
+				r->context->RSSetViewports(1, r->viewport);
 				RendererPSSetShader(r, widgets_pshader); 
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-			
-			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			UINT sampleMask   = 0xffffffff;
-				r->context->OMSetBlendState(r->quads.blend_state_use_alpha, blendFactor, sampleMask);
+				r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+				
+				float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				UINT sampleMask   = 0xffffffff;
+				r->context->OMSetBlendState(r->quads.blend_state_use_alpha, NULL, sampleMask);
 				
 				RendererDrawInstanced(r, 4, r->quads.idx, 0, 0);
 				
@@ -3448,7 +3739,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Draw Font
 		{
-
+			
 			if (r->dirty) {
 				// update constants buffer
 				float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
@@ -3469,6 +3760,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererDrawInstanced(r, 4, r->font.idx, 0, 0);
 			
 		}
+		
 		
 		RendererD3D11Present(r); // present the resulting image to the screen
 		start_frame = end_frame; // update time for dt calc
