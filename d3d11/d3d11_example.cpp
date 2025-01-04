@@ -2408,6 +2408,16 @@ UIMakeWidget(String8 text, u32 flags) {
 			return entry;
 		}
 		
+		// if it is alive this means that what happened is the following: 
+		// it got created, then pruned, then created again but ofcourse 
+		// never got connected to thereal graph so... you see it as alive
+		// becuase you don't have access to the actual graph but it never 
+		// gets pruned/reset because it is not part of the fucking graph 
+		// so what I would need to do is somehow recognize this fact and 
+		// correctly insert it into the graph somehowe. I guess going over 
+		// findind the node which matches the id value and then replacing it. 
+		// Soimething like that. 
+		
 	}
 	
     //
@@ -2420,6 +2430,9 @@ UIMakeWidget(String8 text, u32 flags) {
 	// something to manage these strings since the way they are allocated and things is 
 	// more malloc/free style (which maybe I should use malloc/free idk). 
 	//String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
+	
+	// TODO(ziv): REPLACE MALLOC!!! 
+	// OR USE FREE IDK JUST FREE MAN
 	String8 id_string_copy = Str8Copy((char *)malloc(strid.size), strid);
 	widget->id = { key, 1, id_string_copy  };
 	widget->parent = parent;
