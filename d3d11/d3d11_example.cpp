@@ -2355,6 +2355,9 @@ UIMakeWidget(String8 text, u32 flags) {
 	
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[key & mask];
+	// TODO(ziv): This should not be allocated in this arena thingy. should actually have 
+	// something to manage these strings since the way they are allocated and things is 
+	// more malloc/free style (which maybe I should use malloc/free idk). 
 	String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
 	widget->id = { key, 1, id_string_copy  };
 	widget->parent = parent;
@@ -2401,7 +2404,6 @@ UIMakeWidget(String8 text, u32 flags) {
 			while (temp->next && temp->next->id.alive) temp = temp->next;
             
 			if (parent->child->id.alive) {
-			
 			UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
 			lhs->next = mid; 
 			mid->last = lhs; 
@@ -2411,7 +2413,7 @@ UIMakeWidget(String8 text, u32 flags) {
 			else {
 				widget->next = temp; 
 				temp->last = widget;
-				parent->child = widget;
+					parent->child = widget;
 			}
 
 			
@@ -3477,120 +3479,88 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 		
 		static float value = 0; 
-		static b32 show_panel = 0; 
+		
+		
 		
 		UIBegin(ui, r->dirty);
+		
+		static b32 show_top_rectangle = 0; 
+		static int show_panel = 1;
+		
 		
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
 		if (UIButton("Panel").clicked) {
-			show_panel = !show_panel; // toggle show panel
+			show_top_rectangle= !show_top_rectangle; // toggle show panel
 		}
 		
-		if (show_panel) {
-				if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
+		if (show_top_rectangle) {
+			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
 			
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
 			
+			if (UIButton("Show Panel").clicked) {
+				show_panel = 1;
+			}
+			
 		}
 		UIPopParent();
 		UIPopParent();
 		
-		UIEnd(ui);
 		
 		
-		
-		
-		#if 0
 		static int x = 150;
 		static int y = 100;
 		
 		static int relx = 0; 
 		static int rely = 0; 
 		
-		// TODO(ziv): make panel widget (whihc accepts float *x, float *y) 
-		// since I would want the panel to change these values when it chagnes 
-		// the panel position allowing communication of change to user
-		
-		if (!hide_panel) {
-			UI_Layout panel_layout = {
-				UI_AXIS2_Y, 
-				{ 
-					{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 0.f }, 
-					{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
-				}
-			};
+		if (show_panel) {
 			
-			rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS,  200.f, 1.f };
-			UI_Widget *panel = UICreateRect( rect_layout, x, y, "floating panel", UI_FLOAT_Y | UI_FLOAT_X | UI_DRAWBOX);
-			UI_Output out = UIInteractWidget(panel);
-			UIPushParent(panel); 
-			UIPushParent(UILayout( layout_t, "floating panel layout")); 
+			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIPixels(200, 1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
+			UIPushParent(panel);
+			UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
 			{
-				
-				UI_Layout panel_button_layout = {
-					UI_AXIS2_X, 
-					{ 
-						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
-						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
-					}
-				};
-				
 				if (UIButton("button").activated) {
-					hide_panel = 1;
+					show_panel = 0;
 				}
-
-				UIPushParent(UILayout( panel_button_layout, "panel_top_bar_layout_buttons"));
+				
+				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
-					UI_Output alksdjflkj = UIButton("X###1");
-					if (alksdjflkj .clicked) {
-						printf("close panel clicked \n");
-						hide_panel = 1;
-					}
-					if (alksdjflkj.activated) {
-						printf("close panel activated \n");
+					
+					if (UIButton("X###1").clicked) {
+						show_panel = 0;
 					}
 					
-					UI_Layout panel_bar_layout = {
-						UI_AXIS2_X, 
-						{ 
-							{ UI_SIZEKIND_PERCENTOFPARENT, 1.f, 0.f }, 
-							{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }, 
-						}
-					};
-					
-					UI_Widget *rect1 = UICreateRect( panel_bar_layout , x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
+					UI_Widget *rect1 = UICreateRect(UIParentSize(1, 0), UITextContent(1), x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
 					UIInteractWidget(rect1);
 					if (rect1 == ui->active) {
 						x = (int)ui->mouse_pos[0]-relx; 
 						y = (int)ui->mouse_pos[1]-rely; 
 					}
 					else {
-						relx = (int)ui->mouse_pos[0] - (int) panel->computed_rel_pos[0]; 
+						relx = (int)ui->mouse_pos[0] - (int)panel->computed_rel_pos[0]; 
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
 					
+					UIButton("Y###3");
 					
-					UIButton("X###3");
 				}
 				UIPopParent(); 
-
-
-				if (UIButton("some button").activated) {
-					printf("sombuttone\n");
-				}
-
 				
+				if (UIButton("button2").activated) {
+					show_panel = 0;
+				}
 			}
 			UIPopParent(); 
-			UIPopParent();
+			UIPopParent(); 
+			
+			
 		}
 		UIEnd(ui);
-		#endif 
-		
 		
 		
 		
