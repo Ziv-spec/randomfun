@@ -147,8 +147,8 @@ typedef struct { float r, g, b, a; } Color;
 
 //  ============== goals for today ==============
 
-// [ ] use var args for functions accepting strings
-// [ ] make internal strings be a copy of strings given (so that state would no be effected by user code)
+// [x] use var args for functions accepting strings
+// [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
@@ -356,6 +356,13 @@ Str8Lit(const char *str) {
 	return String8{ i, str };
 }
 
+inline static String8
+Str8Copy(char *dest, String8 text) {
+	memcpy(dest, text.data, text.size); 
+	String8 result = { text.size, dest };
+	return result;
+}
+
 inline static bool
 Str8Compare(String8 s1, String8 s2) {
 	if (s1.size != s2.size) return 0; 
@@ -367,7 +374,15 @@ Str8Compare(String8 s1, String8 s2) {
 	return 1;
 }
 
-static s64 Str8GetHash(String8 str, s64 seed) {
+static String8
+Str8FormatString(char *buf, const char *fmt, va_list args) {
+	Assert(buf && fmt);
+	vsprintf(buf, fmt, args);
+	return Str8Lit(buf); 
+}
+
+static s64 
+Str8GetHash(String8 str, s64 seed) {
 	s64 hash = seed;
 	for (int i = 0; i < str.size; i++) {
 		hash <<= str.data[i] & 0x1f;
@@ -1715,13 +1730,6 @@ typedef enum {
 	UI_ANIMATE_HOT = 1 << 10
 } UI_Flags;
 
-typedef struct {
-	bool activated;
-	bool clicked;
-	bool hovered;
-    float slider_value;
-} UI_Output;
-
 enum UI_SizeKind {
 	UI_SIZEKIND_NULL,            // no size
 	UI_SIZEKIND_PIXELS,          // size in pixels
@@ -1776,6 +1784,14 @@ struct UI_Widget {
 	
 	float hot_t, active_t;
 };
+
+typedef struct {
+	UI_Widget *widget;
+	bool activated;
+	bool clicked;
+	bool hovered;
+    float slider_value;
+} UI_Output;
 
 typedef int UI_Widget_Handle;
 
@@ -2309,14 +2325,14 @@ UITopParent() {
 }
 
 static UI_Widget *
-UIMakeWidget(const char *text, u32 flags) {
+UIMakeWidget(String8 text, u32 flags) {
 	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
 	
 	//
 	// Get entry from hashmap if exists
 	//
 	
-	String8 strid = Str8Lit(text); 
+	String8 strid = text;
 	s32 mask = (WIDGETS_COUNT-1);
 	s32 key = (s32)Str8GetHash(strid, 234982374) & mask;
 	UI_Widget *entry = NULL;
@@ -2328,8 +2344,7 @@ UIMakeWidget(const char *text, u32 flags) {
 	key--;
 	
 	if (Str8Compare(strid, entry->id.value)) {
-		//Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
-		
+		Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
 		entry->id.alive = 1;
 		return entry;
 	}
@@ -2340,7 +2355,8 @@ UIMakeWidget(const char *text, u32 flags) {
 	
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[key & mask];
-	widget->id = { key, 1, strid };
+	String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
+	widget->id = { key, 1, id_string_copy  };
 	widget->parent = parent;
     widget->child = NULL;
     widget->next = NULL;
@@ -2353,7 +2369,7 @@ UIMakeWidget(const char *text, u32 flags) {
 	
 	
 	// ignore ### seperation
-	String8 display_text = strid;
+	String8 display_text = id_string_copy ;
 	for (int i = 0; i < strid.size; i++) {
 		if (i+3 < strid.size && 
 			strid.data[i]   == '#' && 
@@ -2498,6 +2514,7 @@ UIInteractWidget(UI_Widget *widget) {
 	
 	
 	output.slider_value = widget->active_t;
+	output.widget = widget;
 	
 	return output;
 	
@@ -2523,7 +2540,7 @@ static inline UI_Size UIParentSize(float percent_of_parent, float strictness)  {
 
 static UI_Widget *
 UICreateRect(UI_Size width, UI_Size height, int x, int y, const char *text, u32 flags) {
-	UI_Widget *widget = UIMakeWidget(text, flags);
+	UI_Widget *widget = UIMakeWidget(Str8Lit(text), flags);
 	widget->semantic_size[0] = width;
 	widget->semantic_size[1] = height;
 	
@@ -2534,7 +2551,7 @@ UICreateRect(UI_Size width, UI_Size height, int x, int y, const char *text, u32 
 
 static UI_Widget *
 UILayout(UI_Axis axis, UI_Size size_x, UI_Size size_y, const char *text) {
-	UI_Widget *widget = UIMakeWidget(text, 0);
+	UI_Widget *widget = UIMakeWidget(Str8Lit(text), 0);
 	widget->axis = axis;
 	widget->semantic_size[0] = size_x;
 	widget->semantic_size[1] = size_y;
@@ -2542,42 +2559,33 @@ UILayout(UI_Axis axis, UI_Size size_x, UI_Size size_y, const char *text) {
 }
 
 static UI_Output
-UIButton(const char *text) {
-	
-	UI_Widget *widget = UIMakeWidget(text, UI_CLICKABLE | 
-									  UI_DRAWBOX | UI_DRAWTEXT | UI_DRAWBORDER | UI_ANIMATE_HOT);
+UIButton(String8 text) {
+	UI_Widget *widget = UIMakeWidget(text, UI_CLICKABLE | UI_DRAWBOX | UI_DRAWTEXT | UI_DRAWBORDER | UI_ANIMATE_HOT);
 	UI_Output output = UIInteractWidget(widget);
-	
 	return output;
 }
 
-static UI_Widget *
-UILabel(const char *text) {
-	
+static UI_Output
+UILabel(String8 text) {
 	UI_Widget *widget = UIMakeWidget(text, UI_DRAWTEXT);
-	//UI_Output output = UIInteractWidget(widget);
-	return widget; 
+	UI_Output output = UIInteractWidget(widget);
+	return output; 
 }
 
 static UI_Output
-UISlider(const char *text) {
+UISlider(String8 text) {
 	
 	UI_Widget *widget = UIMakeWidget(text, UI_SLIDERABLE | UI_DRAWBOX | UI_DRAWBORDER | UI_ANIMATE_HOT);
 	UI_Output output = UIInteractWidget(widget);
 	
-	
-	// TODO(ziv): make this more robust
-	// currently there are ways and conditions 
-	// in which the widgets get messed up
-	
-	String8 str = Str8Lit(text); 
+	// NOTE(ziv): should be fine, I have a internal copy of the string, shouldn't be bad right?
 	String8 postfix = Str8Lit("sub_widget");
-	char *buffer = (char *)malloc(20);
-	memcpy(buffer, str.data, str.size); 
-	memcpy(buffer+str.size, postfix.data, postfix.size+1); 
+	char buffer[30];
+	memcpy(buffer, text.data, text.size); 
+	memcpy(buffer+text.size, postfix.data, postfix.size+1); 
 	
 	UIPushParent(widget); 
-	UI_Widget *sub_widget = UIMakeWidget(buffer, UI_DRAWBOX );
+	UI_Widget *sub_widget = UIMakeWidget(Str8Lit(buffer), UI_DRAWBOX);
 	UIEquipChildAxis(widget, widget->axis);
 	sub_widget->semantic_size[0] = { UI_SIZEKIND_PERCENTOFPARENT, output.slider_value+0.005f, 1.f };
 	sub_widget->semantic_size[1] = { UI_SIZEKIND_PERCENTOFPARENT, 1.f, 1.f };
@@ -2592,6 +2600,49 @@ static void
 UIPad(const char *text) {
 	
 }
+
+// Format string version of evertyhing basically
+
+
+static UI_Output
+UILabel(char *fmt, ...) {
+	//Temp scratch = scratch_begin(0, 0);
+	va_list args;
+	va_start(args, fmt);
+	char buffer[20]; // TODO(ziv): REMOVE THIS!!! MAKE BETTER DECISIONS IN LIFE  
+	String8 text = Str8FormatString(buffer, fmt, args);
+	va_end(args);
+	UI_Output output = UILabel(text);
+	//scratch_end(scratch);
+	return output;
+}
+
+static UI_Output
+UIButton(char *fmt, ...) {
+	//Temp scratch = scratch_begin(0, 0);
+	va_list args;
+	va_start(args, fmt);
+	char buffer[20]; // TODO(ziv): REMOVE THIS!!! MAKE BETTER DECISIONS IN LIFE  
+	String8 text = Str8FormatString(buffer, fmt, args);
+	va_end(args);
+	UI_Output output = UIButton(text);
+	//scratch_end(scratch);
+	return output;
+}
+
+static UI_Output
+UISlider(char *fmt, ...) {
+	//Temp scratch = scratch_begin(0, 0);
+	va_list args;
+	va_start(args, fmt);
+	char buffer[20]; // TODO(ziv): REMOVE THIS!!! MAKE BETTER DECISIONS IN LIFE  
+	String8 text = Str8FormatString(buffer, fmt, args);
+	va_end(args);
+	UI_Output output = UISlider(text);
+	//scratch_end(scratch);
+	return output;
+}
+
 
 
 //~
@@ -3425,11 +3476,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//
 
 		
-		float value = 0; 
+		static float value = 0; 
+		static b32 show_panel = 0; 
 		
 		UIBegin(ui, r->dirty);
-		
-		static b32 show_panel = 0; 
 		
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
@@ -3442,89 +3492,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
 			
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
-			UIEquipWidth(UILabel("speed:"), UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
+			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
 			
 		}
 		UIPopParent();
 		UIPopParent();
 		
-		
-		
-		
-		
 		UIEnd(ui);
 		
 		
 		
-		
-		
-		
-		
-#if 0
-		UIBegin(ui, r->dirty);
-		
-		static int hide_panel = 0;
-		
-				UI_Layout layout_t = {
-					UI_AXIS2_Y,
-					{
-						{ UI_SIZEKIND_PERCENTOFPARENT, 1.0f, 1.f },
-						{ UI_SIZEKIND_TEXTCONTENT, 0.f, 1.f }
-					},
-				};
-				
-				UI_Layout rect_layout = {
-					UI_AXIS2_Y,
-					{
-						{ UI_SIZEKIND_PIXELS, 200.f, 1.f },
-						{ UI_SIZEKIND_PIXELS, 100.f, 1.f }
-					},
-				};
-		
-		UIPushParent(UICreateRect( rect_layout, 0, 0, "initial top bar", UI_DRAWBORDER));
-		UIPushParent(UILayout( layout_t, "YO")); 
-		{
-			static bool clicked1 = 1;
-			if (UIButton("File###1123").clicked) {
-				clicked1 = !clicked1;
-			}
-			if (clicked1) {
-				
-				bool clicked = 0;
-				clicked = UIButton("Move Up").activated;
-				if (clicked) { 
-					c.pos = c.pos + c.up * -0.1f;
-				}
-				clicked = UIButton("Move Down").activated;
-				if (clicked) { 
-					c.pos = c.pos + c.up * 0.1f;
-				}
-					if (UIButton("File").clicked) { 
-					hide_panel = 0;
-				}
-				clicked = UIButton("Tab 5###something in here is bad").activated;
-				if (clicked) { printf("button clicked5\n"); }
-				clicked = UIButton("Tab 6").activated;
-				if (clicked) { printf("button clicked6\n"); } 
-				
-				rect_layout.semantic_size[0] = UI_Size{ UI_SIZEKIND_PIXELS, 400.f, 1.f}; 
-				rect_layout.semantic_size[1] = UI_Size{ UI_SIZEKIND_PIXELS, 100.f, 1.f}; 
-				UIPushParent(UICreateRect( rect_layout, 0, 0, "none2asdf", UI_DRAWBOX));
-				{
-					UIButton("SMOETHING NOT WRONG"); 
-				}
-				UIPopParent();
-				
-			}
-			
-			
-			value = UISlider( "speed");
-			
-		}
-		UIPopParent();
-		UIPopParent();
-#endif 
 		
 		#if 0
 		static int x = 150;
@@ -3612,7 +3590,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		UIEnd(ui);
 		#endif 
-		
 		
 		
 		
