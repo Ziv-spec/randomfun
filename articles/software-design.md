@@ -117,6 +117,12 @@ https://en.wikipedia.org/wiki/Kolmogorov_complexity
 
 # Meaning
 
+The word meaning is often misundrtood. The concept is quite general and I believe it is also quite elusive. If you take something like words where when you say them,  and english person can interpret it one way, while a afro-american can interpret it in a completely different way. In korea the word niger is the same as hello. For this reason the content itself or in this case the word itself doesn't contain all the meaning the word has. The fact that it is said to Americans or Koreans matter. So the language you speak makes you understand things difffernetly than other people.   So the sounds of the words on partially contain the meaning.  We do know that the sounds contain some meaning since if you were to say different words to the same people they will understand different things. So words do contain meaning but the one interpreting them also contains part of the meaning. It is also the context within which the words are interpreted that matters. For meaning to be whole you need both content and interpertation. In our case the content is the words and the interpertation is the people who interpret the content to their hearts content. 
+
+In the book  GEB An Eternal Golden Braid. Douglus points out that meaning is stuck in a strange dance between content and interpretation. His observation is even more powerful than our simple observation that meaning lives inside both the content or it's interpertation . 
+
+Imagine 
+
 Life is built around signaling, this text is itself a signal with some meaning I try to convey, reading only half of this text will not allow you to comprehend it's full meaning, just like when encountering many words one doesn't know will result in confusion. So where does meaning lay?
 
 In his seminal text Godel Escher Bach, Hofstadter states that meaning itself is a strange dance between content and interpretation. For meaning to be found, content, which by itself meaningless must be interpreted. When standing on their own, content and interpretation are interchangeable. GEB illustrates this by imagining a world where DNA is similar to all organisms and the decoding mechanism is what makes them unique. For example a cat and a fish would contain the same DNA, but the decoding mechanisms which made them grow is what differentiates between them. The genetic information would then not be contained in the DNA but in the decoding mechanisms themselves. The fact that the decoding mechanisms for life are similar while DNA varies is what makes DNA the content and decoding mechanisms the interpreter. 
@@ -143,66 +149,6 @@ Compression is strangely connected to intelligence. With the advance of modern m
 Some are great proponents of this idea and have laied out a prize. The Hutter prize is led by...
 
 
-<<<<<<< HEAD
-
-For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
-
-# History of our kind
-
-The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
-
-> If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
-
-As time went on nomadic groups moved into agricultural settlements. This shift marked the agricultural revolution of the time. Humans began spending a large portion of their time and effort onto cultivating a small food variety (wheat, corn, rice, potatoes, millet). Although we know that humans shifted from gathering their food to growing it, the choice at least for those times seems illogical. Cultivating wheat is no easy matter. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. Yuval Harari in his popular book Sapiens shows us the perspective of the wheat at the time. For wheat a fragile plant had become a growing empire taking over the world by frenzy with fields and fields made out entirely out of wheat. Utilizing dumb humans to expand beyond what it would ever be able on it's own. How were we fooled? What did it offer in return? By growing their food, humans had a larger surplus. This of course does not last for long as demand increases in the form of a larger population. Wheat allowed population to increase from a hundred to hundreds and even thousands yet keeping the population dirt poor for long [see: Yuval Harari, Sapiens pp. 87-89 (Hebrew version)]. 
-
-> Human history as a whole has been characterized by a seemingly inexorable trend toward higher levels of complexity, specialization, and sociopolitical control, processing of greater quantities of energy and information, formation of ever larger settlements, and development of more complex and capable technologies. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 3]
-
-With the population increasing at a steady pace, steadily societies got more complex. Complexity as I will now define, has a similarity to general complexity, simply flavored in a social context. Much like what Trainter did I will define complexity using two key terms, inequality and heterogeneity. Inequality refers to the differentiation of ranking, or unequal access to resources. Heterogeneity is the number of distinct parts to a society. Simpler societies had steadily decreased inequality as they increased in heterogeneity. 
-
-Complex societies of those times were still relatively simple in modern terms. Leadership in the simplest societies tended to be minimal. It is personal and charismatic, and exists only for special purposes. Hierarchical control is not institutionalized, but is limited to definite spheres of activity at specific times, and rests substantially on persuasion [see: Service 1962; Fried 1967, Political Systems – An Introduction to Anthropology]. This stands in dark contrast to our current institutionalized and legalized reality where states rule. Trainter touches upon this uniqueness after reviewing simple societies throughout history, in his book "The Collapse Of Complex Societies".
-
-> The citizens of modern complex societies usually do not realize that we are an anomaly of history. Throughout the several million years that recognizable humans are known to have lived, the common political unit was the small, autonomous community, acting independently, and largely self-sufficient. Robert Carneiro has estimated that 99.8 percent of human history has been dominated by these autonomous local communities (1978; 219). It has only been within the last 6000 years that something unusual has emerged: the hierarchical, organized, interdependent states that are the major reference for our contemporary political experience. [see: Joseph Trainter, The Collapse Of Complex Societies pp. 24]
-
-From ancient construction of Gobekli Tepe, to the Great Pyramids, and today's large marvels like the Burj Khalifa, seemingly magical constructions were enabled by constant innovation in design and technology.
-
-In the recent times computers have risen, they quickly became integral to human life. We rely on this piece of sand to help us communicate, cook, learn, design, build, play, heal and so much more almost anything one can imagine a computer can help him do it better. The fundamental reason for why computers have become ubiquitous is their miraculous ability in doing computation. Much in the same way cars assist humans in going further distances faster and unlocking opportunities otherwise deemed impossible, computers allow us to make computations faster changing all aspects of modern life.
-
-With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity.
-
-
-
-# Complexity
-
-Complexity. The term complexity is used when describing systems with non-trivial internal behaviour. It refers to systems whos parts interact in multiple ways leading to non-linear, random, emergent behaviour. Simple system therefore have parts which can be isolated from the rest, changes to one part does not lead to any effect on the others, no unexpected ramafications or unwanted side effects. Visually it can be equated to making bread. When making bread, bakeries usually braid their doe before cooking it. In doing so, doe lines interwind and end up looking more complex than the simple looking lines they came from. The more doe lines join, the more complex the final bread looks. It is important to notice that the bread now does not only look more complex but, if you try to remove a line of doe, it result in a much harder time. If before you could separate the lines by tearing them apart, now, you have to carefully consider how each line moves in relation to it's surroundings as it slips around, moving up and down, hopefully not tearing the rest of the doe apart.
-
-When dealing with software it is clear that complexity is an essential property that we can not get around.
-
-> Software entities are more complex for their size than perhaps any other human construct, because no two parts are alike (at least above the statement level). If they are, we make the two similar parts into one, a subroutine, open or closed. In this respect software systems differ profoundly from computers, buildings, or automobiles, where repeated elements abound.
-
-Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor, 
-
-For many engineering diciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many compoentns have been standardized. 
-
-
-[^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
-[^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
-[^3]: The Origin of the State: Land Productivity or Appropriability? by Joram Mayshar, Omer Moav, and Luigi Pascali
-[^4]: Sapiens - Yuval Harari
-[^5]: https://gwern.net/doc/sociology/2022-mayshar.pdf
-[^6]: https://www.nasa.gov/technology/carbon-dioxide-fertilization-greening-earth-study-finds/ 
-[^7]: https://warwick.ac.uk/fac/soc/economics/staff/omoav/mmp_15_nov_2020.pdf
-
-
-
-
-
-[^1]: https://kristoff.it/blog/simple-not-just-easy/
-[^2]: https://www.youtube.com/watch?v=LKtk3HCgTa8
-
-https://en.wikipedia.org/wiki/Kolmogorov_complexity
-
-
-As the number of internal states goes up, our mental ability to comprehend all states goes down, and this non-trivial behaviour which leads to an explosion of states
 
 
 A systems complexity might be characterized in a number of ways. One would be the Kolmogorov complexity. The definition is the minimum program which required to represent a string. From this we can inquire that a more complex system is one who's parts are all unique. For if they are not unique they can be compressed and represented more compactly. This is the main argument for the "essential complexity" of software as Brooks defined is No Silver Bullet.  While it is correct I feel like some aspect is forgotten. Some software while seemingly significantly smaller are more complex than their large counterparts.  Why might this be the case? I believe that it is because of how inter-wind the
