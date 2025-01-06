@@ -22,7 +22,7 @@
 #pragma comment(lib, "d3dcompiler")
 
 #define APP_TITLE "D3D11 application!!!"
-
+#define DEBUG_UI_PRINTING 1
 // default starting width and height for the window
 static int window_width  = 800;
 static int window_height = 600;
@@ -1830,6 +1830,13 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 	
 	if (!head->id.alive) { // dead
 		
+#if DEBUG_UI_PRINTING
+		char buff[100]; 
+		memcpy(buff, head->id.value.data, head->id.value.size);
+		buff[head->id.value.size] = '\0';
+		printf("Pruning %s %d\n", buff, head->id.key);
+#endif
+		
 		pruned = 1;
 		
 		if (head->last) {
@@ -2317,25 +2324,28 @@ UIHelperPrintWidgetGraph() {
 static void
 UIEnd(UI_Context *ui) {
 	Assert(ui);
+
+#if DEBUG_UI_PRINTING
 	if (pruned) {
 		pruned = 0; 
-		printf("Before Prune\n"); 
-		UIHelperPrintWidgetGraph(); 
-		
+UIHelperPrintWidgetGraph(); 
 	}
+	#endif 
 	
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->head_widget.id.alive = 1;
 		UICorePruneDeadWidgets(&ui->head_widget);
 	}
-	
+
+/* 	
 	if (pruned) {
 	printf("After Prune\n"); 
 	UIHelperPrintWidgetGraph(); 
 	printf("\n\n\n\n\n\n\n\n");
 	}
-	
+	 */
+
 	
 	
 	// layout
@@ -2381,6 +2391,12 @@ UITopParent() {
 	return ui->stack_idx > 0 ? ui->stack[ui->stack_idx-1] : NULL;
 }
 
+static int
+UICompareKey(UIID k1, UIID k2) {
+	if (k1.key != k2.key) return 0; 
+	return Str8Compare(k1.value, k2.value);
+}
+
 static UI_Widget *
 UIMakeWidget(String8 text, u32 flags) {
 	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
@@ -2402,10 +2418,54 @@ UIMakeWidget(String8 text, u32 flags) {
 	
 	if (Str8Compare(strid, entry->id.value)) {
 		// Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
-
+		
+		UI_Widget *parent = UITopParent(); 
+		if (parent != entry->parent && parent != NULL) {
+			
+			entry->parent = parent;
+			
+			if (!parent->child) {
+				parent->child = entry;
+				entry->next = NULL;
+				entry->last = NULL;
+			}
+			else {
+				
+				UI_Widget *temp = parent->child; 
+				while (temp->next) {
+					if (UICompareKey(temp->id, entry->id)) {
+						if (!temp->id.alive) {
+							entry->last = temp->last; 
+							entry->next = temp->next; 
+							
+							if (entry->last) entry->last->next = entry; 
+							if (entry->next) entry->next->last = entry; 
+						}
+						break;
+					}
+					temp = temp->next;
+				}
+				
+				if (!UICompareKey(temp->id, entry->id)) {
+					temp->next = entry;
+					entry->last = temp;
+				}
+				else {
+					int something = 0;
+				}
+				
+				
+				
+			}
+			
+		}
+		
 		if (!entry->id.alive) {
 			entry->id.alive = 1;
 			return entry;
+		}
+		else {
+			printf("%s\n", entry->id.value.data);
 		}
 		
 		// if it is alive this means that what happened is the following: 
@@ -2423,6 +2483,8 @@ UIMakeWidget(String8 text, u32 flags) {
     //
     // Create and add the widget to the graph
     //
+	
+	
 	
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[key & mask];
@@ -2445,6 +2507,12 @@ UIMakeWidget(String8 text, u32 flags) {
 		widget->semantic_size[1] = parent->semantic_size[1];
 	}
 	
+#if DEBUG_UI_PRINTING
+	char buff[100]; 
+	memcpy(buff, widget->id.value.data, widget->id.value.size);
+	buff[widget->id.value.size+1] = '\0';
+	printf("Adding %s %d\n", buff, widget->id.key);
+	#endif
 	
 	// ignore ### seperation
 	String8 display_text = id_string_copy ;
@@ -2474,42 +2542,48 @@ UIMakeWidget(String8 text, u32 flags) {
     // Push widget into hierarchy
     if (parent) {
         // connect to parents children
-        if (parent->child) {
+        if (parent->child && parent->child->id.value.data) {
             
+			// see whether the widget exists in it's parent already
 			UI_Widget *temp = parent->child;
-			while (temp->next && temp->next->id.alive) temp = temp->next;
-            
-			if (parent->child->id.alive) {
+			while (temp->next && !Str8Compare(temp->next->id.value, widget->id.value)) {
+				if (temp == temp->next) {
+					// wtf???
+					Assert(false);
+					break;
+				}
 				
-				if (temp->id.alive) {
-				UI_Widget *lhs = temp, *rhs = temp->next, *mid = widget;
-			lhs->next = mid; 
-			mid->last = lhs; 
-			mid->next = rhs;
-					if (rhs) { rhs->last = mid; }
+				temp = temp->next;
+			}
+            
+			// if it is, replace it. If not, just add...
+			if (Str8Compare(temp->id.value, widget->id.value)) {
+				
+				//printf("%s\n", widget->id.value.data);
+				//UIHelperPrintWidgetGraph(); 
+				
+				if (!temp->last && !temp->next) {
+					// only child 
+					parent->child = widget;
 				}
-				else {
-					printf("WDF==================================================T\n");
-				}
+				
+				widget->last = temp->last; 
+				widget->next = temp->next; 
+				
+				if (widget->last) widget->last->next = widget; 
+				if (widget->next) widget->next->last = widget; 
+				
+				
+				//UIHelperPrintWidgetGraph(); 
+				
 			}
 			else {
-				// cursed place
-				if (temp->id.alive) {
-				widget->next = temp; 
-				temp->last = widget;
-				parent->child = widget;
-				}
-				else {
-					printf("------------------------------------------------------------\n");
-					
-					UIHelperPrintWidgetGraph(); 
-					widget->next = parent->child->next;
-					parent->child = widget;
-					UIHelperPrintWidgetGraph(); 
-					
-				}
+				// just add it ... 
+				
+				temp->next = widget; 
+				widget->last = temp; 
+				widget->next = NULL; 
 			}
-
 			
         }
         else {
@@ -3575,28 +3649,31 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		static float value = 0; 
 		
 		
-		
 		UIBegin(ui, r->dirty);
 		
 		static b32 show_top_rectangle = 0; 
 		static int show_panel = 1;
 		
+		pruned = 0;
 		
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
 		if (UIButton("Panel").clicked) {
 			show_top_rectangle= !show_top_rectangle; // toggle show panel
+			if (!show_top_rectangle) {
+				UIHelperPrintWidgetGraph();
+				pruned = 1;
+				printf("\n========\n");
+			}
 		}
 		
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
 
-/* 			
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
-			 */
 
 			if (UIButton("Show Panel").clicked) {
 				show_panel = 1;
@@ -3620,10 +3697,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			UIPushParent(panel);
 			UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
 			{
+
+/* 				
 				if (UIButton("button").activated) {
 					show_panel = 0;
 				}
-				
+				 */
+
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
 					
@@ -3646,10 +3726,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					
 				}
 				UIPopParent(); 
-				
+
+/* 				
 				if (UIButton("button2").activated) {
 					show_panel = 0;
 				}
+				
+				 */
+
 			}
 			UIPopParent(); 
 			UIPopParent(); 
@@ -3809,8 +3893,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		start_frame = end_frame; // update time for dt calc
 	}
 	
-	
 	release_resources:
+	
+	UIHelperPrintWidgetGraph(); 
 	
 	//
 	// Release resources
