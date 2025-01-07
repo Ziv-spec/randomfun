@@ -148,7 +148,6 @@ typedef struct { float r, g, b, a; } Color;
 //
 
 //  ============== goals for today ==============
-
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
@@ -1777,6 +1776,10 @@ struct UI_Widget {
 	UI_Widget *next;
 	UI_Widget *last;
 	
+	// hash table
+	UI_Widget *hash_next;
+	UI_Widget *hash_last;
+	
 	// 40 bytes can't change
 	float computed_rel_pos[UI_AXIS2_COUNT];
 	float computed_size[UI_AXIS2_COUNT];
@@ -1810,13 +1813,19 @@ typedef struct {
 	float mouse_pos[2];
 	
 	// UI Graph
-	// NOTE(ziv): widget[0] will default to the first widget built
     UI_Widget widgets[WIDGETS_COUNT];
-	UI_Widget head_widget;
-    UI_Widget *hot, *active;
+	UI_Widget *hashmap[WIDGETS_COUNT];
+    
+	int widgets_idx;
+	
+	UI_Widget *window;
+	UI_Widget *hot, *active;
 	
 	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
 	int stack_idx;
+	
+	
+	
 } UI_Context;
 
 static UI_Context *ui = NULL;
@@ -1839,6 +1848,8 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 		
 		pruned = 1;
 		
+		// remove from graph
+		
 		if (head->last) {
 			// remove from middle
 			head->last->next = head->next;
@@ -1860,6 +1871,28 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 		
 		head->id = UIID{0}; 
 		head->text = { 0, NULL }; 
+		
+		// remove from hash map
+		
+		if (head->hash_last) {
+			// remove from middle
+			head->hash_last->hash_next = head->hash_next;
+			if (head->hash_next) {
+				head->hash_next->hash_last = head->hash_last;
+			}
+			head->hash_last = NULL; 
+		}
+		else if (head->hash_next) {
+			// remove left node
+			if (ui->hashmap[head->id.key]) {
+				ui->hashmap[head->id.key] = head->hash_next;
+			}
+		}
+		else if (ui->hashmap[head->id.key]) {
+			// remove only child
+			ui->hashmap[head->id.key] = NULL; 
+		}
+		
 		
 	}
 	head->id.alive = 0; // reset the alive flag
@@ -2234,31 +2267,39 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	}
 }
 
+static void UIPushParent(UI_Widget *parent);
+static inline UI_Widget *UIPopParent();
 
 static void
 UIInit(UI_Context *ctx, R_D3D11Context *r, OS_Events *events) {
+	
 	memset(ctx, 0, sizeof(UI_Context));
 	ctx->events = events;
 		ctx->r = r;
-	ctx->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
-	ctx->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
-	ctx->head_widget.id.alive = 1;
-	// TODO(ziv): check what in the world should I be doing here
+	
+	ctx->window = &ctx->widgets[WIDGETS_COUNT-1];
+	ctx->window->id = { WIDGETS_COUNT-1, 1, { 0, "main_window###0001" } };
+	ctx->window->computed_size[UI_AXIS2_X] = (float)window_width;
+	ctx->window->computed_size[UI_AXIS2_Y] = (float)window_height;
+	
+	
 	MemArenaInit(&ctx->arena, 0x1000); // allocate page size
 	
-	ui = ctx;
 	
+	ui = ctx;
 	}
 
 
 static void
 UIBegin(UI_Context *ui, b32 dirty) {
 	
+	UIPushParent(ui->window);
+	
 	if (dirty) {
-		ui->head_widget.computed_size[UI_AXIS2_X] = (float)window_width;
-		ui->head_widget.computed_size[UI_AXIS2_Y] = (float)window_height;
-		ui->head_widget.id.alive = 1;
+		ui->window->computed_size[UI_AXIS2_X] = (float)window_width;
+		ui->window->computed_size[UI_AXIS2_Y] = (float)window_height;
 	}
+	ui->window->id.alive = 1;
 	
 	// some standard input thingy
 	{
@@ -2316,7 +2357,7 @@ UIHelperPrintNodeGraph(UI_Widget *head, int level) {
 
 static void 
 UIHelperPrintWidgetGraph() {
-	UI_Widget *head = &ui->head_widget; 
+	UI_Widget *head = ui->window; 
 	UIHelperPrintNodeGraph(head, 0); 
 }
 #endif 
@@ -2324,7 +2365,8 @@ UIHelperPrintWidgetGraph() {
 static void
 UIEnd(UI_Context *ui) {
 	Assert(ui);
-
+	UIPopParent(); // pop window
+	
 #if DEBUG_UI_PRINTING
 	if (pruned) {
 		pruned = 0; 
@@ -2334,31 +2376,23 @@ UIHelperPrintWidgetGraph();
 	
 	// prune out all widgets that don't participate in hierarchy
 	{
-		ui->head_widget.id.alive = 1;
-		UICorePruneDeadWidgets(&ui->head_widget);
+		ui->window->id.alive = 1;
+		UICorePruneDeadWidgets(ui->window);
 	}
-
-/* 	
-	if (pruned) {
-	printf("After Prune\n"); 
-	UIHelperPrintWidgetGraph(); 
-	printf("\n\n\n\n\n\n\n\n");
-	}
-	 */
 
 	
 	
 	// layout
 	{
 		for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
-			UICoreLayout(&ui->head_widget, axis); 
+			UICoreLayout(ui->window, axis); 
 		}
 		}
 	
 	// draw
 	{
 		// kind of this is where I draw 
-		UICoreLayoutFinalRect(ui, &ui->head_widget);
+		UICoreLayoutFinalRect(ui, ui->window);
 	}
 	
 }
@@ -2408,76 +2442,16 @@ UIMakeWidget(String8 text, u32 flags) {
 	String8 strid = text;
 	s32 mask = (WIDGETS_COUNT-1);
 	s32 key = (s32)Str8GetHash(strid, 234982374) & mask;
-	UI_Widget *entry = NULL;
+	UIID id = { key, 0,  strid };
 	
-	do {
-		entry = &ui->widgets[key++ & mask];
-	} while(!Str8Compare(strid, entry->id.value) && entry->id.value.size);
+	UI_Widget *entry = ui->hashmap[key];
 	
-	key--;
-	
-	if (Str8Compare(strid, entry->id.value)) {
-		// Assert(!entry->id.alive && "why do I access an alive widget and try to use it twice?"); 
-		
-		UI_Widget *parent = UITopParent(); 
-		if (parent != entry->parent && parent != NULL) {
-			
-			entry->parent = parent;
-			
-			if (!parent->child) {
-				parent->child = entry;
-				entry->next = NULL;
-				entry->last = NULL;
-			}
-			else {
-				
-				UI_Widget *temp = parent->child; 
-				while (temp->next) {
-					if (UICompareKey(temp->id, entry->id)) {
-						if (!temp->id.alive) {
-							entry->last = temp->last; 
-							entry->next = temp->next; 
-							
-							if (entry->last) entry->last->next = entry; 
-							if (entry->next) entry->next->last = entry; 
-						}
-						break;
-					}
-					temp = temp->next;
-				}
-				
-				if (!UICompareKey(temp->id, entry->id)) {
-					temp->next = entry;
-					entry->last = temp;
-				}
-				else {
-					int something = 0;
-				}
-				
-				
-				
-			}
-			
-		}
-		
-		if (!entry->id.alive) {
-			entry->id.alive = 1;
-			return entry;
-		}
-		else {
-			printf("%s\n", entry->id.value.data);
-		}
-		
-		// if it is alive this means that what happened is the following: 
-		// it got created, then pruned, then created again but ofcourse 
-		// never got connected to thereal graph so... you see it as alive
-		// becuase you don't have access to the actual graph but it never 
-		// gets pruned/reset because it is not part of the fucking graph 
-		// so what I would need to do is somehow recognize this fact and 
-		// correctly insert it into the graph somehowe. I guess going over 
-		// findind the node which matches the id value and then replacing it. 
-		// Soimething like that. 
-		
+	for (; entry; entry = entry->hash_next) {
+		if (UICompareKey(entry->id, id))  break;
+	}
+	if (entry && UICompareKey(entry->id, id)) {
+		entry->id.alive = 1;
+		return entry;
 	}
 	
     //
@@ -2487,7 +2461,19 @@ UIMakeWidget(String8 text, u32 flags) {
 	
 	
     UI_Widget *parent = UITopParent();
-	UI_Widget *widget = &ui->widgets[key & mask];
+	UI_Widget *widget = &ui->widgets[ui->widgets_idx++];
+	
+	// add to hashmap
+	UI_Widget *temp = ui->hashmap[key];
+	if (temp) {
+	while (temp->hash_next) temp = temp->hash_next;
+		temp->hash_next = widget;
+		widget->hash_last = temp;
+	}
+	else {
+		ui->hashmap[key] = widget;
+	}
+	
 	// TODO(ziv): This should not be allocated in this arena thingy. should actually have 
 	// something to manage these strings since the way they are allocated and things is 
 	// more malloc/free style (which maybe I should use malloc/free idk). 
@@ -2593,23 +2579,8 @@ UIMakeWidget(String8 text, u32 flags) {
 		
     }
     else {
-        Assert(&ui->head_widget);
-		widget->parent = &ui->head_widget;
-		if (ui->head_widget.child) {
-			
-			// add to the very last node
-			UI_Widget *head = ui->head_widget.child; 
-			while (head->next) head = head->next; 
-			
-			head->next = widget; 
-			widget->last = head; 
-			
-		}
-		else {
-			ui->head_widget.child = widget;
-		}
-		
-		
+		Assert(ui->window);
+        FatalError("You pop way too much for sure");
     }
 	
     return widget;
@@ -3654,17 +3625,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		static b32 show_top_rectangle = 0; 
 		static int show_panel = 1;
 		
-		pruned = 0;
-		
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
 		if (UIButton("Panel").clicked) {
 			show_top_rectangle= !show_top_rectangle; // toggle show panel
-			if (!show_top_rectangle) {
-				UIHelperPrintWidgetGraph();
-				pruned = 1;
-				printf("\n========\n");
-			}
 		}
 		
 		if (show_top_rectangle) {
@@ -3698,11 +3662,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
 			{
 
-/* 				
 				if (UIButton("button").activated) {
 					show_panel = 0;
 				}
-				 */
 
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
@@ -3727,12 +3689,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				}
 				UIPopParent(); 
 
-/* 				
 				if (UIButton("button2").activated) {
 					show_panel = 0;
 				}
-				
-				 */
 
 			}
 			UIPopParent(); 
@@ -3894,8 +3853,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 	
 	release_resources:
-	
-	UIHelperPrintWidgetGraph(); 
 	
 	//
 	// Release resources
