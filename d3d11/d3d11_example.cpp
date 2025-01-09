@@ -22,7 +22,7 @@
 #pragma comment(lib, "d3dcompiler")
 
 #define APP_TITLE "D3D11 application!!!"
-#define DEBUG_UI_PRINTING 1
+
 // default starting width and height for the window
 static int window_width  = 800;
 static int window_height = 600;
@@ -1839,13 +1839,6 @@ UICorePruneDeadWidgets(UI_Widget *head) {
 	
 	if (!head->id.alive) { // dead
 		
-#if DEBUG_UI_PRINTING
-		char buff[100]; 
-		memcpy(buff, head->id.value.data, head->id.value.size);
-		buff[head->id.value.size] = '\0';
-		printf("Pruning %s %d\n", buff, head->id.key);
-#endif
-		
 		pruned = 1;
 		
 		// remove from graph
@@ -2367,13 +2360,6 @@ UIEnd(UI_Context *ui) {
 	Assert(ui);
 	UIPopParent(); // pop window
 	
-#if DEBUG_UI_PRINTING
-	if (pruned) {
-		pruned = 0; 
-UIHelperPrintWidgetGraph(); 
-	}
-	#endif 
-	
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->window->id.alive = 1;
@@ -2492,13 +2478,6 @@ UIMakeWidget(String8 text, u32 flags) {
 		widget->semantic_size[0] = parent->semantic_size[0];
 		widget->semantic_size[1] = parent->semantic_size[1];
 	}
-	
-#if DEBUG_UI_PRINTING
-	char buff[100]; 
-	memcpy(buff, widget->id.value.data, widget->id.value.size);
-	buff[widget->id.value.size+1] = '\0';
-	printf("Adding %s %d\n", buff, widget->id.key);
-	#endif
 	
 	// ignore ### seperation
 	String8 display_text = id_string_copy ;
@@ -2674,6 +2653,8 @@ static inline UI_Size UIPixels(float size, float strictness) { return { UI_SIZEK
 static inline UI_Size UIParentSize(float percent_of_parent, float strictness)  { 
 	return { UI_SIZEKIND_PERCENTOFPARENT, percent_of_parent , strictness}; 
 }
+static inline b32 UIIsActive(UI_Widget *widget) { return widget == ui->active; }
+static inline b32 UIIsHot(UI_Widget *widget) { return widget == ui->hot; }
 
 //
 //~ UI Builder Code
@@ -2736,13 +2717,30 @@ UISlider(String8 text) {
 	return output;
 }
 
-
-static void
-UIPad(const char *text) {
+static UI_Output
+UIPad(String8 text, int flags) {
 	
+	UI_Widget *widget = UIMakeWidget(text, flags);
+	UI_Widget *parent = UITopParent();
+	widget->semantic_size[parent->axis] = UIParentSize(1, 0);
+	widget->semantic_size[1-parent->axis] = parent->semantic_size[1-parent->axis];
+	
+	UI_Output result = UIInteractWidget(widget); 
+	return result;
 }
 
-// Format string version of evertyhing basically
+
+static void
+UIPad(String8 text) {
+	
+	UI_Widget *widget = UIMakeWidget(text, 0);
+	UI_Widget *parent = UITopParent();
+	widget->semantic_size[parent->axis] = UIParentSize(1, 0);
+	widget->semantic_size[1-parent->axis] = parent->semantic_size[1-parent->axis];
+	
+	//UI_Output result = UIInteractWidget(widget); 
+	//return result;
+}
 
 
 static UI_Output
@@ -3657,25 +3655,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		if (show_panel) {
 			
-			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIPixels(200, 1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
-			UIPushParent(panel);
-			UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
+			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIChildrenSum(1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
+				UIPushParent(panel);
+				UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
 			{
-
-				if (UIButton("button").activated) {
-					show_panel = 0;
-				}
-
+				
+				static int show_inside_panel = 0;
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
 					
-					if (UIButton("X###1").clicked) {
-						show_panel = 0;
+					if (UIButton("v###1").clicked) {
+						show_inside_panel = !show_inside_panel;
 					}
-					
+
 					UI_Widget *rect1 = UICreateRect(UIParentSize(1, 0), UITextContent(1), x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
 					UIInteractWidget(rect1);
-					if (rect1 == ui->active) {
+					if (UIIsActive(rect1)) {
 						x = (int)ui->mouse_pos[0]-relx; 
 						y = (int)ui->mouse_pos[1]-rely; 
 					}
@@ -3684,15 +3679,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
 					
-					UIButton("Y###3");
+					UIPad(Str8Lit("padding"));
+					
+					if (UIButton("X###1").clicked) {
+						show_panel = 0;
+					}
 					
 				}
 				UIPopParent(); 
-
+				
+				if (show_inside_panel) {
 				if (UIButton("button2").activated) {
 					show_panel = 0;
 				}
-
+					
+					UIButton("1");
+					UIButton("2");
+					
+				}
+				
+				
 			}
 			UIPopParent(); 
 			UIPopParent(); 
