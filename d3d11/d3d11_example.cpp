@@ -148,6 +148,15 @@ typedef struct { float r, g, b, a; } Color;
 //
 
 //  ============== goals for today ==============
+// [x] resolving constraints robustness and accuracy improvement
+// [x] Renderer and Draw seperation (DrawQuad should not use the renderer but a draw context)
+// [ ] Expand renderer capabilities (bitmaps etc..)
+// [ ] UI Customization
+//   [ ] rounded corners
+//   [ ] border
+//   [ ] color?
+//   [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
+//   [ ] bitmaps?
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
@@ -166,11 +175,6 @@ static void FatalError(const char* message)
 // Math
 //
 
-inline static float 
-lerp(float start, float end, float t) {
-	return start + (end-start)*t;
-}
-
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
 
@@ -179,6 +183,8 @@ inline static float3 operator+(const float3 v1, const float3 v2) { return float3
 inline static float3 operator-(const float3 v1, const float3 v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
 inline static float3 operator*(const float3 v1, const float3 v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
 inline static float3 operator*(const float3 v, const float c)    { return float3{ v.x*c, v.y*c, v.z*c }; }
+
+inline static float lerp(float start, float end, float t) { return start + (end-start)*t; }
 
 inline static float3
 f3normalize(float3 v) {
@@ -699,13 +705,19 @@ InputInitialize(HWND window) {
 	// Rawinput API
 	{
 		
-		RAWINPUTDEVICE Rid[1];
+		RAWINPUTDEVICE Rid[2];
         Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
         Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-        Rid[0].dwFlags = 0;    // adds mouse and also ignores legacy mouse messages
+        Rid[0].dwFlags = RIDEV_DEVNOTIFY;    // adds mouse and also ignores legacy mouse messages
         Rid[0].hwndTarget = window;
 		
-        if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE) {
+		// TODO(ziv): Figure out why this doesn't work
+		Rid[1].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
+		Rid[1].dwFlags = RIDEV_DEVNOTIFY;   // adds mouse and also ignores legacy mouse messages
+		Rid[1].hwndTarget = window;
+		
+        if (RegisterRawInputDevices(Rid, 2, sizeof(Rid[0])) == FALSE) {
             //registration failed. Call GetLastError for the cause of the error.
             FatalError("Rawinput couldn't register a mouse\n");
 		}
@@ -719,13 +731,18 @@ InputShutdown() {
 	
 	// Rawinput
 	{
-		RAWINPUTDEVICE Rid[1];
+		RAWINPUTDEVICE Rid[2];
 		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
 		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
 		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
 		Rid[0].hwndTarget = 0;
 		
-		if (RegisterRawInputDevices(Rid, 1, sizeof(Rid[0])) == FALSE)
+		Rid[1].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+			Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
+			Rid[1].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+			Rid[1].hwndTarget = 0;
+			
+		if (RegisterRawInputDevices(Rid, ArrayLength(Rid), sizeof(Rid[0])) == FALSE)
 		{
 			//registration failed. Call GetLastError for the cause of the error.
 			FatalError("Rawinput couldn't register a mouse\n");
@@ -894,14 +911,14 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			}
 		} break;
 		
-		//
-		// Rawinput
-		//
-		
 		case WM_MOUSEMOVE: {
 			POINTS p = MAKEPOINTS(lparam);
 			OSPostEvent({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
 		} break; 
+		
+		//
+		// Rawinput
+		//
 		
 		case WM_INPUT: {
 			if (!InputUpdate(lparam)) {
@@ -909,6 +926,25 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 				return 0;
 			}
 		} break;
+		
+		case WM_INPUT_DEVICE_CHANGE: {
+			HANDLE device = (HANDLE)lparam; 
+			unsigned int size = sizeof(RID_DEVICE_INFO); 
+			RID_DEVICE_INFO device_info;
+			b32 success = GetRawInputDeviceInfoA(device, RIDI_DEVICEINFO, &device_info, &size);
+			
+			if (wparam == GIDC_ARRIVAL) {
+				if (device_info.dwType == RIM_TYPEMOUSE) {
+				printf("Added mouse device\n");
+				}
+			}
+			else {
+				if (device_info.dwType == RIM_TYPEMOUSE) {
+				printf("Removed mouse device\n");
+			}
+			}
+			
+		} break; 
 		
 	}
 	return DefWindowProcA(window, message, wparam, lparam);
@@ -940,6 +976,7 @@ typedef struct R_SpriteInst {
 typedef struct { int val; } PSHandle;
 typedef struct { int val; } VSHandle;
 typedef struct { int val; } BFHandle;
+typedef struct { int val; } TEXHandle;
 
 
 #define FORMAT_TABLE \
@@ -979,7 +1016,7 @@ typedef struct {
 typedef struct {
 	HWND window;
 	
-	Arena *arena;
+	Arena *arena; // permanent arena? (maybe should be perframe scratch buffer idk)
 	
 	ID3D11Device1 *device;
 	ID3D11DeviceContext1 *context;
@@ -994,25 +1031,10 @@ typedef struct {
 	D3D11_VIEWPORT *viewport;
 	b32 dirty; // window size changed
 	
-	// Widget rendering
 	
-	// widgets
-	struct {
-		ID3D11BlendState1* blend_state_use_alpha;
-		R_QuadInst data[MAX_QUAD_COUNT];
-		int idx;
-	} quads;
-	
-	// Font rendering
-	struct {
-		ID3D11ShaderResourceView *srv[2];
-		ID3D11SamplerState* sampler; 
-		R_SpriteInst data[MAX_SPRITES_COUNT];
-		int idx;
-	} font;
-	
-	
+	// Book keeping for dynamic loading of shaders and buffers 
 	ID3D11VertexShader *vs_array[0x10]; 
+	ID3D11InputLayout *lay_array[0x10]; 
 	VSHandle vs_handles[0x10];
 	struct {
 		const char *file_name;
@@ -1035,9 +1057,12 @@ typedef struct {
 	ID3D11Buffer *buffer_array[0x10]; 
 	ID3D11ShaderResourceView *srv_array[0x10]; 
 	BFHandle buffer_handles[0x10];
+	
+	
 	int buffer_idx;
 	
 } R_D3D11Context;
+
 
 static void 
 RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
@@ -1078,8 +1103,6 @@ RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *ent
 	vblob->Release();
 }
 
-
-
 static void 
 RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point, ID3D11PixelShader **pshader) {
 	
@@ -1107,7 +1130,7 @@ RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *ent
 
 static VSHandle
 RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
-					   R_LayoutFormat format[], unsigned int format_size) {
+					   R_LayoutFormat *format, unsigned int format_size) {
 	
 	
 	VSHandle handle = { r->vs_idx };
@@ -1166,11 +1189,14 @@ const static int g_renderer_to_d3d11_buffer_flags[] = {
 #define TYPE_CONSTANT_BUFFER        (2)
 #define TYPE_SHADER_RESOURCE_BUFFER (3)
 
-
+typedef struct {
+	u8 usage;
+	u8 cpu_access; 
+	 u8 misc; 
+} R_BufferInfo;
 
 static BFHandle
-RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsigned int elem_count,
-					 u8 usage, u8 bind, u32 cpu_access, u32 misc) {
+RendererCreateBuffer(R_D3D11Context *r, void *data, u32 elem_size, u32 elem_count, u8 bind, R_BufferInfo info) {
 
 	ID3D11Buffer *buffer = NULL;
 	ID3D11ShaderResourceView* buffer_srv = NULL;
@@ -1179,16 +1205,16 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsi
 		D3D11_BUFFER_DESC desc = {0};
 		
 		desc.ByteWidth = (elem_size * elem_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
-		desc.Usage = (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[usage];
+		desc.Usage = info.usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[info.usage] : D3D11_USAGE_DEFAULT;
 		desc.BindFlags = g_renderer_to_d3d11_buffer_flags[bind];
-		desc.CPUAccessFlags = g_renderer_to_d3d11_buffer_flags[cpu_access];
-		desc.MiscFlags = misc ? g_renderer_to_d3d11_buffer_flags[misc] : 0;
+		desc.CPUAccessFlags = info.cpu_access ? g_renderer_to_d3d11_buffer_flags[info.cpu_access] : 0;
+		desc.MiscFlags = info.misc ? g_renderer_to_d3d11_buffer_flags[info.misc] : 0;
 		desc.StructureByteStride = elem_size;
 		
 		D3D11_SUBRESOURCE_DATA subresource_data = {data};
 		r->device->CreateBuffer(&desc, data ? &subresource_data : NULL, &buffer);
 		
-		if (misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
+		if (info.misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
 			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
 			rv_desc.Format = DXGI_FORMAT_UNKNOWN;
 			rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
@@ -1206,6 +1232,10 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, unsigned int elem_size, unsi
 	r->buffer_idx++; 
 	
 	return handle;
+	}
+
+static TEXHandle 
+RendererCreateTexture() {
 	
 }
 
@@ -1230,7 +1260,10 @@ RendererPSSetShader(R_D3D11Context *r, PSHandle handle) {
 }
 static void
 RendererVSSetShader(R_D3D11Context *r, VSHandle handle) {
-	if (handle.val== r->vs_handles[handle.val].val)  r->context->VSSetShader(r->vs_array[handle.val], NULL, 0);
+	if (handle.val != r->vs_handles[handle.val].val)  return;
+		
+		r->context->VSSetShader(r->vs_array[handle.val], NULL, 0);
+	r->context->IASetInputLayout(r->lay_array[handle.val]);
 }
 
 static void
@@ -1246,7 +1279,32 @@ RendererVSSetBuffer(R_D3D11Context *r, BFHandle handle) {
 	else if (last_5_bits == TYPE_SHADER_RESOURCE_BUFFER) {
 		r->context->VSSetShaderResources(0, 1, &r->srv_array[idx]);
 	}
+	else {
+		char buff[100]; 
+		sprintf(buff, "Unimplemented Renderer Buffer Type (%d)", __LINE__); 
+		FatalError(buff); 
+	}
 	
+}
+
+static void
+RendererPSSetBuffer(R_D3D11Context *r, BFHandle handle) {
+	int idx = handle.val & ((1 << (32-5))-1);
+	if (handle.val!= r->buffer_handles[idx].val) return;
+	
+	int last_5_bits = handle.val >> (32-5);
+	if (last_5_bits == TYPE_CONSTANT_BUFFER) {
+		// TODO(ziv): start slot, amount of buffers, buffers
+		r->context->PSSetConstantBuffers(0, 1, &r->buffer_array[idx]);
+	}
+	else if (last_5_bits == TYPE_SHADER_RESOURCE_BUFFER) {
+		r->context->PSSetShaderResources(0, 1, &r->srv_array[idx]);
+	}
+	else {
+		char buff[100]; 
+		sprintf(buff, "Unimplemented Renderer Buffer Type (%d)", __LINE__); 
+		FatalError(buff); 
+	}
 	
 }
 
@@ -1301,6 +1359,13 @@ RendererD3D11GetShaders(R_D3D11Context *r,
 	
 	vblob->Release();
 	pblob->Release();
+}
+
+static void *
+RendererBFHandleToPointer(R_D3D11Context *r, BFHandle handle) {
+	int idx = handle.val & ((1 << (32-5))-1);
+	if (handle.val != r->buffer_handles[idx].val) return NULL;
+	return r->buffer_array[idx]; 
 }
 
 static void
@@ -1480,74 +1545,6 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->zbuffer = zbuffer;
 	r->zbuffer_texture = zbuffer_texture;
 	r->rasterizer_cull_back = rasterizer_cull_back;
-	
-	
-	//~
-	
-	
-	// 
-	// Quad
-	//
-	
-	ID3D11BlendState1 *blend_state_use_alpha = NULL;
-	{
-		D3D11_BLEND_DESC1 blend_state = {0};
-		blend_state.RenderTarget[0].BlendEnable = TRUE;
-		blend_state.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-		blend_state.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-		blend_state.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-		blend_state.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-		blend_state.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-		blend_state.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-		blend_state.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
-	}
-	
-	r->quads.blend_state_use_alpha = blend_state_use_alpha;
-	//
-	// Font
-	//
-	
-	// Texture Atlas
-	ID3D11ShaderResourceView* atlas_resource_view;
-	{
-		D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
-		texture_atlas_desc.Width             = ATLAS_WIDTH;
-		texture_atlas_desc.Height            = ATLAS_HEIGHT;
-		texture_atlas_desc.MipLevels         = 1;
-		texture_atlas_desc.ArraySize         = 1;
-		texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
-		texture_atlas_desc.SampleDesc.Count  = 1;
-		texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
-		texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
-		
-		D3D11_SUBRESOURCE_DATA atlas_data = {};
-		atlas_data.pSysMem     = atlas;
-		atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
-		
-		ID3D11Texture2D* atlas_texture;
-		r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
-		r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
-		atlas_texture->Release();
-	}
-	
-	
-	// Point Sampler
-	ID3D11SamplerState* font_sampler;
-	{
-		D3D11_SAMPLER_DESC font_sampler_desc = {};
-		font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-		font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
-	}
-	
-	r->font.sampler = font_sampler;
-	r->font.srv[1] = atlas_resource_view;
-	
 }
 
 static void
@@ -1560,10 +1557,6 @@ RendererDeInit(R_D3D11Context *r) {
 	r->zbuffer->Release();
 	r->zbuffer_texture->Release();
 	r->rasterizer_cull_back->Release();
-	
-	r->quads.blend_state_use_alpha->Release();
-	r->font.sampler->Release();
-	r->font.srv[1]->Release();
 	
 	
 	for (int i = 0; i < r->vs_idx; i++) {
@@ -1672,29 +1665,159 @@ RendererD3D11Present(R_D3D11Context *r) {
 // 
 
 
-static void 
-DrawQuad(R_D3D11Context *r, Rect rect, Color color) {
-	Assert(r->quads.idx < MAX_QUAD_COUNT);
+typedef struct {
+	R_D3D11Context *r;
 	
-	if (0 <= rect.maxx && rect.minx <= r->viewport->Width && 
-		0 <= rect.maxy && rect.miny <= r->viewport->Height) {
-		r->quads.data[r->quads.idx].rect = rect;
-		r->quads.data[r->quads.idx].color = color;
-		r->quads.data[r->quads.idx].radius = 5;
-		r->quads.data[r->quads.idx].border = 2;
-		r->quads.idx++;
+	
+	
+	// widgets
+	struct {
+		ID3D11BlendState1* blend_state_use_alpha;
+		R_QuadInst data[MAX_QUAD_COUNT];
+		int idx;
+	} quads;
+	
+	// Font rendering
+	struct {
+		ID3D11ShaderResourceView *srv[2];
+		ID3D11SamplerState* sampler; 
+		R_SpriteInst data[MAX_SPRITES_COUNT];
+		int idx;
+	} font;
+	
+	
+	
+	// font information
+	PSHandle font_pshader;
+	VSHandle font_vshader;
+	BFHandle font_constant_buffer;
+	BFHandle font_sprite_buffer; 
+	
+	// widgets information
+	PSHandle widgets_pshader;
+	VSHandle widgets_vshader;
+	BFHandle widgets_cbuffer;
+	BFHandle widgets_quads_buffer; 
+} D_Context;
+
+static void
+DrawInit(D_Context *d) {
+	
+	
+	// font information
+	d->font_pshader = RendererCreatePSShader(d->r, "../font.hlsl", "ps_main");
+	d->font_vshader = RendererCreateVSShader(d->r, "../font.hlsl", "vs_main", NULL, 0);
+	
+	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
+	float font_constant_data[4] = {
+		2.0f / window_width,
+		-2.0f / window_height,
+		1.0f / ATLAS_WIDTH,
+		1.0f / ATLAS_HEIGHT
+	};
+	
+	d->font_constant_buffer =
+		RendererCreateBuffer(d->r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
+							 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
+	d->font_sprite_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_SpriteInst), MAX_SPRITES_COUNT, R_BIND_SHADER_RESOURCE, 
+													   { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED});
+	
+	// widgets information
+	d->widgets_pshader = RendererCreatePSShader(d->r, "../widgets.hlsl", "ps_main");
+	d->widgets_vshader = RendererCreateVSShader(d->r, "../widgets.hlsl", "vs_main", NULL, 0);
+	
+	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+	d->widgets_cbuffer = RendererCreateBuffer(d->r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
+													R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC,  R_CPU_ACCESS_WRITE });
+	
+	d->widgets_quads_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT, R_BIND_SHADER_RESOURCE, 
+														 { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED });
+}
+
+static void 
+DrawQuad(D_Context *d, Rect rect, Color color) {
+	Assert(d->quads.idx < MAX_QUAD_COUNT);
+	
+	if (0 <= rect.maxx && rect.minx <= d->r->viewport->Width && 
+		0 <= rect.maxy && rect.miny <= d->r->viewport->Height) {
+		d->quads.data[d->quads.idx].rect = rect;
+		d->quads.data[d->quads.idx].color = color;
+		d->quads.data[d->quads.idx].radius = 5;
+		d->quads.data[d->quads.idx].border = 2;
+		d->quads.idx++;
 	}
 	
 }
 
 static void 
-DrawDefaultText(R_D3D11Context *r, const char *text, size_t len,  float x, float  y) {
+DrawDefaultText(D_Context *d, const char *text, size_t len,  float x, float  y) {
 	R_SpriteInst sprite = { (float)x, (float)y, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
 	for (size_t i = 0; i < len; i++) {
 		sprite.atlas_pos.x = (text[i] - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
-		r->font.data[r->font.idx++] = sprite;
+		d->font.data[d->font.idx++] = sprite;
 		sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
 	}
+	
+}
+
+static void
+DrawSubmitRenderCommands(D_Context *d) {
+	R_D3D11Context *r = d->r;
+	// Draw Quads
+	{
+		// TODO(ziv): make sure that if graph has not changed fron last time
+		// there is no need to upload different data to the gpu. 
+		// which would reduce the data transfers to the gpu. 
+		if (d->quads.idx > 0) {
+			
+			// update buffers
+			float quads_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
+			RendererUpdateBuffer(r, d->widgets_quads_buffer, d->quads.data, d->quads.idx*sizeof(d->quads.data[0]));
+			RendererUpdateBuffer(r, d->widgets_cbuffer, quads_constants, sizeof(quads_constants));
+			
+			// render the quads
+			RendererVSSetShader(r, d->widgets_vshader); 
+			RendererVSSetBuffer(r, d->widgets_cbuffer);
+			RendererVSSetBuffer(r, d->widgets_quads_buffer);
+			
+			// TODO(ziv): Figure out how to control the viewport nad rendertargets
+			r->context->RSSetViewports(1, r->viewport);
+			RendererPSSetShader(r, d->widgets_pshader); 
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			
+			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			UINT sampleMask   = 0xffffffff;
+			r->context->OMSetBlendState(d->quads.blend_state_use_alpha, NULL, sampleMask);
+			
+			RendererDrawInstanced(r, 4, d->quads.idx, 0, 0);
+			
+		}
+	}
+	
+	// Draw Font
+	{
+		
+		if (r->dirty) {
+			// update constants buffer
+			float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
+			RendererUpdateBuffer(r, d->font_constant_buffer, font_constant_data, sizeof(font_constant_data));
+		}
+		RendererUpdateBuffer(r, d->font_sprite_buffer, d->font.data, d->font.idx*sizeof(d->font.data[0])); 
+		
+		
+		RendererVSSetShader(r, d->font_vshader);
+		RendererVSSetBuffer(r, d->font_constant_buffer);
+		RendererVSSetBuffer(r, d->font_sprite_buffer);
+		
+		r->context->RSSetViewports(1, r->viewport);
+		RendererPSSetShader(r, d->font_pshader);
+		r->context->PSSetShaderResources(1, 1, &d->font.srv[1]);
+		r->context->PSSetSamplers(0, 1, &d->font.sampler);
+		r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
+		RendererDrawInstanced(r, 4, d->font.idx, 0, 0);
+		
+	}
+	
 	
 }
 
@@ -1808,6 +1931,7 @@ typedef struct UI_Theme {
 typedef struct {
 	OS_Events *events;
 	R_D3D11Context *r;
+	D_Context *d;
 	Arena arena;
 	
 	float mouse_pos[2];
@@ -2108,8 +2232,13 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 			
 			size_on_axis += child->computed_size[axis]; 
 			
-			child = child->next;
+			
+			if (child->semantic_size[axis].strictness < 1) {
 			child_count++;
+			}
+			
+			child = child->next;
+			
 		}
 		
 		if (size_on_axis > widget->computed_size[axis]) {
@@ -2117,10 +2246,16 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 			
 			for (int i = 0; overflow > 0 && i < 3; i++) {
 				UI_Widget *temp = widget->child;
+				int children_amount = child_count; 
 				while (temp) {
 					
+					if (temp->semantic_size[axis].strictness >= 1.f) {
+						temp = temp->next;
+						continue; 
+					}
+					
 					// go over all children and apply
-					float diff = overflow / (float)child_count; 
+					float diff = overflow / (int)children_amount; 
 					float max_removeable_amount = temp->computed_size[axis]*(1-temp->semantic_size[axis].strictness);
 					float abs_diff = ABS(diff); 
 					float amount_to_apply = MIN(abs_diff, max_removeable_amount);
@@ -2140,11 +2275,10 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 					}
 					
 					overflow -= amount_to_apply;
-					child_count--;
-					temp = temp->next; 
-				}
+					children_amount--;
+						temp = temp->next; 
 			}
-			
+			}
 			
 		}
 		
@@ -2229,7 +2363,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			}
 			
 			// draw the quad to the screen
-			DrawQuad(ui->r, head->rect, final); 
+			DrawQuad(ui->d, head->rect, final); 
 		}
 		
 		if (head->flags & UI_DRAWTEXT) {
@@ -2249,7 +2383,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 				display_txt = dest;
 			}
 			
-			DrawDefaultText(ui->r, display_txt, display_size, 
+			DrawDefaultText(ui->d, display_txt, display_size, 
 							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
 		}
 		
@@ -2264,11 +2398,12 @@ static void UIPushParent(UI_Widget *parent);
 static inline UI_Widget *UIPopParent();
 
 static void
-UIInit(UI_Context *ctx, R_D3D11Context *r, OS_Events *events) {
+UIInit(UI_Context *ctx, D_Context *d, OS_Events *events) {
 	
 	memset(ctx, 0, sizeof(UI_Context));
 	ctx->events = events;
-		ctx->r = r;
+		ctx->r = d->r;
+		ctx->d = d;
 	
 	ctx->window = &ctx->widgets[WIDGETS_COUNT-1];
 	ctx->window->id = { WIDGETS_COUNT-1, 1, { 0, "main_window###0001" } };
@@ -2316,44 +2451,6 @@ UIBegin(UI_Context *ui, b32 dirty) {
 	
 }
 
-
-#if _DEBUG
-// NOTE(ziv): THIS IS JUST FOR DEBUGGING PURPOSES!!!!
-// I AM SAVED BY THIS FROM LITERAL TORTURE BY THIS BUG THAT 
-// HAUNTS MY DREAMS. 
-
-static void
-UIHelperPrintNodeGraph(UI_Widget *head, int level) {
-	if (!head) return; 
-	
-	// convert back to you c string
-	char buff[100]; 
-	memcpy(buff, head->id.value.data, head->id.value.size); 
-	buff[head->id.value.size] = '\0';
-	
-	for (int i = 0; i < level; i++) {
-		printf(" ");
-	}
-	
-	if (level == 0) {
-		printf("window\n"); 
-	}
-	else {
-		printf("%s %s key=%d\n", buff, head->id.alive ? "ALIVE" : "DEAD", head->id.key);
-	}
-	
-	UI_Widget *child = head->child; 
-	for (; child; child = child->next) {
-		UIHelperPrintNodeGraph(child, level+1);
-	}
-}
-
-static void 
-UIHelperPrintWidgetGraph() {
-	UI_Widget *head = ui->window; 
-	UIHelperPrintNodeGraph(head, 0); 
-}
-#endif 
 
 static void
 UIEnd(UI_Context *ui) {
@@ -3269,8 +3366,6 @@ int main()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
-	
-	
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
 	HWND window = Win32CreateWindow(); 
@@ -3281,9 +3376,104 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	R_D3D11Context *r = &renderer; 
 	RendererInit(&renderer, window);
 	
+	D_Context draw = {r}; 
+	D_Context *d = &draw;
+	DrawInit(d); 
+	
+	OS_Events events;
+	UI_Context ui_context;
+	UIInit(&ui_context, d, &events);
+	
+	Arena arena;
+	if (!MemArenaInit(&arena, 0x1000)) {
+		FatalError("Couldn't Allocated Memory");
+	}
+	
+	float lines[] = { 
+		 -1, 0, .5, .5, 
+		 1, 1, -1, -1 , 
+	};
+	
+	BFHandle line_buffer = RendererCreateBuffer(r, lines, sizeof(float), ArrayLength(lines), 
+												R_BIND_VERTEX_BUFFER, { });
+	
+	R_LayoutFormat line_format[] = {
+		{ "Position", R_FORMAT_R32G32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }, 
+	}; 
+	
+	VSHandle line_vs = RendererCreateVSShader(r, "../lines.hlsl", "vs", line_format, ArrayLength(line_format));
+	PSHandle line_ps = RendererCreatePSShader(r, "../lines.hlsl", "ps");
 	
 	TimeInit();
-	double start_building = Time(); 
+	
+	//~
+	
+	
+	// 
+	// Quad
+	//
+	
+	ID3D11BlendState1 *blend_state_use_alpha = NULL;
+	{
+		D3D11_BLEND_DESC1 blend_state = {0};
+		blend_state.RenderTarget[0].BlendEnable = TRUE;
+		blend_state.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		blend_state.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		blend_state.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		blend_state.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		blend_state.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		blend_state.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		blend_state.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
+	}
+	
+	d->quads.blend_state_use_alpha = blend_state_use_alpha;
+	//
+	// Font
+	//
+	
+	
+	// Texture Atlas
+	ID3D11ShaderResourceView* atlas_resource_view;
+	{
+		D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
+		texture_atlas_desc.Width             = ATLAS_WIDTH;
+		texture_atlas_desc.Height            = ATLAS_HEIGHT;
+		texture_atlas_desc.MipLevels         = 1;
+		texture_atlas_desc.ArraySize         = 1;
+		texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
+		texture_atlas_desc.SampleDesc.Count  = 1;
+		texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
+		texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
+		
+		D3D11_SUBRESOURCE_DATA atlas_data = {};
+		atlas_data.pSysMem     = atlas;
+		atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
+		
+		ID3D11Texture2D* atlas_texture;
+		r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
+		r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
+		atlas_texture->Release();
+	}
+		
+	
+	// Point Sampler
+	ID3D11SamplerState* font_sampler;
+	{
+		D3D11_SAMPLER_DESC font_sampler_desc = {};
+		font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		
+		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
+	}
+	
+	d->font.sampler = font_sampler;
+	d->font.srv[1] = atlas_resource_view;
+	
+	
 	
 	//~
 	// Model Data
@@ -3300,40 +3490,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	success = ObjLoadFile(model_path, verticies, &verticies_count, indicies, &indicies_count);
 	Assert(success && "Failed extracting model data");
 	
-	// Create Vertex And Index Buffers
-	ID3D11Buffer *vertex_buffer, *index_buffer;
-	{
-		D3D11_BUFFER_DESC vertex_descriptor = {};
-		vertex_descriptor.ByteWidth = (UINT)verticies_count*sizeof(Vertex);
-		vertex_descriptor.Usage = D3D11_USAGE_DEFAULT;
-		vertex_descriptor.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		D3D11_SUBRESOURCE_DATA vertex_data  = { verticies };
-		r->device->CreateBuffer(&vertex_descriptor, &vertex_data, &vertex_buffer);
-		
-		D3D11_BUFFER_DESC index_descriptor = {};
-		index_descriptor.ByteWidth = (UINT)indicies_count*sizeof(unsigned short);
-		index_descriptor.StructureByteStride = sizeof(unsigned short); // TODO(ziv): check whether I will need to move to 32 bit
-		index_descriptor.Usage = D3D11_USAGE_DEFAULT;
-		index_descriptor.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		D3D11_SUBRESOURCE_DATA index_data = { indicies };
-		r->device->CreateBuffer(&index_descriptor, &index_data, &index_buffer);
-	}
+	BFHandle vertex_buffer = RendererCreateBuffer(r, verticies, sizeof(Vertex), (unsigned int)verticies_count, R_BIND_VERTEX_BUFFER, { R_USAGE_DEFAULT} ); 
+	BFHandle index_buffer = RendererCreateBuffer(r, indicies, sizeof(u16), (unsigned int)indicies_count, R_BIND_INDEX_BUFFER, { R_USAGE_DEFAULT });
 	
-	// Vertex Shader Fromat Descriptor
-	const D3D11_INPUT_ELEMENT_DESC vs_input_desc[] = {
-		{ "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "Texture",  0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(struct Vertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	R_LayoutFormat format[] = {
+		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), R_INPUT_PER_VERTEX_DATA }, 
+		{ "Normal",   R_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), R_INPUT_PER_VERTEX_DATA }, 
+		{ "Texture",  R_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, uv), R_INPUT_PER_VERTEX_DATA }
 	};
 	
-	// Create Vertex And Pixel Shaders
-	ID3D11InputLayout  *layout = NULL;
-	ID3D11VertexShader *vshader = NULL;
-	ID3D11PixelShader  *pshader = NULL;
-	RendererD3D11GetShaders(r, &vshader, L"../shaders.hlsl",
-							&pshader, L"../shaders.hlsl",
-							&layout, vs_input_desc, ARRAYSIZE(vs_input_desc));
-	
+	VSHandle vshader = RendererCreateVSShader(r, "../shaders.hlsl", "vs_main", format, ArrayLength(format));
+	PSHandle pshader = RendererCreatePSShader(r, "../shaders.hlsl", "ps_main");
 	
 	struct VSConstantBuffer {
 		matrix transform;
@@ -3342,32 +3509,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		float3 lightposition;
 	};
 	
-	// Vertex shader constant buffer
-	ID3D11Buffer *cbuffer;
-	{
-		D3D11_BUFFER_DESC cbuffer_descriptor = {};
-		cbuffer_descriptor.ByteWidth = (sizeof(VSConstantBuffer) + 0xf) & 0xffffff0;
-		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
-		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &cbuffer);
-	}
-	
 	struct PSConstantBuffer {
 		float3 point_light_position;
 		float3 sun_light_direction;
 	};
 	
-	// Pixel shader constant buffer
-	ID3D11Buffer *ps_constant_buffer;
-	{
-		D3D11_BUFFER_DESC cbuffer_descriptor = {};
-		cbuffer_descriptor.ByteWidth = (sizeof(PSConstantBuffer) + 0xf) & 0xffffff0;
-		cbuffer_descriptor.Usage = D3D11_USAGE_DYNAMIC;
-		cbuffer_descriptor.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		cbuffer_descriptor.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		r->device->CreateBuffer(&cbuffer_descriptor, NULL, &ps_constant_buffer);
-	}
+	BFHandle cbuffer = RendererCreateBuffer(r, NULL, sizeof(VSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
+	BFHandle ps_constant_buffer = RendererCreateBuffer(r, NULL, sizeof(PSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
 	
 	// Create Sampler State
 	ID3D11SamplerState* sampler_state;
@@ -3417,10 +3565,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		free(bytes);
 	}
 	
-	
-	
-	
-	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
@@ -3432,49 +3576,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	RECT rc_old_clip;        // previous area for ClipCursor
 	GetClipCursor(&rc_old_clip);
 	GetWindowRect(window, &rc_clip);
-	
-	
-	OS_Events events;
-	UI_Context ui_context;
-	UIInit(&ui_context, r, &events);
-	
-	Arena arena;
-	if (!MemArenaInit(&arena, 0x1000)) {
-		FatalError("Couldn't Allocated Memory");
-	}
-	
-	
-	
-	
-	// font information
-	PSHandle font_pshader = RendererCreatePSShader(r, "../font.hlsl", "ps_main");
-	VSHandle font_vshader = RendererCreateVSShader(r, "../font.hlsl", "vs_main", NULL, 0);
-	
-	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
-	float font_constant_data[4] = {
-		2.0f / window_width,
-		-2.0f / window_height,
-		1.0f / ATLAS_WIDTH,
-		1.0f / ATLAS_HEIGHT
-	};
-	
-	BFHandle font_constant_buffer = RendererCreateBuffer(r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
-														 R_USAGE_DYNAMIC, R_BIND_CONSTANT_BUFFER, R_CPU_ACCESS_WRITE, 0);
-	BFHandle font_sprite_buffer = RendererCreateBuffer(r, NULL, sizeof(R_SpriteInst), MAX_SPRITES_COUNT, 
-													   R_USAGE_DYNAMIC, R_BIND_SHADER_RESOURCE, R_CPU_ACCESS_WRITE, 
-													   R_RESOURCE_MISC_BUFFER_STRUCTURED);
-	
-	// widgets information
-	PSHandle widgets_pshader = RendererCreatePSShader(r, "../widgets.hlsl", "ps_main");
-	VSHandle widgets_vshader = RendererCreateVSShader(r, "../widgets.hlsl", "vs_main", NULL, 0);
-	
-	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-	BFHandle widgets_cbuffer = RendererCreateBuffer(r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
-													R_USAGE_DYNAMIC,  R_BIND_CONSTANT_BUFFER,  R_CPU_ACCESS_WRITE, 0);
-	
-	BFHandle widgets_quads_buffer = RendererCreateBuffer(r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT,
-														 R_USAGE_DYNAMIC,  R_BIND_SHADER_RESOURCE,  R_CPU_ACCESS_WRITE,
-														 R_RESOURCE_MISC_BUFFER_STRUCTURED);
 	
 	
 	//~
@@ -3506,14 +3607,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.off = {0, 0, 0}; 
 	
 	//~
-	
+	float dt = 1/60;
 	ShowWindow(window, SW_SHOW);
 	
 	
 	
 	for (;;) {
-		start_building = Time();
-		
+		start_frame = Time();
 		
 		// event loop
 		events = OSProcessEvents();
@@ -3525,8 +3625,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		r->dirty = 0;
-		r->quads.idx = 0; 
-		r->font.idx = 0 ;
+		d->quads.idx = 0; 
+		d->font.idx = 0 ;
 		
 		// Handle window resize
 		RECT rect;
@@ -3541,7 +3641,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
-			Sleep(14); continue;
+			Sleep(15); continue;
 		}
 		
 		
@@ -3561,6 +3661,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 												&vshader, &layout);
 					if (r->vs_array[i]) r->vs_array[i]->Release();
 					r->vs_array[i] = vshader;
+					r->lay_array[i] = layout;
 					
 				}
 				
@@ -3588,7 +3689,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Update Mouse Clip area
 		GetWindowRect(window, &rc_clip);
-		
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera;
 			
@@ -3613,7 +3713,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//~
 		// UI
 		//
-
 		
 		static float value = 0; 
 		
@@ -3628,7 +3727,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (UIButton("Panel").clicked) {
 			show_top_rectangle= !show_top_rectangle; // toggle show panel
 		}
-		
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
@@ -3654,17 +3752,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		static int rely = 0; 
 		
 		if (show_panel) {
-			
 			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIChildrenSum(1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
 				UIPushParent(panel);
-				UIPushParent(UILayout(UI_AXIS2_Y, UIParentSize(1, 1), UITextContent(1), "floating panel layout"));
+			UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "floating panel layout"));
 			{
 				
 				static int show_inside_panel = 0;
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
-					
-					if (UIButton("v###1").clicked) {
+if (UIButton("v###1").clicked) {
 						show_inside_panel = !show_inside_panel;
 					}
 
@@ -3679,7 +3775,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
 					
-					UIPad(Str8Lit("padding"));
+					//UIPad(Str8Lit("padding"));
 					
 					if (UIButton("X###1").clicked) {
 						show_panel = 0;
@@ -3689,12 +3785,27 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				UIPopParent(); 
 				
 				if (show_inside_panel) {
-				if (UIButton("button2").activated) {
-					show_panel = 0;
+					if (UIButton("rotate x").activated) {
+						model_rotation.x += 0.1f;
 				}
+					if (UIButton("rotate y").activated) {
+						model_rotation.y += 0.1f;
+					}
+					if (UIButton("rotate z").activated) {
+						model_rotation.z += 0.1f;
+					}
 					
-					UIButton("1");
-					UIButton("2");
+					if (UIButton("scale x").activated) {
+						model_scale.x += 0.1f;
+					}
+					if (UIButton("scale y").activated) {
+						model_scale.y += 0.1f;
+					}
+					if (UIButton("scale z").activated) {
+						model_scale.z += 0.1f;
+					}
+					
+					
 					
 				}
 				
@@ -3709,30 +3820,41 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		
+		
 		//~
 		// Update Game State
 		//
-		end_frame = Time();
-		float dt = (float)(end_frame - start_frame);
-		
 		
 		for (int i = 0; i < events.idx; i++) {
 			OS_Event e = events.list[i]; 
 			
+			static float dx = 0, dy = 0;
 			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
 				if (show_free_camera) { 
-					float dx = (float)e.value[0];
-					float dy = (float)-e.value[1];
+					dx = (float)e.value[0];
+					dy = (float)-e.value[1];
 					
 					c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
 					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 				}
-				
 			}
+			
+			if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+				if (e.value[0] & MouseLeftButton) {
+					
+					float3 orig, dir; 
+					CameraPickingRay(&c, (float)window_width ,(float)window_height, dx, dy, &orig, &dir); 
+					
+					printf("%f %f %f\n", orig.x, orig.y, orig.z);
+					printf("%f %f %f\n", dir.x, dir.y, dir.z);
+					
+				}
+			}
+			
 		}
 		
-		float speed = 1+10*value;
-		CameraMove(&c, (key_d-key_a)*dt*speed, 0, (key_w-key_s)*dt*speed);
+		float speed = (1+value*10)*dt;
+		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
 		CameraBuild(&c);
 		
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
@@ -3751,13 +3873,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-			RendererD3D11UpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
+			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
 			
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
-			RendererD3D11UpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
+			RendererUpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
 			
 		}
 		
@@ -3766,28 +3888,29 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
 		// Draw Entity
-		{
+		 {
 			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 			
 			// Input Assembler
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			r->context->IASetInputLayout(layout);
 			const UINT stride = sizeof(Vertex);
 			const UINT offset = 0;
-			r->context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-			r->context->IASetIndexBuffer(index_buffer, DXGI_FORMAT_R16_UINT, 0);
 			
+			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[vertex_buffer.val & 0xffff], &stride, &offset);
+			r->context->IASetIndexBuffer(r->buffer_array[index_buffer.val & 0xffff], DXGI_FORMAT_R16_UINT, 0);
+
 			// Vertex Shader
-			r->context->VSSetShader(vshader, NULL, 0);
-			r->context->VSSetConstantBuffers(0, 1, &cbuffer);
+			RendererVSSetShader(r, vshader);
+			RendererVSSetBuffer(r, cbuffer);
 			
 			// Rasterizer Stage
 			r->context->RSSetViewports(1, &viewport);
 			r->context->RSSetState(r->rasterizer_cull_back);
 			
 			// Pixel Shader
-			r->context->PSSetShader(pshader, NULL, 0);
-			r->context->PSSetConstantBuffers(0, 1, &ps_constant_buffer);
+			RendererPSSetShader(r, pshader);
+			RendererPSSetBuffer(r, ps_constant_buffer);
+			
 			r->context->PSSetShaderResources(0, 1, &texture_view);
 			r->context->PSSetSamplers(0, 1, &sampler_state);
 			
@@ -3798,85 +3921,37 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
 		
-		// Draw Quads
-		{
-			// TODO(ziv): make sure that if graph has not changed fron last time
-			// there is no need to upload different data to the gpu. 
-			// which would reduce the data transfers to the gpu. 
-			if (r->quads.idx > 0) {
-				
-				// update buffers
-				float quads_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-				RendererUpdateBuffer(r, widgets_quads_buffer, r->quads.data, r->quads.idx*sizeof(r->quads.data[0]));
-				RendererUpdateBuffer(r, widgets_cbuffer, quads_constants, sizeof(quads_constants));
-				
-				// render the quads
-				RendererVSSetShader(r, widgets_vshader); 
-				RendererVSSetBuffer(r, widgets_cbuffer);
-				RendererVSSetBuffer(r, widgets_quads_buffer);
-				
-				// TODO(ziv): Figure out how to control the viewport nad rendertargets
-				r->context->RSSetViewports(1, r->viewport);
-				RendererPSSetShader(r, widgets_pshader); 
-				r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-				
-				float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-				UINT sampleMask   = 0xffffffff;
-				r->context->OMSetBlendState(r->quads.blend_state_use_alpha, NULL, sampleMask);
-				
-				RendererDrawInstanced(r, 4, r->quads.idx, 0, 0);
-				
-			}
+		if (0) {
+		// Input Assembler
+		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
+		const UINT stride = sizeof(float)*2;
+		const UINT offset = 0;
+		
+		r->context->IASetVertexBuffers(0, 1, &r->buffer_array[line_buffer.val & 0xffff], &stride, &offset);
+		RendererVSSetShader(r, line_vs);
+		r->context->RSSetViewports(1, &viewport);
+		//r->context->RSSetState(r->rasterizer_cull_back);
+		RendererPSSetShader(r, line_ps);
+		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			r->context->Draw(ArrayLength(lines)/2, 0);
 		}
 		
-		// Draw Font
-		{
-			
-			if (r->dirty) {
-				// update constants buffer
-				float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
-				RendererUpdateBuffer(r, font_constant_buffer, font_constant_data, sizeof(font_constant_data));
-			}
-			RendererUpdateBuffer(r, font_sprite_buffer, r->font.data, r->font.idx*sizeof(r->font.data[0])); 
-			
-			
-			RendererVSSetShader(r, font_vshader);
-			RendererVSSetBuffer(r, font_constant_buffer);
-			RendererVSSetBuffer(r, font_sprite_buffer);
-			
-			r->context->RSSetViewports(1, r->viewport);
-			RendererPSSetShader(r, font_pshader);
-			r->context->PSSetShaderResources(1, 1, &r->font.srv[1]);
-			r->context->PSSetSamplers(0, 1, &r->font.sampler);
-			r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
-			RendererDrawInstanced(r, 4, r->font.idx, 0, 0);
-			
-		}
-		
-		
+		DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
+		end_frame = Time(); 
+		dt = (float)(end_frame - start_frame);
 		start_frame = end_frame; // update time for dt calc
 	}
 	
 	release_resources:
 	
-	//
-	// Release resources
-	//
-	
 	InputShutdown(); // rawinput
-	
-	index_buffer->Release();
-	vertex_buffer->Release();
-	cbuffer->Release();
-	ps_constant_buffer->Release();
 	texture_view->Release();
 	sampler_state->Release();
-	layout->Release();
-	pshader->Release();
-	vshader->Release();
-	
+	// Draw DeInit
+	d->quads.blend_state_use_alpha->Release();
+	d->font.sampler->Release();
+	d->font.srv[1]->Release();
 	RendererDeInit(r);
-	
 	return 0;
 }
