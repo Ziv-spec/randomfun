@@ -169,6 +169,20 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
 
+// Create a general system for identifying changes to files using their path and
+// updating their inside information when changed. This system should be general 
+// so that any type of resource can be changed. For this I might need to create 
+// special functions that accept certain layout and are capable of doing the 
+// actual operation. s
+
+// Allow fast paths to render things in the renderer.
+// some way to package together all of the resources and juts to 
+// you know.. render it. Almost like a object that you can bind 
+// things to. Then you specify that you want to draw it and well.. 
+// it draws. 
+// This would help me to make the objects inside the scene
+
+
 // Expand capabilities of drawing lib
 // currenly I have many things which I would 
 // love to draw but I don't have the utilities 
