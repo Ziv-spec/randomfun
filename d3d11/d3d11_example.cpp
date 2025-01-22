@@ -97,6 +97,7 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] Draw
 //     [x] DrawQuad (drawing a general syleized quad for UI)
 //     [x] fix drawing issuess with border / radius 
+//     [x] Renderer and Draw seperation (DrawQuad should not use the renderer but a draw context)
 //   [ ] Create all types of buffers and store them (interface is a handle)
 //   [ ] Bind all types of buffers
 //   [ ] Allow Updating of buffers (uploading to gpu)
@@ -131,6 +132,12 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] remove UI_Layout it doesn't help really and makes things combersome and less understandable
 //   [x] use var args for functions accepting strings
 //   [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
+//   [x] resolving constraints robustness and accuracy improvement
+//   [ ] UI Customization 
+//     [x] border
+//     [ ] rounded corners
+//     [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
+//     [ ] bitmaps?
 //
 // [x] ===== Camera =====
 //   [x] Normal Camera
@@ -148,15 +155,7 @@ typedef struct { float r, g, b, a; } Color;
 //
 
 //  ============== goals for today ==============
-// [x] resolving constraints robustness and accuracy improvement
-// [x] Renderer and Draw seperation (DrawQuad should not use the renderer but a draw context)
 // [ ] Expand renderer capabilities (bitmaps etc..)
-// [ ] UI Customization
-//   [ ] rounded corners
-//   [ ] border
-//   [ ] color?
-//   [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
-//   [ ] bitmaps?
 // [ ] make input system as events and shit (working)
 // [ ] Expand renderer capabilities 
 //   [x] create buffers (constant/structured)
@@ -164,6 +163,18 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] hot reload shaders as needed 
 //   [ ] Create textures 
 //   [ ] Create blend states
+
+// [ ] Make Object selection
+//   [x] collide a ray with volume 
+//   [ ] consider makeing octtree to "simplify" collision detection
+//   [ ] shader to show selection
+
+// Expand capabilities of drawing lib
+// currenly I have many things which I would 
+// love to draw but I don't have the utilities 
+// set up to easily draw for debugging and non-
+// debugging purposes. 
+
 
 static void FatalError(const char* message)
 {
@@ -177,12 +188,17 @@ static void FatalError(const char* message)
 
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
+struct float4 { float x, y, z, w; };
 
-inline static float3 operator+=(const float3 v1, const float3 v2){ return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
+inline static float3 
+operator+= (const float3 v1, const float3 v2) { 
+	return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; 
+}
 inline static float3 operator+(const float3 v1, const float3 v2) { return float3{ v1.x+v2.x, v1.y+v2.y, v1.z+v2.z }; }
 inline static float3 operator-(const float3 v1, const float3 v2) { return float3{ v1.x-v2.x, v1.y-v2.y, v1.z-v2.z }; }
 inline static float3 operator*(const float3 v1, const float3 v2) { return float3{ v1.x*v2.x, v1.y*v2.y, v1.z*v2.z }; }
 inline static float3 operator*(const float3 v, const float c)    { return float3{ v.x*c, v.y*c, v.z*c }; }
+inline static float3 operator*(const float c, const float3 v)    { return float3{ v.x*c, v.y*c, v.z*c }; }
 
 inline static float lerp(float start, float end, float t) { return start + (end-start)*t; }
 
@@ -228,6 +244,33 @@ operator*(const matrix& m1, const matrix& m2)
         m1.m[3][0] * m2.m[0][2] + m1.m[3][1] * m2.m[1][2] + m1.m[3][2] * m2.m[2][2] + m1.m[3][3] * m2.m[3][2],
         m1.m[3][0] * m2.m[0][3] + m1.m[3][1] * m2.m[1][3] + m1.m[3][2] * m2.m[2][3] + m1.m[3][3] * m2.m[3][3],
     };
+}
+
+inline static float4
+operator*(const float4 &v, const matrix& m)
+{
+
+
+/* 
+      return {
+        m.m[0][0]*v.x + m.m[0][1]*v.y + m.m[0][2]*v.z + m.m[0][3]*v.w,
+        m.m[1][0]*v.x + m.m[1][1]*v.y + m.m[1][2]*v.z + m.m[1][3]*v.w,
+        m.m[2][0]*v.x + m.m[2][1]*v.y + m.m[2][2]*v.z + m.m[2][3]*v.w,
+        m.m[3][0]*v.x + m.m[3][1]*v.y + m.m[3][2]*v.z + m.m[3][3]*v.w,
+    };
+	   */
+
+
+
+	return {
+        m.m[0][0]*v.x + m.m[1][0]*v.y + m.m[2][0]*v.z + m.m[3][0]*v.w,
+        m.m[0][1]*v.x + m.m[1][1]*v.y + m.m[2][1]*v.z + m.m[3][1]*v.w,
+        m.m[0][2]*v.x + m.m[1][2]*v.y + m.m[2][2]*v.z + m.m[3][2]*v.w,
+        m.m[0][3]*v.x + m.m[1][3]*v.y + m.m[2][3]*v.z + m.m[3][3]*v.w,
+    };
+
+	
+	
 }
 
 static matrix
@@ -1099,6 +1142,7 @@ RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *ent
 		};
 		
 		r->device->CreateInputLayout(vs_format_desc, format_size, vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
+		free(vs_format_desc);
 	}
 	vblob->Release();
 }
@@ -1130,15 +1174,22 @@ RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *ent
 
 static VSHandle
 RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
-					   R_LayoutFormat *format, unsigned int format_size) {
+					   R_LayoutFormat *format, unsigned int format_count) {
 	
 	
 	VSHandle handle = { r->vs_idx };
 	r->vs_handles[r->vs_idx] = handle;
 	r->vs_file_names_and_time[r->vs_idx].file_name = file;
 	r->vs_file_names_and_time[r->vs_idx].entry_point= entry_point;
-	r->vs_file_names_and_time[r->vs_idx].format = format;
-	r->vs_file_names_and_time[r->vs_idx].format_size = format_size;
+	
+	
+	if (format) {
+		unsigned int format_size = sizeof(format[0])*format_count;
+		R_LayoutFormat *format_copy = (R_LayoutFormat *)MemArenaAlloc(r->arena, format_size);
+		memcpy(format_copy, format, format_size); 
+	r->vs_file_names_and_time[r->vs_idx].format = format_copy;
+	}
+	r->vs_file_names_and_time[r->vs_idx].format_size = format_count;
 	r->vs_idx++;
 	return handle;
 }
@@ -1312,7 +1363,7 @@ static void
 RendererDrawInstanced(R_D3D11Context *r, unsigned int vertex_count_per_instance, unsigned int instance_count, 
 					  unsigned int start_vertex_location, unsigned int start_instance_location) {
 	// TODO(ziv): add support for more topologies
-	r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	
 	r->context->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
 }
 
@@ -1361,11 +1412,11 @@ RendererD3D11GetShaders(R_D3D11Context *r,
 	pblob->Release();
 }
 
-static void *
-RendererBFHandleToPointer(R_D3D11Context *r, BFHandle handle) {
+static ID3D11Buffer **
+RendererBFToPointer(R_D3D11Context *r, BFHandle handle) {
 	int idx = handle.val & ((1 << (32-5))-1);
 	if (handle.val != r->buffer_handles[idx].val) return NULL;
-	return r->buffer_array[idx]; 
+	return &r->buffer_array[idx]; 
 }
 
 static void
@@ -1561,6 +1612,8 @@ RendererDeInit(R_D3D11Context *r) {
 	
 	for (int i = 0; i < r->vs_idx; i++) {
 		if (r->vs_array[i]) r->vs_array[i]->Release(); 
+		if (r->lay_array[i]) r->lay_array[i]->Release(); 
+		
 	}
 	
 	for (int i = 0; i < r->ps_idx; i++) {
@@ -1570,7 +1623,6 @@ RendererDeInit(R_D3D11Context *r) {
 	for (int i = 0; i < r->buffer_idx; i++) {
 		if (r->buffer_array[i]) r->buffer_array[i]->Release(); 
 		if (r->srv_array[i]) r->srv_array[i]->Release(); 
-		
 	}
 	
 	
@@ -1668,7 +1720,8 @@ RendererD3D11Present(R_D3D11Context *r) {
 typedef struct {
 	R_D3D11Context *r;
 	
-	
+	matrix *proj; 
+	matrix *view;
 	
 	// widgets
 	struct {
@@ -1685,7 +1738,10 @@ typedef struct {
 		int idx;
 	} font;
 	
-	
+	struct { 
+		float3 data[2*MAX_QUAD_COUNT]; 
+		int idx; 
+	} lines; 
 	
 	// font information
 	PSHandle font_pshader;
@@ -1698,11 +1754,19 @@ typedef struct {
 	VSHandle widgets_vshader;
 	BFHandle widgets_cbuffer;
 	BFHandle widgets_quads_buffer; 
+	
+	// lines information 
+	PSHandle lines_pshader;
+	VSHandle lines_vshader;
+	BFHandle lines_vbuffer;
+	BFHandle lines_cbuffer;
+	BFHandle lines_structured_buffer;
 } D_Context;
 
 static void
 DrawInit(D_Context *d) {
-	
+	Assert(d);
+	if (!d->r) FatalError("Couldn't initialize drawing since renderer was not passed");
 	
 	// font information
 	d->font_pshader = RendererCreatePSShader(d->r, "../font.hlsl", "ps_main");
@@ -1732,21 +1796,67 @@ DrawInit(D_Context *d) {
 	
 	d->widgets_quads_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT, R_BIND_SHADER_RESOURCE, 
 														 { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED });
+	
+	
+	// lines information
+	
+
+
+	R_LayoutFormat line_format[] = {
+		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }, 
+	}; 
+	
+	d->lines_vshader = RendererCreateVSShader(d->r, "../lines.hlsl", "vs", line_format, ArrayLength(line_format));
+	d->lines_pshader = RendererCreatePSShader(d->r, "../lines.hlsl", "ps");
+	
+	
+	float3 lines[] = { 
+		{-1,0,0}, 
+		{1,1,1},
+		{0.5f,0.4f,0.3f},
+		{1,1,1}
+	};
+	
+	d->lines_cbuffer = RendererCreateBuffer(d->r, NULL, sizeof(matrix), 1,
+														 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
+	d->lines_structured_buffer = RendererCreateBuffer(d->r, NULL, 2*sizeof(float3), MAX_QUAD_COUNT,
+													  R_BIND_SHADER_RESOURCE, { 
+														  R_USAGE_DYNAMIC, 
+														  R_CPU_ACCESS_WRITE, 
+														  R_RESOURCE_MISC_BUFFER_STRUCTURED 
+													  });
+	
+
+	
 }
 
 static void 
-DrawQuad(D_Context *d, Rect rect, Color color) {
+DrawQuad(D_Context *d, Rect rect, Color color, float radius, float border) {
 	Assert(d->quads.idx < MAX_QUAD_COUNT);
 	
 	if (0 <= rect.maxx && rect.minx <= d->r->viewport->Width && 
 		0 <= rect.maxy && rect.miny <= d->r->viewport->Height) {
 		d->quads.data[d->quads.idx].rect = rect;
 		d->quads.data[d->quads.idx].color = color;
-		d->quads.data[d->quads.idx].radius = 5;
-		d->quads.data[d->quads.idx].border = 2;
+		d->quads.data[d->quads.idx].radius = radius;
+		d->quads.data[d->quads.idx].border = border;
 		d->quads.idx++;
 	}
 	
+}
+
+static void 
+DrawLines(D_Context *d, float3 *lines, int line_count) {
+	
+	for (int i = 0; i < line_count*2; i++) { 
+		d->lines.data[d->lines.idx++] = lines[i]; 
+	}
+}
+
+static void 
+DrawLine(D_Context *d, float3 p0, float3 p1) {
+	float3 line[] = { p0, p1 }; 
+	DrawLines(d, line, 1);
 }
 
 static void 
@@ -1763,8 +1873,34 @@ DrawDefaultText(D_Context *d, const char *text, size_t len,  float x, float  y) 
 static void
 DrawSubmitRenderCommands(D_Context *d) {
 	R_D3D11Context *r = d->r;
+	
+	// Draw Lines
+	if (1){
+		
+		const UINT stride = sizeof(float3);
+		const UINT offset = 0;
+		
+			// Input Assembler
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+		//RendererUpdateBuffer(r, d->lines_vbuffer, d->lines.data, d->lines.idx*2*sizeof(float3));
+		
+		matrix transform = d->view[0] * d->proj[0];
+			RendererUpdateBuffer(r, d->lines_cbuffer, &transform , sizeof(transform));
+		RendererUpdateBuffer(r, d->lines_structured_buffer, d->lines.data, d->lines.idx*2*sizeof(float3));
+		
+		RendererVSSetBuffer(r, d->lines_cbuffer);
+		RendererVSSetBuffer(r, d->lines_structured_buffer);
+			RendererVSSetShader(r, d->lines_vshader);
+		
+		r->context->RSSetViewports(1, r->viewport);
+		RendererPSSetShader(r, d->lines_pshader);
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+		RendererDrawInstanced(r, 2, d->lines.idx, 0, 0);
+	}
+	
 	// Draw Quads
 	{
+		
 		// TODO(ziv): make sure that if graph has not changed fron last time
 		// there is no need to upload different data to the gpu. 
 		// which would reduce the data transfers to the gpu. 
@@ -1785,10 +1921,9 @@ DrawSubmitRenderCommands(D_Context *d) {
 			RendererPSSetShader(r, d->widgets_pshader); 
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 			
-			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			UINT sampleMask   = 0xffffffff;
 			r->context->OMSetBlendState(d->quads.blend_state_use_alpha, NULL, sampleMask);
-			
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 			RendererDrawInstanced(r, 4, d->quads.idx, 0, 0);
 			
 		}
@@ -1814,9 +1949,11 @@ DrawSubmitRenderCommands(D_Context *d) {
 		r->context->PSSetShaderResources(1, 1, &d->font.srv[1]);
 		r->context->PSSetSamplers(0, 1, &d->font.sampler);
 		r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
+		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		RendererDrawInstanced(r, 4, d->font.idx, 0, 0);
 		
 	}
+	
 	
 	
 }
@@ -1908,6 +2045,8 @@ struct UI_Widget {
 	float computed_size[UI_AXIS2_COUNT];
 	Rect rect; // final computed rect
 	
+	float radius, border;
+	
 	float hot_t, active_t;
 };
 
@@ -1948,6 +2087,9 @@ typedef struct {
 	UI_Widget *stack[MAX_WIDGET_STACK_SIZE];
 	int stack_idx;
 	
+	b32 equip_child; 
+	float equip_child_radius;
+	float equip_child_border;
 	
 	
 } UI_Context;
@@ -2363,7 +2505,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			}
 			
 			// draw the quad to the screen
-			DrawQuad(ui->d, head->rect, final); 
+			DrawQuad(ui->d, head->rect, final, head->radius, head->border); 
 		}
 		
 		if (head->flags & UI_DRAWTEXT) {
@@ -2534,6 +2676,7 @@ UIMakeWidget(String8 text, u32 flags) {
 	}
 	if (entry && UICompareKey(entry->id, id)) {
 		entry->id.alive = 1;
+		ui->equip_child = 0;
 		return entry;
 	}
 	
@@ -2574,6 +2717,16 @@ UIMakeWidget(String8 text, u32 flags) {
 		widget->axis= parent->axis;
 		widget->semantic_size[0] = parent->semantic_size[0];
 		widget->semantic_size[1] = parent->semantic_size[1];
+	}
+	
+	if (ui->equip_child) {
+		widget->radius = ui->equip_child_radius; 
+		widget->border = ui->equip_child_border; 
+			ui->equip_child = 0;
+	}
+	else {
+		widget->radius = 0; 
+		widget->border = 0;
 	}
 	
 	// ignore ### seperation
@@ -2741,6 +2894,12 @@ UIInteractWidget(UI_Widget *widget) {
 // Helpers (sugar for internal operations)
 // 
 
+static inline void UIEquipChildRadius(float radius) {  
+	ui->equip_child = 1; ui->equip_child_radius = radius;
+}
+static inline void UIEquipChildBorder(float border) {
+	ui->equip_child = 1; ui->equip_child_border = border;
+}
 static inline void UIEquipWidth(UI_Widget *widget, UI_Size size) { widget->semantic_size[0] = size; }
 static inline void UIEquipHeight(UI_Widget *widget, UI_Size size) { widget->semantic_size[1] = size; }
 static inline void UIEquipChildAxis(UI_Widget *widget, UI_Axis axis) { widget->axis = axis; }
@@ -3167,6 +3326,34 @@ CameraPickingRay(Camera *c, float w, float h,
 	*dir = f3normalize(world - c->loc);
 }
 
+//~
+// Collision
+//
+
+static b32 
+CollideRayTriangle(float3 orig, float3 dir, float3 *trig) {
+	// NOTE(ziv): This is a naive implementation 
+	// a performant one should be done in the future
+	
+	// The Möller–Trumbore intersection algorithm should be a 
+	// better solution (along with simd for performance) 
+	// That said I don't have the time to implement it so 
+	// I will make due with this naive solution: 
+	// https://www.cs.cornell.edu/courses/cs465/2003fa/homeworks/raytri.pdf
+	
+	// find intersection with plane
+	float3 norm = f3cross(trig[1]-trig[0], trig[2]-trig[0]); 
+	float t = -f3dot(norm, orig-trig[0]) / f3dot(norm, dir); 
+	float3 intersection = orig + t*dir;
+	
+	// find whether it is inside triangle
+	b32 result = 
+		f3dot(f3cross((trig[1] - trig[0]), (intersection - trig[0])), norm) > 0 && 
+		f3dot(f3cross((trig[2] - trig[1]), (intersection - trig[1])), norm) > 0 && 
+		f3dot(f3cross((trig[0] - trig[2]), (intersection - trig[2])), norm) > 0; 
+	
+	return result; 
+}
 
 //~
 // Object File Loader
@@ -3368,6 +3555,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 {
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
+	
+	
+	
+	
 	HWND window = Win32CreateWindow(); 
 	
 	InputInitialize(window);
@@ -3388,21 +3579,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	if (!MemArenaInit(&arena, 0x1000)) {
 		FatalError("Couldn't Allocated Memory");
 	}
-	
-	float lines[] = { 
-		 -1, 0, .5, .5, 
-		 1, 1, -1, -1 , 
-	};
-	
-	BFHandle line_buffer = RendererCreateBuffer(r, lines, sizeof(float), ArrayLength(lines), 
-												R_BIND_VERTEX_BUFFER, { });
-	
-	R_LayoutFormat line_format[] = {
-		{ "Position", R_FORMAT_R32G32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }, 
-	}; 
-	
-	VSHandle line_vs = RendererCreateVSShader(r, "../lines.hlsl", "vs", line_format, ArrayLength(line_format));
-	PSHandle line_ps = RendererCreatePSShader(r, "../lines.hlsl", "ps");
 	
 	TimeInit();
 	
@@ -3578,27 +3754,44 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	GetWindowRect(window, &rc_clip);
 	
 	
+	// 
+	// Draw triangle
+	// 
+	
+	float3 triangle[] = { 
+		{ -.5, -.5 , 0 },
+		{   0,  .5 , 0 },
+		{  .5, -.5 , 0 }
+	}; 
+	BFHandle trig_data = RendererCreateBuffer(r, triangle, sizeof(float3), ArrayLength(triangle), R_BIND_VERTEX_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE});
+	R_LayoutFormat trig_format[] = {
+		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }
+	};
+	VSHandle trig_vs = RendererCreateVSShader(r, "../trig.hlsl", "vs", trig_format, ArrayLength(trig_format));
+	PSHandle trig_ps = RendererCreatePSShader(r, "../trig.hlsl", "ps");
+			
+			
 	//~
 	// Main Game Loop
 	//
-	
-	
+			
+			
 	// projection matrix variables
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
-	float3 model_scale       = { 1.5f, 1.5f, 1.5f };
+	float3 model_scale       = { 1, 1, 1 }; // { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-	
+			
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 };
 	// point light
 	float3 lightposition = {  0, 0, 2 };
-	
-	
+			
+			
 	// more things that I need I guess...
 	double start_frame = Time(), end_frame;
-	
+			
 	// Camera
-	
+			
 	Camera c = {0};
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
@@ -3606,15 +3799,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	c.yaw = 3.14f/2;
 	c.off = {0, 0, 0}; 
 	
+	d->proj = &c.proj;
+	d->view = &c.view; 
+	
 	//~
 	float dt = 1/60;
 	ShowWindow(window, SW_SHOW);
-	
-	
-	
+			
+			
+			
 	for (;;) {
 		start_frame = Time();
-		
+							
 		// event loop
 		events = OSProcessEvents();
 		for (int i = 0; i < events.idx; i++) {
@@ -3623,11 +3819,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				goto release_resources;
 			}
 		}
-		
+							
 		r->dirty = 0;
 		d->quads.idx = 0; 
 		d->font.idx = 0 ;
-		
+							
 		// Handle window resize
 		RECT rect;
 		GetClientRect(window, &rect);
@@ -3638,13 +3834,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererD3D11Resize(r, width, height);
 			c.aspect_ratio = (float)width/(float)height;
 		}
-		
+							
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
 			Sleep(15); continue;
 		}
 		
 		
+							
 		//
 		// Update pixel and vertex shaders when changed
 		//
@@ -3662,11 +3859,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					if (r->vs_array[i]) r->vs_array[i]->Release();
 					r->vs_array[i] = vshader;
 					r->lay_array[i] = layout;
-					
+																			
 				}
-				
+															
 			}
-			
+											
 			for (int i = 0; i < r->ps_idx; i++) {
 				FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
 				if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
@@ -3681,17 +3878,16 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		
-		
-		
+							
 		//
 		// Enable/Disable Free Camera Mode
 		//
-		
+							
 		// Update Mouse Clip area
 		GetWindowRect(window, &rc_clip);
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera;
-			
+											
 			if (show_free_camera) {
 				// Confine the cursor to the application's window.
 				ClipCursor(&rc_clip);
@@ -3704,24 +3900,25 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			}
 		}
 		key_tab_pressed = false;
-		
+							
 		if (show_free_camera) {
 			SetCursorPos(window_width/2, window_height/2);
 		}
-		
-		
+							
+							
 		//~
 		// UI
 		//
-		
+							
 		static float value = 0; 
-		
-		
+							
+							
 		UIBegin(ui, r->dirty);
-		
+							
 		static b32 show_top_rectangle = 0; 
 		static int show_panel = 1;
-		
+							
+		UIEquipChildRadius(5); UIEquipChildBorder(2);
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
 		if (UIButton("Panel").clicked) {
@@ -3730,40 +3927,40 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
-
+	
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
-
+	
 			if (UIButton("Show Panel").clicked) {
 				show_panel = 1;
 			}
-			
+											
 		}
 		UIPopParent();
 		UIPopParent();
-		
-		
-		
+							
+							
+							
 		static int x = 150;
 		static int y = 100;
-		
+							
 		static int relx = 0; 
 		static int rely = 0; 
-		
+							
 		if (show_panel) {
 			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIChildrenSum(1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
 				UIPushParent(panel);
 			UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "floating panel layout"));
 			{
-				
+															
 				static int show_inside_panel = 0;
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
-if (UIButton("v###1").clicked) {
+	if (UIButton("v###1").clicked) {
 						show_inside_panel = !show_inside_panel;
 					}
-
+	
 					UI_Widget *rect1 = UICreateRect(UIParentSize(1, 0), UITextContent(1), x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
 					UIInteractWidget(rect1);
 					if (UIIsActive(rect1)) {
@@ -3774,16 +3971,16 @@ if (UIButton("v###1").clicked) {
 						relx = (int)ui->mouse_pos[0] - (int)panel->computed_rel_pos[0]; 
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
-					
+																			
 					//UIPad(Str8Lit("padding"));
-					
+																			
 					if (UIButton("X###1").clicked) {
 						show_panel = 0;
 					}
-					
+																			
 				}
 				UIPopParent(); 
-				
+															
 				if (show_inside_panel) {
 					if (UIButton("rotate x").activated) {
 						model_rotation.x += 0.1f;
@@ -3794,7 +3991,7 @@ if (UIButton("v###1").clicked) {
 					if (UIButton("rotate z").activated) {
 						model_rotation.z += 0.1f;
 					}
-					
+																			
 					if (UIButton("scale x").activated) {
 						model_scale.x += 0.1f;
 					}
@@ -3804,137 +4001,177 @@ if (UIButton("v###1").clicked) {
 					if (UIButton("scale z").activated) {
 						model_scale.z += 0.1f;
 					}
-					
-					
-					
+																			
+																			
+																			
 				}
-				
-				
+															
+															
 			}
 			UIPopParent(); 
 			UIPopParent(); 
-			
-			
+											
+											
 		}
 		UIEnd(ui);
-		
-		
-		
-		
+							
+							
+							
+							
 		//~
 		// Update Game State
 		//
 		
+		static float3 orig, dir; 
+		
 		for (int i = 0; i < events.idx; i++) {
 			OS_Event e = events.list[i]; 
-			
+											
 			static float dx = 0, dy = 0;
 			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
 				if (show_free_camera) { 
 					dx = (float)e.value[0];
 					dy = (float)-e.value[1];
-					
+																			
 					c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
 					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 				}
 			}
-			
-			if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+											else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
 				if (e.value[0] & MouseLeftButton) {
-					
-					float3 orig, dir; 
-					CameraPickingRay(&c, (float)window_width ,(float)window_height, dx, dy, &orig, &dir); 
-					
+																			
+					CameraPickingRay(&c, (float)window_width ,(float)window_height, ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
+																			
 					printf("%f %f %f\n", orig.x, orig.y, orig.z);
 					printf("%f %f %f\n", dir.x, dir.y, dir.z);
-					
+																			
 				}
 			}
-			
+											
 		}
-		
+							
 		float speed = (1+value*10)*dt;
 		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
 		CameraBuild(&c);
-		
+							
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
-		
-		
+							
+							
 		//~
 		// Render Game
 		//
-		
+							
 		// Update model-view matrix
 		{
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
-			
+											
 			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
-			
+											
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
 			RendererUpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
-			
+											
 		}
-		
+							
 		// clear background
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
-		
+							
 		// Draw Entity
-		 {
+		{
 			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
-			
+											
 			// Input Assembler
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			const UINT stride = sizeof(Vertex);
 			const UINT offset = 0;
-			
+											
 			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[vertex_buffer.val & 0xffff], &stride, &offset);
 			r->context->IASetIndexBuffer(r->buffer_array[index_buffer.val & 0xffff], DXGI_FORMAT_R16_UINT, 0);
-
+	
 			// Vertex Shader
 			RendererVSSetShader(r, vshader);
 			RendererVSSetBuffer(r, cbuffer);
-			
+											
 			// Rasterizer Stage
 			r->context->RSSetViewports(1, &viewport);
 			r->context->RSSetState(r->rasterizer_cull_back);
-			
+											
 			// Pixel Shader
 			RendererPSSetShader(r, pshader);
 			RendererPSSetBuffer(r, ps_constant_buffer);
-			
+											
 			r->context->PSSetShaderResources(0, 1, &texture_view);
 			r->context->PSSetSamplers(0, 1, &sampler_state);
-			
+											
 			// Output Merger
 			r->context->OMSetDepthStencilState(r->depth_stencil_state, 0);
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, r->zbuffer);
-			
+											
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
+							
+
+		
+		
+		d->lines.idx = 0;
+		DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
+		
+		
+		b32 intersecting = false;
+		float3 triangle_to_intersect[3] = {0};
+				matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
+		for (int i = 0; i < indicies_count; i += 3) {
+											
+			for (int j = 0; j < 3; j++) {
+				float4 pos = {0};
+				memcpy(&pos, verticies[indicies[i+j]].pos, sizeof(float3));
+				 pos.w = 1;
+				pos = pos * model_view_matrix;
+				
+				memcpy(&triangle_to_intersect[j], &pos, sizeof(float3));
+			}
+
+ 			
+
+			int intersecting = CollideRayTriangle(orig, dir, triangle_to_intersect);
+			if (intersecting) {
+
+				printf("intersecting %d\n", indicies[i]);
+				break; 
+			}
+			
+			
+			DrawLine(d, triangle_to_intersect[0], triangle_to_intersect[1] );
+			DrawLine(d, triangle_to_intersect[1], triangle_to_intersect[2] );
+			DrawLine(d, triangle_to_intersect[2], triangle_to_intersect[0] );
+			
+		}
+		
+		
 		
 		if (0) {
-		// Input Assembler
-		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-		const UINT stride = sizeof(float)*2;
-		const UINT offset = 0;
-		
-		r->context->IASetVertexBuffers(0, 1, &r->buffer_array[line_buffer.val & 0xffff], &stride, &offset);
-		RendererVSSetShader(r, line_vs);
-		r->context->RSSetViewports(1, &viewport);
-		//r->context->RSSetState(r->rasterizer_cull_back);
-		RendererPSSetShader(r, line_ps);
-		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-			r->context->Draw(ArrayLength(lines)/2, 0);
+											
+			RendererUpdateBuffer(r, trig_data, triangle_to_intersect,  sizeof(triangle_to_intersect));
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			const UINT stride = sizeof(float3);
+			const UINT offset = 0;
+			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[trig_data.val & 0xffff], &stride, &offset);
+			RendererVSSetShader(r, trig_vs);
+			r->context->RSSetViewports(1, &viewport);
+			RendererPSSetShader(r, trig_ps);
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			r->context->Draw(3, 0);
 		}
+
+		
 		
 		DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
