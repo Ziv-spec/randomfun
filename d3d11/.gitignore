@@ -1,7 +1,6 @@
 
 
 *.exe
-*.obj
 *.res
 *.cso
 *.lib
@@ -9,3 +8,4 @@
 *.raddbg
 *.pdb
 build/
+shadowmap_ref/
