@@ -24,7 +24,6 @@ struct PS_INPUT {
 
 PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 
-	//uint2 i = { vertexid & 2, (vertexid << 1 & 2) + 1 };
     uint2 i = { vertexid & 2, (vertexid << 1 & 2) ^ 3 };
 
 	float4 rect = widgets[widgetid].rect;
@@ -32,7 +31,14 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 						rect[i.y]*inv_window_height+1,
 						0., 1.);
 
-	PS_INPUT o = { pos, rect.x, rect.y, (rect.z-rect.x), (rect.w-rect.y),  widgets[widgetid].color, widgets[widgetid].radius, widgets[widgetid].border };
+	PS_INPUT o = { 
+		pos, 
+		rect.x, rect.y, 
+		(rect.z-rect.x), (rect.w-rect.y), 
+		widgets[widgetid].color, 
+		widgets[widgetid].radius, 
+		widgets[widgetid].border 
+	};
 	return o;
 }
 
@@ -58,7 +64,6 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 	float4 background_color = o.color;
 	float4 color = lerp(background_color, float4(0.1,0.2,0.3,1), t_rect_inside);
 	color.a *= t_rect_outside;
-
 
 	if (color.a == 0 ) discard;
 

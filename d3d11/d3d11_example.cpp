@@ -62,20 +62,15 @@ typedef struct { float r, g, b, a; } Color;
 // Resources to look at:
 // https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9 - the quest for wide outlines
 // https://ameye.dev/notes/rendering-outlines/                       - 5 ways to draw an outline
-// https://ameye.dev/notes/stylized-water-shader/                     - stylized water shader
 // https://wwwtyro.net/2019/11/18/instanced-lines.html               - instanced line rendering
 // https://w3.impa.br/~diego/projects/GanEtAl14/                     - massively parallel vector graphics (paper)
 // https://www.3dgep.com/understanding-quaternions/                  - understanding quarternions
 // https://lxjk.github.io/2016/10/29/A-Different-Way-to-Understand-Quaternion-and-Rotation.html
 // https://www.youtube.com/watch?v=Jhopq2lkzMQ&list=PLplnkTzzqsZS3R5DjmCQsqupu43oS9CFN&index=1
+// https://handmade.network/forums/t/8704-getting_a_window_message_from_outside_the_window_procedure_but_within_the_same_executable#29347
+// https://gist.github.com/mmozeiko/c136c1cfce9fe4267f3c8f7b90f8e4d4
+// https://gist.github.com/mmozeiko/b8ccc54037a5eaf35432396feabbe435
 
-// [1] https://learn.microsoft.com/en-us/windows/
-// [2] https://learn.microsoft.com/en-us/windows/win32/direct3d9/coordinate-systems?redirectedfrom=MSDN
-// [3] https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-per-component-math#matrix-ordering
-// [4] https://learnopengl.com/Getting-started/Camera
-// [5] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
-// [6] https://www.rfleury.com/p/ui-part-1-the-interaction-medium
-// [7] https://floooh.github.io/2018/06/17/handles-vs-pointers.html
 
 // TODO(ziv):
 // [ ] ===== OS =====
@@ -89,11 +84,11 @@ typedef struct { float r, g, b, a; } Color;
 //    [ ] controller input
 //
 // [ ] ===== Renderer ===== (things I know how to do, no necessarily things which a "renderer" is able to do
- //   [x] Texture mapping
+//   [x] Texture mapping
 //   [x] Obj dynamic lighting(global illumination + point light)
- //   [x] Font Rendering (bitmap version)
+//   [x] Font Rendering (bitmap version)
 //   [x] Face Culling
- //   [x] z-buffer
+//   [x] z-buffer
 //   [ ] Draw
 //     [x] DrawQuad (drawing a general syleized quad for UI)
 //     [x] fix drawing issuess with border / radius 
@@ -106,7 +101,7 @@ typedef struct { float r, g, b, a; } Color;
 // [ ] ===== UI =====
 //   [x] finally make the push-pop utilities for higherarchy building
 //   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
- //   [x] theme - uploaded to gpu once, rendered using it
+//   [x] theme - uploaded to gpu once, rendered using it
 //   [x] font rendering (text displayed on screen) 
 //    [x] make font stay same size on resize
 //    [x] buttons draw their font
@@ -148,10 +143,10 @@ typedef struct { float r, g, b, a; } Color;
 //
 // [ ] ===== Game =====
 //   [x] Obj loading (with position, textures, normals)
- //   [x] Obj dynamic transformation
+//   [x] Obj dynamic transformation
 //   [ ] Obj Outlines?
-	  //   [ ] Pixelated look
- //   [ ] Shadow Mapping? - or precompute all shadow information
+//   [ ] Pixelated look
+//   [ ] Shadow Mapping? - or precompute all shadow information
 //
 
 //  ============== goals for today ==============
@@ -163,32 +158,217 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] hot reload shaders as needed 
 //   [ ] Create textures 
 //   [ ] Create blend states
-
+//
 // [ ] Make Object selection
 //   [x] collide a ray with volume 
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
-
+//
 // Create a general system for identifying changes to files using their path and
 // updating their inside information when changed. This system should be general 
 // so that any type of resource can be changed. For this I might need to create 
 // special functions that accept certain layout and are capable of doing the 
-// actual operation. s
-
+// actual operation.
+//
 // Allow fast paths to render things in the renderer.
 // some way to package together all of the resources and juts to 
 // you know.. render it. Almost like a object that you can bind 
 // things to. Then you specify that you want to draw it and well.. 
 // it draws. 
 // This would help me to make the objects inside the scene
-
-
+//
 // Expand capabilities of drawing lib
 // currenly I have many things which I would 
 // love to draw but I don't have the utilities 
 // set up to easily draw for debugging and non-
 // debugging purposes. 
 
+// TODO(ziv): For graph building inside of the UIMakeWidget and other 
+// areas where the api uses nodes, create special functions handling all
+// of these types of interactions. Or at least consider making some
+// unified way of doing said operations 
+
+//==============================================================================
+// # Understanding the Graphics Pipeline[8]: 
+//
+// Pipline is somewhat like the following: 
+// APP -> API (d3d11) -> UMD (dll) -> OS/Driver Graphics Scheduler -> 
+// OS/Driver KMD (Command Buffer) -> PCIe lane -> Command Processor(Command Buffer) -> 
+// CPU/GPU Synchronization 
+//
+// API is how you access the GPU (manages resources, tracks state, may or may not validate shader code) 
+// UMD User Mode Driver (driver per application to compile shaders, memory management (high level), send commands to KMU)
+// Graphics Scheduler (slices access to hardware to support multi-app hardware access)
+// KMU Kernal Mode Driver (There is only one KMU, deals with hardware, it manages the command buffer, 
+// The bus (usually a PCIe lane unless the GPU and CPU are on the same die, slow)
+// Command Processor (reads Command buffer, buffers whatever it can as much as possible)
+//
+// # About Memory
+//
+// The GPU was built to handle large parallel tasks. For that reason many 
+// trade-offs were made to support this assumption. Memory has large latency 
+// but great throughput when compared to CPU memory. Random memory reads/writes
+// are bad for performance in general but on the GPU it seems to take a whole 
+// new level.
+//
+// Even slower is the bus. Signals travel from the CPU across the motherboard 
+// until they reach the GPU. This process is extremely slow since it takes time 
+// for these signals to travel the comparatively large distance the bus takes.
+// And for modern hardware that operates in the GHz range signal latency is 
+// large. ( I believe there is a good image to showcase the difference in speed
+// but I don't the link to it now )
+//
+// Now we know there are two places to store graphics resources. You can store 
+// them in local video memory on the GPU or on the main system memory. The 
+// decision for where to store information has a couple solutions each with 
+// their own trade-offs. You can use a couple address bits to specify where 
+// to store the information or you can use something called the MMU ( Memory 
+// Management Unit ). Specifically the MMU allows for copy-free defragmentation 
+// of memory when the GPU runs out of local video memory since it virtualizes
+// memory. https://www.farbrausch.de/~fg/gpu/gpu_memory.jpg
+//
+// There is also a DMA Direct Memory Access engine that allows the copying of 
+// memory around without the need to use the GPU 3d hardware/shader cores. It 
+// allows the copying of memory from main memory to video memory and the
+// reverse along with video memory to video memory. This piece of hardware 
+// is important when you consider the face that you need to constantly move 
+// memory into the GPU and sometimes out of the GPU to draw. This would in 
+// effect make the cost of doing such data movements at least not effect your 
+// CPU/GPU performance by much.
+//
+// # Pushing commands to GPU
+//
+// Let's take a look at how the CPU provides the command buffer to the GPU. 
+// Our CPU has the prepared command buffer ready. We use host PCIe interface 
+// to send the GPU commands or alternatively store the commands inside the 
+// video memory. For the latter case the KMU sets up a DMA transfer of the 
+// command buffer to the GPU so neither the CPU or the GPU shader cores have 
+// to worry about it. Then we take the data from video memory through our memory
+// subsystem. Now the commands are ready for processing and execution.
+//
+// # Command Processor 
+// https://www.farbrausch.de/~fg/gpu/command_processor.jpg
+//
+// The command processor first buffers the command buffer. Essentially 
+// prefetches commands and adds them to a fat buffer to avoid hiccups. This is 
+// done since there is only one command processor that eats these commands. 
+//
+// From that buffer it goes into the command processor front-end. This is
+// basically a state machine that decodes the commands and tells the type of 
+// command 2D or 3D or state command. It does that since the GPU hardware 
+// supports 2D commands although never explicitly seen through the API and had 
+// a distinct separation for them. State commands are commands that change the 
+// state of some global variable. Of course as we know from parallel programming
+// you can't just change the state of some variable and hope things work out
+// as they quite often don't. So there are popular methods for dealing with 
+// variable changes. Part 2 of the blog[8] documents that. But the main point 
+// is that this is none-trivial and has hardware support for making sure things 
+// stay fast. 
+//
+// # Synchronization 
+//
+// There are many ways to synchronize the CPU and the GPU. It is important to 
+// take note of a method that allows the CPU to track the rendering progress
+// inside of the GPU. It is commonly used and of course very powerful for 
+// the very reasons I am about to show. 
+// 
+// The tracking happens in registers inside of the GPU. The CPU sends commands 
+// and tells in them: "When you encounter command number X write to register 0
+// the value of the current command". This intern, allows the CPU when reading 
+// this special register 0 to know at which stage the GPU is in rendering the 
+// command buffer. Now that the CPU has this knowledge the KMU can reclaim 
+// resources that have been acquired by the GPU and do whatever it wants with 
+// them. Whether updating or releasing these resources.
+//
+// With this we also can think of new capabilities that the GPU might have. You
+// can tell it: "Once you reach this command, do something something". Once 
+// all shaders have finished reading their resources allow CPU to reclaim them. 
+// Or even once you have finished all rendering commands do something. These 
+// commands are called a "fences". And as you can see they allow us to do 
+// operations that require some prior conditions before they can be executed.
+//
+// One more thing is that the CPU also can report back to the GPU if it has 
+// some state which it is now in and the GPU can execute something. This is 
+// useful when you have buffers locked by the CPU (multi-threaded code) and you
+// want for performance reasons to already send the command and have the GPU 
+// execute once it finds that the buffers are not locked. 
+//
+// # D3D11 Pipeline
+//
+// IA — Input Assembler. Reads index and vertex data.
+// VS — Vertex shader. Gets input vertex data, writes out processed vertex data for the next stage.
+// PA — Primitive Assembly. Reads the vertices that make up a primitive and passes them on.
+// HS — Hull shader; accepts patch primitives, writes transformed (or not) patch control points, inputs for the domain shader, plus some extra data that drives tessellation.
+// TS — Tessellator stage. Creates vertices and connectivity for tessellated lines or triangles.
+// DS — Domain shader; takes shaded control points, extra data from HS and tessellated positions from TS and turns them into vertices again.
+// GS — Geometry shader; inputs primitives, optionally with adjacency information, then outputs different primitives. Also the primary hub for…
+// SO — Stream-out. Writes GS output (i.e. transformed primitives) to a buffer in memory.
+// RS — Rasterizer. Rasterizes primitives.
+// PS — Pixel shader. Gets interpolated vertex data, outputs pixel colors. Can also write to UAVs (unordered access views).
+// OM — Output merger. Gets shaded pixels from PS, does alpha blending and writes them back to the backbuffer.
+// CS — Compute shader. In its own pipeline all by itself. Only input is constant buffers+thread ID; can write to buffers and UAVs.
+//
+// # Vertex Shader NOTES:
+// 
+// In the past, on graphics units there were special cores that handled vertex
+// shading. These were simple cores that took vertices and transformed them down
+// to the next stage which was usually the pixel shader stage. Now at some point
+// hardware manufacturers decided to unify the PS and VS cores. This under this
+// unification, one type of core of course had to go. Vertex shader cores had 
+// to process upto let's say 1M vertices while pixel shader cores processed 
+// 1920*1080 pixels so about 2M pixels. It is not hard to guess which type of 
+// cores did not make the cut. So we ended up with more cores that had to handle
+// different types of workloads, and the FIFO type style of vertex input was no
+// longer fitting. So now there is a more multi-threaded friendly version that 
+// runs on modern hardware.
+//
+// # Texture shading
+// 
+// Texturing a triangle is on the pixel shader seems to have trade-offs of 
+// anything that has state that needs to change (look at synchronization stage) 
+// along with how much information is required by it in each and every pipline 
+// stage. So thinking a little about texturing is required TODO(ziv): (reread 
+// the post to write more about what I need to think about)
+//
+// # Rasterization 
+//
+// When writing my own rasterizer, I used the scan-line technique which 
+// modern hardware doesn't use. A more hardware optimized technique utilizes 
+// signed distance field of a triangle and checking whether the processing 
+// core is inside it along with hierarchical masking in order to allow for 
+// truly parallel processing of rasterization. This is interesting information 
+// since I was not familiar with this technique.
+//
+// # Transformations In Engines
+//
+// As this is a engine it should be noted that I take into account all of the 
+// transformations needed in order to draw some pixels onto the screen. Here 
+// is a chart to show all of the types of transformations required: 
+//
+// Model -> World -> View -> Clip -> NDC(Normalized Cords) -> Screen/Viewport
+//
+// Model  - the space the model is in when imported
+// World  - places the model inside the world           (Model Transform)
+// View   - takes the camera view into account          (View/Camera Transform)
+// Clip   - places the entire view frustum inside a box (Projection Transform)
+// NDC    - Normalized Device Coordinates is the clip normalized (Divide Z)
+// Screen - viewport coordinates 0-width, 0-height      (Width/Height Transform)
+//
+// All of these transformations are linear and inverse-able. 
+// Also note that I have commented my camera till death, so I have a explanation 
+// on all of the math behind the Camera implementation you see here. 
+// 
+//
+// [1] https://learn.microsoft.com/en-us/windows/
+// [2] https://learn.microsoft.com/en-us/windows/win32/direct3d9/coordinate-systems?redirectedfrom=MSDN
+// [3] https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-per-component-math#matrix-ordering
+// [4] https://learnopengl.com/Getting-started/Camera
+// [5] https://gist.github.com/vurtun/d41914c00b6608da3f6a73373b9533e5
+// [6] https://www.rfleury.com/p/ui-part-1-the-interaction-medium
+// [7] https://floooh.github.io/2018/06/17/handles-vs-pointers.html
+// [8] https://fgiesen.wordpress.com/2011/07/09/a-trip-through-the-graphics-pipeline-2011-index/
+//
+//==============================================================================
 
 static void FatalError(const char* message)
 {
@@ -203,6 +383,7 @@ static void FatalError(const char* message)
 struct matrix { float m[4][4]; };
 struct float3 { float x, y, z; };
 struct float4 { float x, y, z, w; };
+
 
 inline static float3 
 operator+= (const float3 v1, const float3 v2) { 
@@ -263,28 +444,12 @@ operator*(const matrix& m1, const matrix& m2)
 inline static float4
 operator*(const float4 &v, const matrix& m)
 {
-
-
-/* 
-      return {
-        m.m[0][0]*v.x + m.m[0][1]*v.y + m.m[0][2]*v.z + m.m[0][3]*v.w,
-        m.m[1][0]*v.x + m.m[1][1]*v.y + m.m[1][2]*v.z + m.m[1][3]*v.w,
-        m.m[2][0]*v.x + m.m[2][1]*v.y + m.m[2][2]*v.z + m.m[2][3]*v.w,
-        m.m[3][0]*v.x + m.m[3][1]*v.y + m.m[3][2]*v.z + m.m[3][3]*v.w,
-    };
-	   */
-
-
-
 	return {
         m.m[0][0]*v.x + m.m[1][0]*v.y + m.m[2][0]*v.z + m.m[3][0]*v.w,
         m.m[0][1]*v.x + m.m[1][1]*v.y + m.m[2][1]*v.z + m.m[3][1]*v.w,
         m.m[0][2]*v.x + m.m[1][2]*v.y + m.m[2][2]*v.z + m.m[3][2]*v.w,
         m.m[0][3]*v.x + m.m[1][3]*v.y + m.m[2][3]*v.z + m.m[3][3]*v.w,
     };
-
-	
-	
 }
 
 static matrix
@@ -543,9 +708,9 @@ static HWND g_window;
 
 static HWND
 Win32CreateWindow() { 
-	
+
 	HINSTANCE instance_handle = GetModuleHandleW(NULL);
-	
+
 	WNDCLASSEXA window_class = {0};
 	window_class.cbSize = sizeof(window_class);
 	window_class.lpfnWndProc = WinProc;
@@ -553,20 +718,20 @@ Win32CreateWindow() {
 	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
 	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
 	window_class.lpszClassName = "d3d11 example";
-	
+
 	ATOM atom = RegisterClassExA(&window_class);
 	Assert(atom && "Could not register class");
-	
+
 	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW,
-								  window_class.lpszClassName,
-								  APP_TITLE,
-								  WS_OVERLAPPEDWINDOW,
-								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
-								  NULL, NULL, window_class.hInstance, NULL);
+				  window_class.lpszClassName,
+				  APP_TITLE,
+				  WS_OVERLAPPEDWINDOW,
+				  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
+				  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window");
-	
+
 	g_window = window;
-	
+
 	return window;
 }
 
@@ -574,32 +739,28 @@ Win32CreateWindow() {
 static WINDOWPLACEMENT g_previous_window_placement = { sizeof(g_previous_window_placement) };
 
 static  void 
-Win32ToggleFullScreen(HWND window)
-{
+Win32ToggleFullScreen(HWND window) {
 	// NOTE(ziv): Code taken from raymond chen blog post
 	// https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
-	
+
 	DWORD style = GetWindowLong(window, GWL_STYLE);
 	if (style & WS_OVERLAPPEDWINDOW) {
 		MONITORINFO monitor_info = { sizeof(monitor_info) };
 		if (GetWindowPlacement(window, &g_previous_window_placement) &&
-			GetMonitorInfo(MonitorFromWindow(window,
-											 MONITOR_DEFAULTTOPRIMARY), &monitor_info)) {
-			SetWindowLong(window, GWL_STYLE,
-						  style & ~WS_OVERLAPPEDWINDOW);
+			GetMonitorInfo(MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY), &monitor_info)) {
+			SetWindowLong(window, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
 			SetWindowPos(window, HWND_TOP,
-						 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
-						 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-						 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-						 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+				 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+				 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+				 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+				 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 		}
 	} else {
-		SetWindowLong(window, GWL_STYLE,
-					  style | WS_OVERLAPPEDWINDOW);
+		SetWindowLong(window, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
 		SetWindowPlacement(window, &g_previous_window_placement);
 		SetWindowPos(window, NULL, 0, 0, 0, 0,
-					 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
-					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+			 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+			 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 	}
 }
 
@@ -1188,8 +1349,7 @@ RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *ent
 
 static VSHandle
 RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
-					   R_LayoutFormat *format, unsigned int format_count) {
-	
+			R_LayoutFormat *format, unsigned int format_count) {
 	
 	VSHandle handle = { r->vs_idx };
 	r->vs_handles[r->vs_idx] = handle;
@@ -1733,17 +1893,17 @@ RendererD3D11Present(R_D3D11Context *r) {
 
 typedef struct {
 	R_D3D11Context *r;
-	
+
 	matrix *proj; 
 	matrix *view;
-	
+
 	// widgets
 	struct {
 		ID3D11BlendState1* blend_state_use_alpha;
 		R_QuadInst data[MAX_QUAD_COUNT];
 		int idx;
 	} quads;
-	
+
 	// Font rendering
 	struct {
 		ID3D11ShaderResourceView *srv[2];
@@ -1751,24 +1911,24 @@ typedef struct {
 		R_SpriteInst data[MAX_SPRITES_COUNT];
 		int idx;
 	} font;
-	
+
 	struct { 
 		float3 data[2*MAX_QUAD_COUNT]; 
 		int idx; 
 	} lines; 
-	
+
 	// font information
 	PSHandle font_pshader;
 	VSHandle font_vshader;
 	BFHandle font_constant_buffer;
 	BFHandle font_sprite_buffer; 
-	
+
 	// widgets information
 	PSHandle widgets_pshader;
 	VSHandle widgets_vshader;
 	BFHandle widgets_cbuffer;
 	BFHandle widgets_quads_buffer; 
-	
+
 	// lines information 
 	PSHandle lines_pshader;
 	VSHandle lines_vshader;
@@ -1781,11 +1941,11 @@ static void
 DrawInit(D_Context *d) {
 	Assert(d);
 	if (!d->r) FatalError("Couldn't initialize drawing since renderer was not passed");
-	
+
 	// font information
-	d->font_pshader = RendererCreatePSShader(d->r, "../font.hlsl", "ps_main");
 	d->font_vshader = RendererCreateVSShader(d->r, "../font.hlsl", "vs_main", NULL, 0);
-	
+	d->font_pshader = RendererCreatePSShader(d->r, "../font.hlsl", "ps_main");
+
 	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
 	float font_constant_data[4] = {
 		2.0f / window_width,
@@ -1793,55 +1953,41 @@ DrawInit(D_Context *d) {
 		1.0f / ATLAS_WIDTH,
 		1.0f / ATLAS_HEIGHT
 	};
-	
-	d->font_constant_buffer =
-		RendererCreateBuffer(d->r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
-							 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
+
+	d->font_constant_buffer = RendererCreateBuffer(d->r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
+			R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
 	d->font_sprite_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_SpriteInst), MAX_SPRITES_COUNT, R_BIND_SHADER_RESOURCE, 
-													   { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED});
-	
+			   { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED});
+
 	// widgets information
-	d->widgets_pshader = RendererCreatePSShader(d->r, "../widgets.hlsl", "ps_main");
 	d->widgets_vshader = RendererCreateVSShader(d->r, "../widgets.hlsl", "vs_main", NULL, 0);
-	
+	d->widgets_pshader = RendererCreatePSShader(d->r, "../widgets.hlsl", "ps_main");
+
 	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 	d->widgets_cbuffer = RendererCreateBuffer(d->r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
-													R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC,  R_CPU_ACCESS_WRITE });
-	
-	d->widgets_quads_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT, R_BIND_SHADER_RESOURCE, 
-														 { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED });
-	
-	
-	// lines information
-	
+			R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC,  R_CPU_ACCESS_WRITE });
+
+	d->widgets_quads_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT, 
+			R_BIND_SHADER_RESOURCE, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED });
 
 
 	R_LayoutFormat line_format[] = {
 		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }, 
 	}; 
-	
+
 	d->lines_vshader = RendererCreateVSShader(d->r, "../lines.hlsl", "vs", line_format, ArrayLength(line_format));
 	d->lines_pshader = RendererCreatePSShader(d->r, "../lines.hlsl", "ps");
-	
-	
-	float3 lines[] = { 
-		{-1,0,0}, 
-		{1,1,1},
-		{0.5f,0.4f,0.3f},
-		{1,1,1}
-	};
-	
+
+
 	d->lines_cbuffer = RendererCreateBuffer(d->r, NULL, sizeof(matrix), 1,
-														 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
-	d->lines_structured_buffer = RendererCreateBuffer(d->r, NULL, 2*sizeof(float3), MAX_QUAD_COUNT,
+					 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
+	d->lines_structured_buffer = 
+		RendererCreateBuffer(d->r, NULL, 2*sizeof(float3), MAX_QUAD_COUNT,
 													  R_BIND_SHADER_RESOURCE, { 
 														  R_USAGE_DYNAMIC, 
 														  R_CPU_ACCESS_WRITE, 
 														  R_RESOURCE_MISC_BUFFER_STRUCTURED 
 													  });
-	
-
-	
 }
 
 static void 
@@ -1881,83 +2027,82 @@ DrawDefaultText(D_Context *d, const char *text, size_t len,  float x, float  y) 
 		d->font.data[d->font.idx++] = sprite;
 		sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
 	}
-	
+
 }
 
 static void
 DrawSubmitRenderCommands(D_Context *d) {
 	R_D3D11Context *r = d->r;
-	
+
 	// Draw Lines
 	if (1){
-		
+
 		const UINT stride = sizeof(float3);
 		const UINT offset = 0;
-		
-			// Input Assembler
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+		// Input Assembler
+		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 		//RendererUpdateBuffer(r, d->lines_vbuffer, d->lines.data, d->lines.idx*2*sizeof(float3));
-		
+
 		matrix transform = d->view[0] * d->proj[0];
-			RendererUpdateBuffer(r, d->lines_cbuffer, &transform , sizeof(transform));
+		RendererUpdateBuffer(r, d->lines_cbuffer, &transform , sizeof(transform));
 		RendererUpdateBuffer(r, d->lines_structured_buffer, d->lines.data, d->lines.idx*2*sizeof(float3));
-		
+
 		RendererVSSetBuffer(r, d->lines_cbuffer);
 		RendererVSSetBuffer(r, d->lines_structured_buffer);
-			RendererVSSetShader(r, d->lines_vshader);
-		
+		RendererVSSetShader(r, d->lines_vshader);
+
 		r->context->RSSetViewports(1, r->viewport);
 		RendererPSSetShader(r, d->lines_pshader);
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 		RendererDrawInstanced(r, 2, d->lines.idx, 0, 0);
 	}
-	
+
 	// Draw Quads
 	{
-		
+	
 		// TODO(ziv): make sure that if graph has not changed fron last time
 		// there is no need to upload different data to the gpu. 
 		// which would reduce the data transfers to the gpu. 
 		if (d->quads.idx > 0) {
-			
+
 			// update buffers
 			float quads_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
 			RendererUpdateBuffer(r, d->widgets_quads_buffer, d->quads.data, d->quads.idx*sizeof(d->quads.data[0]));
 			RendererUpdateBuffer(r, d->widgets_cbuffer, quads_constants, sizeof(quads_constants));
-			
 			// render the quads
 			RendererVSSetShader(r, d->widgets_vshader); 
 			RendererVSSetBuffer(r, d->widgets_cbuffer);
 			RendererVSSetBuffer(r, d->widgets_quads_buffer);
-			
+
 			// TODO(ziv): Figure out how to control the viewport nad rendertargets
 			r->context->RSSetViewports(1, r->viewport);
 			RendererPSSetShader(r, d->widgets_pshader); 
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-			
+
 			UINT sampleMask   = 0xffffffff;
 			r->context->OMSetBlendState(d->quads.blend_state_use_alpha, NULL, sampleMask);
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 			RendererDrawInstanced(r, 4, d->quads.idx, 0, 0);
-			
+
 		}
 	}
-	
+
 	// Draw Font
 	{
-		
+
 		if (r->dirty) {
 			// update constants buffer
 			float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
 			RendererUpdateBuffer(r, d->font_constant_buffer, font_constant_data, sizeof(font_constant_data));
 		}
 		RendererUpdateBuffer(r, d->font_sprite_buffer, d->font.data, d->font.idx*sizeof(d->font.data[0])); 
-		
-		
+
+
 		RendererVSSetShader(r, d->font_vshader);
 		RendererVSSetBuffer(r, d->font_constant_buffer);
 		RendererVSSetBuffer(r, d->font_sprite_buffer);
-		
+
 		r->context->RSSetViewports(1, r->viewport);
 		RendererPSSetShader(r, d->font_pshader);
 		r->context->PSSetShaderResources(1, 1, &d->font.srv[1]);
@@ -1965,11 +2110,8 @@ DrawSubmitRenderCommands(D_Context *d) {
 		r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
 		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		RendererDrawInstanced(r, 4, d->font.idx, 0, 0);
-		
+
 	}
-	
-	
-	
 }
 
 //~
@@ -1987,18 +2129,19 @@ DrawSubmitRenderCommands(D_Context *d) {
 // renders it
 // figures out interaction with the graph
 //
-// The building of the graph and interaction with it happens on the same function yet the interaction with the graph happens on the next frame.
+// The building of the graph and interaction with it happens on the same function 
+// yet the interaction with the graph happens on the next frame.
 //
 
 typedef enum {
 	UI_CLICKABLE  = 1 << 0,
-    UI_SLIDERABLE = 1 << 1,
-    UI_INPUTABLE  = 1 << 3,
-    UI_DRAGGABLE  = 1 << 4,
+	UI_SLIDERABLE = 1 << 1,
+	UI_INPUTABLE  = 1 << 3,
+	UI_DRAGGABLE  = 1 << 4,
 	UI_FLOAT_X    = 1 << 5,
-    UI_FLOAT_Y    = 1 << 6,
+	UI_FLOAT_Y    = 1 << 6,
 	UI_DRAWBOX    = 1 << 7,
-    UI_DRAWTEXT   = 1 << 8,
+	UI_DRAWTEXT   = 1 << 8,
 	UI_DRAWBORDER = 1 << 9, 
 	UI_ANIMATE_HOT = 1 << 10
 } UI_Flags;
@@ -2013,8 +2156,8 @@ enum UI_SizeKind {
 };
 
 typedef struct {
-	UI_SizeKind kind; // 4bytes 
-	float value; // if pixel kind, this decided the pixel count of the axis
+	UI_SizeKind kind;
+	float value;      // if pixel kind, this decided the pixel count of the axis
 	float strictness; // how strict we want the value itself to be
 } UI_Size;
 
@@ -2024,8 +2167,6 @@ enum UI_Axis {
 	UI_AXIS2_COUNT
 };
 
-// The layout can assume always a RIGHT to LEFT layout scheme 
-// where padding blocks are used to make the opposite alighnments
 
 typedef struct {
 	s32 key, alive;
@@ -2034,17 +2175,14 @@ typedef struct {
 
 typedef struct UI_Widget UI_Widget;
 struct UI_Widget {
-	// 16
 	u32 flags; 
 	
 	UIID id;
 	String8 text;
 	
-	// 28 -> 20 (new layout)
 	UI_Axis axis; // layout axis
 	UI_Size semantic_size[UI_AXIS2_COUNT];
 	
-	// 32 -> 8 (u16)
 	UI_Widget *parent;
 	UI_Widget *child;
 	UI_Widget *next;
@@ -2054,13 +2192,12 @@ struct UI_Widget {
 	UI_Widget *hash_next;
 	UI_Widget *hash_last;
 	
-	// 40 bytes can't change
 	float computed_rel_pos[UI_AXIS2_COUNT];
 	float computed_size[UI_AXIS2_COUNT];
 	Rect rect; // final computed rect
 	
+	// TODO(ziv): consider using radius per corner 
 	float radius, border;
-	
 	float hot_t, active_t;
 };
 
@@ -2110,17 +2247,14 @@ typedef struct {
 
 static UI_Context *ui = NULL;
 
-static int pruned = 0;
-
 static void
 UICorePruneDeadWidgets(UI_Widget *head) {
-	
+
 	if (!head) return; 
-	
+
 	if (!head->id.alive) { // dead
-		
-		pruned = 1;
-		
+
+
 		// remove from graph
 		
 		if (head->last) {
@@ -2612,22 +2746,20 @@ static void
 UIEnd(UI_Context *ui) {
 	Assert(ui);
 	UIPopParent(); // pop window
-	
+
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->window->id.alive = 1;
 		UICorePruneDeadWidgets(ui->window);
 	}
 
-	
-	
 	// layout
 	{
 		for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
 			UICoreLayout(ui->window, axis); 
 		}
-		}
-	
+	}
+
 	// draw
 	{
 		// kind of this is where I draw 
@@ -2639,7 +2771,7 @@ UIEnd(UI_Context *ui) {
 
 static void
 UIPushParent(UI_Widget *parent) {
-	
+
 	if (ui->stack_idx < MAX_WIDGET_STACK_SIZE) {
 		ui->stack[ui->stack_idx++] = parent;
 	}
@@ -2673,18 +2805,18 @@ UICompareKey(UIID k1, UIID k2) {
 static UI_Widget *
 UIMakeWidget(String8 text, u32 flags) {
 	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
-	
+
 	//
 	// Get entry from hashmap if exists
 	//
-	
+
 	String8 strid = text;
 	s32 mask = (WIDGETS_COUNT-1);
 	s32 key = (s32)Str8GetHash(strid, 234982374) & mask;
 	UIID id = { key, 0,  strid };
-	
+
 	UI_Widget *entry = ui->hashmap[key];
-	
+
 	for (; entry; entry = entry->hash_next) {
 		if (UICompareKey(entry->id, id))  break;
 	}
@@ -2693,16 +2825,16 @@ UIMakeWidget(String8 text, u32 flags) {
 		ui->equip_child = 0;
 		return entry;
 	}
-	
+
     //
     // Create and add the widget to the graph
     //
-	
-	
-	
+
+
+
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[ui->widgets_idx++];
-	
+
 	// add to hashmap
 	UI_Widget *temp = ui->hashmap[key];
 	if (temp) {
@@ -2713,12 +2845,12 @@ UIMakeWidget(String8 text, u32 flags) {
 	else {
 		ui->hashmap[key] = widget;
 	}
-	
+
 	// TODO(ziv): This should not be allocated in this arena thingy. should actually have 
 	// something to manage these strings since the way they are allocated and things is 
 	// more malloc/free style (which maybe I should use malloc/free idk). 
 	//String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
-	
+
 	// TODO(ziv): REPLACE MALLOC!!! 
 	// OR USE FREE IDK JUST FREE MAN
 	String8 id_string_copy = Str8Copy((char *)malloc(strid.size), strid);
@@ -2787,45 +2919,37 @@ UIMakeWidget(String8 text, u32 flags) {
             
 			// if it is, replace it. If not, just add...
 			if (Str8Compare(temp->id.value, widget->id.value)) {
-				
-				//printf("%s\n", widget->id.value.data);
-				//UIHelperPrintWidgetGraph(); 
-				
 				if (!temp->last && !temp->next) {
 					// only child 
 					parent->child = widget;
 				}
-				
+
 				widget->last = temp->last; 
 				widget->next = temp->next; 
-				
+
 				if (widget->last) widget->last->next = widget; 
 				if (widget->next) widget->next->last = widget; 
-				
-				
-				//UIHelperPrintWidgetGraph(); 
-				
 			}
 			else {
 				// just add it ... 
-				
+
 				temp->next = widget; 
 				widget->last = temp; 
 				widget->next = NULL; 
 			}
-			
+
         }
         else {
             widget->last = NULL;
             parent->child = widget;
         }
-		
+
     }
     else {
 		Assert(ui->window);
         FatalError("You pop way too much for sure");
     }
-	
+
     return widget;
 }
 
@@ -3298,7 +3422,7 @@ CameraScreenToWorld(Camera *c, float width, float height,
     float y = (screen_y / height) * 2.0f - 1.0f;
     float z = 2.0f * camera_z - 1.0f;
 	
-	// Clip => View
+	// Clip => View => World
 	// here we use the inverse projection, and inverse view 
 	// and just multiply everything together by our point 
 	// vector from clip space to transform it into world 
@@ -3570,39 +3694,36 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	
 	
-	
-	
-	
 	HWND window = Win32CreateWindow(); 
-	
+
 	InputInitialize(window);
-	
+
 	R_D3D11Context renderer = {0}; 
 	R_D3D11Context *r = &renderer; 
 	RendererInit(&renderer, window);
-	
+
 	D_Context draw = {r}; 
 	D_Context *d = &draw;
 	DrawInit(d); 
-	
+
 	OS_Events events;
 	UI_Context ui_context;
 	UIInit(&ui_context, d, &events);
-	
+
 	Arena arena;
 	if (!MemArenaInit(&arena, 0x1000)) {
 		FatalError("Couldn't Allocated Memory");
 	}
-	
+
 	TimeInit();
-	
+
 	//~
-	
-	
+
+
 	// 
 	// Quad
 	//
-	
+
 	ID3D11BlendState1 *blend_state_use_alpha = NULL;
 	{
 		D3D11_BLEND_DESC1 blend_state = {0};
@@ -3616,13 +3737,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		blend_state.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
 	}
-	
+
 	d->quads.blend_state_use_alpha = blend_state_use_alpha;
 	//
 	// Font
 	//
-	
-	
+
+
 	// Texture Atlas
 	ID3D11ShaderResourceView* atlas_resource_view;
 	{
@@ -3645,8 +3766,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
 		atlas_texture->Release();
 	}
-		
-	
+
+
 	// Point Sampler
 	ID3D11SamplerState* font_sampler;
 	{
@@ -3659,27 +3780,26 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
 	}
-	
+
 	d->font.sampler = font_sampler;
 	d->font.srv[1] = atlas_resource_view;
-	
-	
-	
+
+
 	//~
 	// Model Data
 	//
-	
+
 	char model_path[] = "../resources/cube.obj";
-	
+
 	size_t verticies_count, indicies_count;
 	bool success = ObjLoadFile(model_path,NULL, &verticies_count, NULL, &indicies_count);
 	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
-	
+
 	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex));
 	unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
 	success = ObjLoadFile(model_path, verticies, &verticies_count, indicies, &indicies_count);
 	Assert(success && "Failed extracting model data");
-	
+
 	BFHandle vertex_buffer = RendererCreateBuffer(r, verticies, sizeof(Vertex), (unsigned int)verticies_count, R_BIND_VERTEX_BUFFER, { R_USAGE_DEFAULT} ); 
 	BFHandle index_buffer = RendererCreateBuffer(r, indicies, sizeof(u16), (unsigned int)indicies_count, R_BIND_INDEX_BUFFER, { R_USAGE_DEFAULT });
 	
@@ -3688,22 +3808,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		{ "Normal",   R_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), R_INPUT_PER_VERTEX_DATA }, 
 		{ "Texture",  R_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, uv), R_INPUT_PER_VERTEX_DATA }
 	};
-	
+
 	VSHandle vshader = RendererCreateVSShader(r, "../shaders.hlsl", "vs_main", format, ArrayLength(format));
 	PSHandle pshader = RendererCreatePSShader(r, "../shaders.hlsl", "ps_main");
-	
+
 	struct VSConstantBuffer {
 		matrix transform;
 		matrix projection;
 		matrix normal_transform;
 		float3 lightposition;
 	};
-	
+
 	struct PSConstantBuffer {
 		float3 point_light_position;
 		float3 sun_light_direction;
 	};
-	
+
 	BFHandle cbuffer = RendererCreateBuffer(r, NULL, sizeof(VSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
 	BFHandle ps_constant_buffer = RendererCreateBuffer(r, NULL, sizeof(PSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
 	
@@ -3723,7 +3843,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		r->device->CreateSamplerState(&sampler_desc, &sampler_state);
 	}
-	
+
 	// Texture
 	ID3D11ShaderResourceView *texture_view;
 	{
@@ -4101,59 +4221,59 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		// Draw Entity
 		{
 			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
-											
+
 			// Input Assembler
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			const UINT stride = sizeof(Vertex);
 			const UINT offset = 0;
-											
+
 			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[vertex_buffer.val & 0xffff], &stride, &offset);
 			r->context->IASetIndexBuffer(r->buffer_array[index_buffer.val & 0xffff], DXGI_FORMAT_R16_UINT, 0);
-	
+
 			// Vertex Shader
 			RendererVSSetShader(r, vshader);
 			RendererVSSetBuffer(r, cbuffer);
-											
+
 			// Rasterizer Stage
 			r->context->RSSetViewports(1, &viewport);
 			r->context->RSSetState(r->rasterizer_cull_back);
-											
+
 			// Pixel Shader
 			RendererPSSetShader(r, pshader);
 			RendererPSSetBuffer(r, ps_constant_buffer);
-											
+
 			r->context->PSSetShaderResources(0, 1, &texture_view);
 			r->context->PSSetSamplers(0, 1, &sampler_state);
-											
+
 			// Output Merger
 			r->context->OMSetDepthStencilState(r->depth_stencil_state, 0);
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, r->zbuffer);
-											
+
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
-							
 
-		
-		
+
+
+
 		d->lines.idx = 0;
 		DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
-		
-		
+
+
 		b32 intersecting = false;
 		float3 triangle_to_intersect[3] = {0};
-				matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
+		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
 		for (int i = 0; i < indicies_count; i += 3) {
 											
 			for (int j = 0; j < 3; j++) {
 				float4 pos = {0};
 				memcpy(&pos, verticies[indicies[i+j]].pos, sizeof(float3));
-				 pos.w = 1;
+				pos.w = 1;
 				pos = pos * model_view_matrix;
 				
 				memcpy(&triangle_to_intersect[j], &pos, sizeof(float3));
 			}
 
- 			
+
 
 			int intersecting = CollideRayTriangle(orig, dir, triangle_to_intersect);
 			if (intersecting) {
@@ -4161,18 +4281,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				printf("intersecting %d\n", indicies[i]);
 				break; 
 			}
-			
-			
+
+
 			DrawLine(d, triangle_to_intersect[0], triangle_to_intersect[1] );
 			DrawLine(d, triangle_to_intersect[1], triangle_to_intersect[2] );
 			DrawLine(d, triangle_to_intersect[2], triangle_to_intersect[0] );
-			
+
 		}
-		
-		
-		
+
+
+
 		if (0) {
-											
+
 			RendererUpdateBuffer(r, trig_data, triangle_to_intersect,  sizeof(triangle_to_intersect));
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			const UINT stride = sizeof(float3);
@@ -4185,8 +4305,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->Draw(3, 0);
 		}
 
-		
-		
+
+
 		DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
 		end_frame = Time(); 
