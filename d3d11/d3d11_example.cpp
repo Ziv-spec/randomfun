@@ -164,6 +164,20 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
 //
+// TODO(ziv): TODAY!!! 
+// What I want the UI system to do to with events. So since the UI system is an 
+// immediate mode UI, this means that some elements which might be in the back 
+// trigger a action which will get overridden later by another element. Since 
+// that is the case, I can not just simply eat the event the moment it is 
+// creates change; requiring me to have the eating of events happen after all 
+// of the UI has finished the "interacting" part. I most likely will implement 
+// inside `UIBegin` `UIEnd` functions the os event creation (pressed?, extended 
+// functionality of UI) to support things that I would want to have (which 
+// might be keyboard movement support along with controller support for the UI 
+// since I might use it inside of the game once I finish implementing custom 
+// rendering commands and drawing of bitmaps which will happen if I would see
+// them as useful)
+//
 // Create a general system for identifying changes to files using their path and
 // updating their inside information when changed. This system should be general 
 // so that any type of resource can be changed. For this I might need to create 
@@ -182,11 +196,16 @@ typedef struct { float r, g, b, a; } Color;
 // love to draw but I don't have the utilities 
 // set up to easily draw for debugging and non-
 // debugging purposes. 
-
+//
 // TODO(ziv): For graph building inside of the UIMakeWidget and other 
 // areas where the api uses nodes, create special functions handling all
 // of these types of interactions. Or at least consider making some
 // unified way of doing said operations 
+
+// TODO(ziv): figure out how to standardize handle creation, destruction and 
+// management. I don't want to have to copy around the same code this many times as 
+// I have (for each new handle all new code which is mostly the same).
+
 
 //==============================================================================
 // # Understanding the Graphics Pipeline[8]: 
@@ -370,8 +389,7 @@ typedef struct { float r, g, b, a; } Color;
 //
 //==============================================================================
 
-static void FatalError(const char* message)
-{
+static void FatalError(const char* message) {
     MessageBoxA(NULL, message, "Error", MB_ICONEXCLAMATION);
     ExitProcess(0);
 }
@@ -895,12 +913,12 @@ OSTopEvent() {
 }
 
 static void
-OSPostEvent(OS_Event e) {
+OSEventPost(OS_Event e) {
 	g_events[g_events_idx++] = e;
 }
 
 static void
-OSEatEvent(OS_Event *e) {
+OSEventEat(OS_Event *e) {
 	e->kind = OS_EVENT_KIND_NULL; // this is a signal to skip the event
 }
 
@@ -995,15 +1013,15 @@ InputUpdate(LPARAM lparam) {
 		mouse_delta.x += raw->data.mouse.lLastX; 
 		mouse_delta.y += raw->data.mouse.lLastY; 
 		
-				if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
+		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
 			mouse_wheel_delta += raw->data.mouse.usButtonData;
 		}
 		
 		static int os_mouse_button[] = { MouseLeftButton, MouseRightButton, MouseMiddleButton };
 		static int raw_buttons[] = {
-RI_MOUSE_BUTTON_1_DOWN,RI_MOUSE_BUTTON_1_UP,
-RI_MOUSE_BUTTON_2_DOWN,RI_MOUSE_BUTTON_2_UP,
-RI_MOUSE_BUTTON_3_DOWN,RI_MOUSE_BUTTON_3_UP
+			RI_MOUSE_BUTTON_1_DOWN,RI_MOUSE_BUTTON_1_UP,
+			RI_MOUSE_BUTTON_2_DOWN,RI_MOUSE_BUTTON_2_UP,
+			RI_MOUSE_BUTTON_3_DOWN,RI_MOUSE_BUTTON_3_UP
 		};
 		for (int i = 0; i < ArrayLength(raw_buttons); i++) {
 			if (raw->data.mouse.ulButtons & raw_buttons[i]) {
@@ -1011,7 +1029,7 @@ RI_MOUSE_BUTTON_3_DOWN,RI_MOUSE_BUTTON_3_UP
 					(i & 1) ? OS_EVENT_KIND_MOUSE_BUTTON_UP : OS_EVENT_KIND_MOUSE_BUTTON_DOWN,
 					os_mouse_button[i/2]
 				};
-				OSPostEvent(button_event);
+				OSEventPost(button_event);
 			}
 		}
 		
@@ -1039,7 +1057,7 @@ static OS_Events OSProcessEvents() {
 			OS_EVENT_KIND_RAW_MOUSEMOVE, 
 			mouse_delta.x, mouse_delta.y
 		};
-		OSPostEvent(mousemove);
+		OSEventPost(mousemove);
 		
 	}
 	
@@ -1069,7 +1087,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 	switch (message)
     {
 		case WM_DESTROY: {
-			OSPostEvent({ OS_EVENT_KIND_QUIT });
+			OSEventPost({ OS_EVENT_KIND_QUIT });
 			//PostQuitMessage(0);
 			return 0;
 		} break;
@@ -1131,7 +1149,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 		
 		case WM_MOUSEMOVE: {
 			POINTS p = MAKEPOINTS(lparam);
-			OSPostEvent({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
+			OSEventPost({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
 		} break; 
 		
 		//
@@ -1169,7 +1187,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 }
 
 //~
-// D3D11 Renderer (uses handles as a medium for resource aquasition[7]) 
+// D3D11 Renderer (uses handles as a medium for resource acquisition[7]) 
 //
 
 struct Vertex {
@@ -1189,7 +1207,6 @@ typedef struct R_SpriteInst {
 	float2 screen_pos, size; 
 	int2 atlas_pos;
 } R_SpriteInst;
-
 
 typedef struct { int val; } PSHandle;
 typedef struct { int val; } VSHandle;
@@ -1428,17 +1445,17 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, u32 elem_size, u32 elem_coun
 	{
 		
 		D3D11_BUFFER_DESC desc = {0};
-		
+
 		desc.ByteWidth = (elem_size * elem_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
 		desc.Usage = info.usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[info.usage] : D3D11_USAGE_DEFAULT;
 		desc.BindFlags = g_renderer_to_d3d11_buffer_flags[bind];
 		desc.CPUAccessFlags = info.cpu_access ? g_renderer_to_d3d11_buffer_flags[info.cpu_access] : 0;
 		desc.MiscFlags = info.misc ? g_renderer_to_d3d11_buffer_flags[info.misc] : 0;
 		desc.StructureByteStride = elem_size;
-		
+
 		D3D11_SUBRESOURCE_DATA subresource_data = {data};
 		r->device->CreateBuffer(&desc, data ? &subresource_data : NULL, &buffer);
-		
+
 		if (info.misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
 			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
 			rv_desc.Format = DXGI_FORMAT_UNKNOWN;
@@ -1448,20 +1465,15 @@ RendererCreateBuffer(R_D3D11Context *r, void *data, u32 elem_size, u32 elem_coun
 		}
 		
 	}
-	
+
 	// last 5 bits refer to the type of buffer it is
 	BFHandle handle = { r->buffer_idx | (bind << (32-5)) };
 	r->buffer_array[r->buffer_idx] = buffer;
 	r->srv_array[r->buffer_idx] = buffer_srv;
 	r->buffer_handles[r->buffer_idx] = handle;
 	r->buffer_idx++; 
-	
-	return handle;
-	}
 
-static TEXHandle 
-RendererCreateTexture() {
-	
+	return handle;
 }
 
 static void
@@ -2061,7 +2073,7 @@ DrawSubmitRenderCommands(D_Context *d) {
 	// Draw Quads
 	{
 	
-		// TODO(ziv): make sure that if graph has not changed fron last time
+		// TODO(ziv): make sure that if graph has not changed from last time
 		// there is no need to upload different data to the gpu. 
 		// which would reduce the data transfers to the gpu. 
 		if (d->quads.idx > 0) {
@@ -2075,7 +2087,7 @@ DrawSubmitRenderCommands(D_Context *d) {
 			RendererVSSetBuffer(r, d->widgets_cbuffer);
 			RendererVSSetBuffer(r, d->widgets_quads_buffer);
 
-			// TODO(ziv): Figure out how to control the viewport nad rendertargets
+			// TODO(ziv): Figure out how to control the viewport and render-targets
 			r->context->RSSetViewports(1, r->viewport);
 			RendererPSSetShader(r, d->widgets_pshader); 
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
@@ -2224,6 +2236,7 @@ typedef struct {
 	D_Context *d;
 	Arena arena;
 	
+	int mouse_buttons_pressed; 
 	float mouse_pos[2];
 	
 	// UI Graph
@@ -2417,62 +2430,58 @@ UICoreLayoutRelPos(UI_Widget *widget, int axis) {
 	if (!widget)  return; 
 	
 	UI_Flags float_axis = (axis == UI_AXIS2_X) ? UI_FLOAT_X : UI_FLOAT_Y;
-	
 	if ((widget->flags & float_axis)) goto skip_computing_rel_pos; 
 	
-	
-		if (widget->last) {
-			
+	if (widget->last) {
+		
 		// skip widgets with floating x,y relative positions
 		// to get the last non floating widget
-			UI_Widget *temp = widget;
-			while (temp->last && (temp->last->flags & float_axis)) 
-				temp = temp->last;
-			
-			if (temp->last) {
-				// should contain a none floating x,y rel pos
-				if (axis == widget->axis) {
-					if (widget->last->axis == axis) {
+		UI_Widget *temp = widget;
+		while (temp->last && (temp->last->flags & float_axis)) temp = temp->last;
+		
+		if (temp->last) {
+			// should contain a none floating x,y rel pos
+			if (axis == widget->axis) {
+				if (widget->last->axis == axis) {
+					widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
+				}
+				else {
+					// conflicting layouts 
+					
+					// seek parent for axis. 
+					// if we are on that axis
+					// great now we can add it 
+					// if we are not on that axis
+					// bad. don't do shit
+
+					if (widget->parent->axis == axis) {
 						widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
 					}
 					else {
-						// conflicting layouts 
-						
-						// seek parent for axis. 
-						// if we are on that axis
-						// great now we can add it 
-						// if we are not on that axis
-						// bad. don't do shit
-
-						if (widget->parent->axis == axis) {
-							widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
-						}
-						else {
-							widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis];
-						}
-						
-					}
-				}
-				else {
-					
-					widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] ;
-					if (axis == widget->parent->axis) {
-						widget->computed_rel_pos[axis] +=  temp->last->computed_size[axis];
+						widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis];
 					}
 					
 				}
 			}
 			else {
-			// this is the last widget that doesn't have floating x and y 
-			// so I take the parent's size 
-				widget->computed_rel_pos[axis] = temp->parent->computed_rel_pos[axis];
+				
+				widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] ;
+				if (axis == widget->parent->axis) {
+					widget->computed_rel_pos[axis] +=  temp->last->computed_size[axis];
+				}
+				
 			}
-			
-			
 		}
-		else if (widget->parent) {
-			widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
+		else {
+		// this is the last widget that doesn't have floating x and y 
+		// so I take the parent's size 
+			widget->computed_rel_pos[axis] = temp->parent->computed_rel_pos[axis];
 		}
+			
+	}
+	else if (widget->parent) {
+		widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
+	}
 	
 	skip_computing_rel_pos:
 	UI_Widget *child = widget->child;
@@ -2524,7 +2533,7 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 			
 			
 			if (child->semantic_size[axis].strictness < 1) {
-			child_count++;
+				child_count++;
 			}
 			
 			child = child->next;
@@ -2567,9 +2576,9 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 					overflow -= amount_to_apply;
 					children_amount--;
 						temp = temp->next; 
+				}
 			}
-			}
-			
+				
 		}
 		
 	}
@@ -2587,7 +2596,7 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 		UICoreLayoutResolveConstraints(child, axis);
 	}
 }
-
+  
 static void
 UICoreLayout(UI_Widget *widget, int axis) {
 	
@@ -2601,31 +2610,30 @@ UICoreLayout(UI_Widget *widget, int axis) {
 static void
 UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	if (!head) return;
-	
+
     for (; head; head = head->next) {
 		// Compute final rects for all widgets
 		head->rect.minx = head->computed_rel_pos[0];
 		head->rect.miny = head->computed_rel_pos[1];
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
-		
+
 		//
 		// Render widgets
 		//
-		
-		if (head->flags >= UI_DRAWBOX) {
-			
+
+		if (head->flags & UI_DRAWBOX) {
+
 			// update hot/active time
 			float dt = 1.f/60.f; // TODO(ziv): move/remove this?
 			head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			if (!(head->flags & UI_SLIDERABLE)) {
 				head->active_t = lerp(head->active_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			}
-			
-			
+
+
 #define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
 			// get final color 
-			
 			Color background = { 0.05f, 0.1f, .2f, 1}; 
 			if (head->flags & UI_SLIDERABLE) {
 				float darken = 0.5;
@@ -2633,37 +2641,34 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 			}
 			Color hot = { 0.2f, 0.3f, .5f, 1};
 			Color active = GRAY;
-			Color final = {0};
+			Color final = background;
 			if (head == ui->active) {
 				head->active_t = (head->flags & UI_ANIMATE_HOT) ? head->active_t : 0;
 				final.r = lerp(background.r, active.r, head->active_t);
 				final.g = lerp(background.g, active.g, head->active_t);
 				final.b = lerp(background.b, active.b, head->active_t);
-				final.a = lerp(background.a, active.a, head->active_t);
+				final.a = 1;
 			}
 			else if ((head == ui->hot) ) {
 				head->hot_t = (head->flags & UI_ANIMATE_HOT) ? head->hot_t : 0;
 				final.r = lerp(background.r, hot.r, head->hot_t);
 				final.g = lerp(background.g, hot.g, head->hot_t);
 				final.b = lerp(background.b, hot.b, head->hot_t);
-				final.a = lerp(background.a, hot.a, head->hot_t);
+				final.a = 1;
 			}
-			else {
-				final = background;
-			}
-			
+
 			// draw the quad to the screen
 			DrawQuad(ui->d, head->rect, final, head->radius, head->border); 
 		}
-		
+
 		if (head->flags & UI_DRAWTEXT) {
 			float pad = 5; 
 			String8 txt = head->text;
-			
+
 			float rect_width = head->rect.maxx - head->rect.minx - 2 * pad; 
 			float amount_to_show =  rect_width / DefaultTextWidth(txt);
 			int display_size = (int)((float)txt.size *  MIN(amount_to_show, 1));
-			
+
 			const char *display_txt = txt.data;
 			char dest[0x100]; 
 			if (amount_to_show < 1.f) {
@@ -2672,12 +2677,12 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 				dest[display_size-2] = '.';
 				display_txt = dest;
 			}
-			
+
 			DrawDefaultText(ui->d, display_txt, display_size, 
-							head->computed_rel_pos[0]+pad, head->computed_rel_pos[1]+pad); 
+							head->rect.minx+pad, head->rect.miny+pad); 
 		}
-		
-		
+
+
 		if (head->child) {
 			UICoreLayoutFinalRect(ui, head->child);
 		}
@@ -2719,7 +2724,7 @@ UIBegin(UI_Context *ui, b32 dirty) {
 	}
 	ui->window->id.alive = 1;
 	
-	// some standard input thingy
+	// some standard input setup
 	{
 		// TODO(ziv): abstract this into a os system
 		bool window_not_focused = ui->r->window != GetActiveWindow();
@@ -2737,7 +2742,21 @@ UIBegin(UI_Context *ui, b32 dirty) {
 		
 	}
 	
-	
+	// Button actions for UI
+	{ 
+
+		for (int i = 0; i < ui->events->idx; i++) {
+			OS_Event e = ui->events->list[i];
+			if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+				ui->mouse_buttons_pressed |= e.value[0];
+			}
+			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
+				ui->mouse_buttons_pressed &= ~e.value[0];
+			}
+		}
+
+
+	}
 	
 }
 
@@ -2913,11 +2932,10 @@ UIMakeWidget(String8 text, u32 flags) {
 					Assert(false);
 					break;
 				}
-				
 				temp = temp->next;
 			}
             
-			// if it is, replace it. If not, just add...
+			// if it is, replace it
 			if (Str8Compare(temp->id.value, widget->id.value)) {
 				if (!temp->last && !temp->next) {
 					// only child 
@@ -2930,12 +2948,19 @@ UIMakeWidget(String8 text, u32 flags) {
 				if (widget->last) widget->last->next = widget; 
 				if (widget->next) widget->next->last = widget; 
 			}
-			else {
-				// just add it ... 
+			else { // If not, just add it after last alive node
+				// TODO(ziv): Make sure that when parent->child is the only 
+				// child and it is not alive, correct behavior ensues
 
-				temp->next = widget; 
-				widget->last = temp; 
-				widget->next = NULL; 
+				UI_Widget *last_alive = parent->child;
+				while (last_alive->next && last_alive->next->id.alive) { 
+					last_alive = last_alive->next;
+				}
+
+				widget->last = last_alive;
+				widget->next = last_alive->next;
+				if (widget->next) widget->next->last = widget; 
+				last_alive->next = widget; 
 			}
 
         }
@@ -2956,12 +2981,12 @@ UIMakeWidget(String8 text, u32 flags) {
 static UI_Output
 UIInteractWidget(UI_Widget *widget) {
     UI_Output output = {0};
-	
+
+	// TODO(ziv): REMOVE THIS!!!!! MOVE CODE INTO UIBEGIN/UIEND see in comments 
+	// on the top of the code shit.
+
 	static int mouse_buttons_down = 0;
-	
-	OS_Event *down = NULL; 
-	OS_Event *up = NULL;
-	
+
 	for (int i = 0; i < ui->events->idx; i++) {
 		OS_Event e = ui->events->list[i];
 		if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
@@ -2971,8 +2996,8 @@ UIInteractWidget(UI_Widget *widget) {
 			mouse_buttons_down &= ~e.value[0];
 		}
 	}
-	
-	
+
+
 	Rect rect = widget->rect;
     // Find if mouse is inside UI hit-box
 	if (ui->active && (ui->active->flags & UI_DRAGGABLE) && mouse_buttons_down & MouseLeftButton) {
@@ -2982,9 +3007,9 @@ UIInteractWidget(UI_Widget *widget) {
 		ui->mouse_pos[0] <= rect.maxx &&
 		rect.miny <= ui->mouse_pos[1] &&
 		ui->mouse_pos[1] <= rect.maxy) {
-		
+
 		ui->hot = widget;
-		
+
         // widget is active?
         if ((widget->flags & UI_CLICKABLE &&
 			  mouse_buttons_down & MouseLeftButton)) {
@@ -2993,21 +3018,20 @@ UIInteractWidget(UI_Widget *widget) {
         }
 		else  {
 			if (widget == ui->active)  output.clicked = 1;
-			
 			if (widget->flags & UI_CLICKABLE) {
 				ui->active = NULL;
 			}
 		}
-		
-		
+
+
     }
     else if ((ui->hot == widget || ui->active == widget) && 
 			 !(widget->flags & (UI_SLIDERABLE|UI_DRAGGABLE))) {
 		ui->hot = NULL;
         ui->active = NULL;
 	}
-	
-	
+
+
 	if (widget->flags & UI_SLIDERABLE  && ui->hot == widget) {
 		if (mouse_buttons_down & MouseLeftButton) {
 			float width = rect.maxx - rect.minx; 
@@ -3019,11 +3043,11 @@ UIInteractWidget(UI_Widget *widget) {
 			ui->hot = NULL;
 		}
 	}
-	
-	
+
+
 	output.slider_value = widget->active_t;
 	output.widget = widget;
-	
+
 	return output;
 	
 }
@@ -3032,21 +3056,15 @@ UIInteractWidget(UI_Widget *widget) {
 // Helpers (sugar for internal operations)
 // 
 
-static inline void UIEquipChildRadius(float radius) {  
-	ui->equip_child = 1; ui->equip_child_radius = radius;
-}
-static inline void UIEquipChildBorder(float border) {
-	ui->equip_child = 1; ui->equip_child_border = border;
-}
+static inline void UIEquipChildRadius(float radius) { ui->equip_child = 1; ui->equip_child_radius = radius; }
+static inline void UIEquipChildBorder(float border) { ui->equip_child = 1; ui->equip_child_border = border; }
 static inline void UIEquipWidth(UI_Widget *widget, UI_Size size) { widget->semantic_size[0] = size; }
 static inline void UIEquipHeight(UI_Widget *widget, UI_Size size) { widget->semantic_size[1] = size; }
 static inline void UIEquipChildAxis(UI_Widget *widget, UI_Axis axis) { widget->axis = axis; }
 static inline UI_Size UITextContent(float strictness) { return { UI_SIZEKIND_TEXTCONTENT, 0.f, strictness}; } 
 static inline UI_Size UIChildrenSum(float strictness) { return { UI_SIZEKIND_CHILDRENSUM, 0.f, strictness};  }
 static inline UI_Size UIPixels(float size, float strictness) { return { UI_SIZEKIND_PIXELS, size, strictness}; }
-static inline UI_Size UIParentSize(float percent_of_parent, float strictness)  { 
-	return { UI_SIZEKIND_PERCENTOFPARENT, percent_of_parent , strictness}; 
-}
+static inline UI_Size UIParentSize(float percent_of_parent, float strictness)  { return { UI_SIZEKIND_PERCENTOFPARENT, percent_of_parent , strictness}; }
 static inline b32 UIIsActive(UI_Widget *widget) { return widget == ui->active; }
 static inline b32 UIIsHot(UI_Widget *widget) { return widget == ui->hot; }
 
@@ -3059,7 +3077,7 @@ UICreateRect(UI_Size width, UI_Size height, int x, int y, const char *text, u32 
 	UI_Widget *widget = UIMakeWidget(Str8Lit(text), flags);
 	widget->semantic_size[0] = width;
 	widget->semantic_size[1] = height;
-	
+
 	widget->computed_rel_pos[UI_AXIS2_X] = (float)x;
 	widget->computed_rel_pos[UI_AXIS2_Y] = (float)y;
 	return widget;
@@ -3470,26 +3488,26 @@ CameraPickingRay(Camera *c, float w, float h,
 
 static b32 
 CollideRayTriangle(float3 orig, float3 dir, float3 *trig) {
-	// NOTE(ziv): This is a naive implementation 
-	// a performant one should be done in the future
-	
+	// NOTE(ziv): This is a naive implementation.
+	// A performant should be done in the future
+
 	// The Möller–Trumbore intersection algorithm should be a 
 	// better solution (along with simd for performance) 
 	// That said I don't have the time to implement it so 
 	// I will make due with this naive solution: 
 	// https://www.cs.cornell.edu/courses/cs465/2003fa/homeworks/raytri.pdf
-	
+
 	// find intersection with plane
 	float3 norm = f3cross(trig[1]-trig[0], trig[2]-trig[0]); 
 	float t = -f3dot(norm, orig-trig[0]) / f3dot(norm, dir); 
 	float3 intersection = orig + t*dir;
-	
+
 	// find whether it is inside triangle
 	b32 result = 
 		f3dot(f3cross((trig[1] - trig[0]), (intersection - trig[0])), norm) > 0 && 
 		f3dot(f3cross((trig[2] - trig[1]), (intersection - trig[1])), norm) > 0 && 
 		f3dot(f3cross((trig[0] - trig[2]), (intersection - trig[2])), norm) > 0; 
-	
+
 	return result; 
 }
 
@@ -3500,16 +3518,16 @@ CollideRayTriangle(float3 orig, float3 dir, float3 *trig) {
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
 	int len = 0, dec = 0;
-	
+
 	while (str[len] == ' ' || str[len] == '\n') len++;
-	
+
 	if (str[len] == '-') len++;
 	while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
-	
+
 	for (int idx = len - 1; idx >= 0; idx--)
 	{
 		char chr = str[idx] - '0';
-		
+
 		if      (chr == '-' - '0') num = -num;
 		else if (chr == '.' - '0') dec = 0;
 		else if (dec) {
@@ -3521,7 +3539,7 @@ static float ObjParseFloat(char* str, size_t *length) {
 		    mul *= 10.0;
 		}
 	}
-	
+
 	*length = len;
 	return num;
 }
@@ -3692,10 +3710,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 #endif
 {
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
-	
-	
-	HWND window = Win32CreateWindow(); 
 
+
+	HWND window = Win32CreateWindow(); 
 	InputInitialize(window);
 
 	R_D3D11Context renderer = {0}; 
@@ -3724,8 +3741,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Quad
 	//
 
+
 	ID3D11BlendState1 *blend_state_use_alpha = NULL;
 	{
+		// DestColor = SrcColor*SrcBlend <ColorOp> DestColor*DestBlend
+		// DestAlpha = SrcAlpha*SrcBlendAlpha <AlphaOp> DestAlpha*DestBlendAlpha
 		D3D11_BLEND_DESC1 blend_state = {0};
 		blend_state.RenderTarget[0].BlendEnable = TRUE;
 		blend_state.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
@@ -3852,7 +3872,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
 		Assert(bytes);
 		int pitch = 4 * tex_w;
-		
+
 		D3D11_TEXTURE2D_DESC texture_desc = {};
 		texture_desc.Width              = tex_w;
 		texture_desc.Height             = tex_h;
@@ -3862,36 +3882,36 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture_desc.SampleDesc.Count   = 1;
 		texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
 		texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-		
+
 		D3D11_SUBRESOURCE_DATA texture_data = {};
 		texture_data.pSysMem = bytes;
 		texture_data.SysMemPitch = pitch;
-		
+
 		ID3D11Texture2D* texture;
 		r->device->CreateTexture2D(&texture_desc, &texture_data, &texture);
 		r->device->CreateShaderResourceView(texture, NULL, &texture_view);
-		
+
 		texture->Release();
 		free(bytes);
 	}
-	
+
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
 	viewport.MaxDepth = 1;
 	r->viewport = &viewport;
-	
+
 	// TODO(ziv): MOVE THIS CODE!!!
 	RECT rc_clip;           // new area for ClipCursor
 	RECT rc_old_clip;        // previous area for ClipCursor
 	GetClipCursor(&rc_old_clip);
 	GetWindowRect(window, &rc_clip);
-	
-	
+
+
 	// 
 	// Draw triangle
 	// 
-	
+
 	float3 triangle[] = { 
 		{ -.5, -.5 , 0 },
 		{   0,  .5 , 0 },
@@ -3903,48 +3923,48 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	};
 	VSHandle trig_vs = RendererCreateVSShader(r, "../trig.hlsl", "vs", trig_format, ArrayLength(trig_format));
 	PSHandle trig_ps = RendererCreatePSShader(r, "../trig.hlsl", "ps");
-			
-			
+
+
 	//~
 	// Main Game Loop
 	//
-			
-			
+
+
 	// projection matrix variables
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1, 1, 1 }; // { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-			
+
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 };
 	// point light
 	float3 lightposition = {  0, 0, 2 };
-			
-			
+
+
 	// more things that I need I guess...
 	double start_frame = Time(), end_frame;
-			
+
 	// Camera
-			
+
 	Camera c = {0};
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	c.yaw = 3.14f/2;
 	c.off = {0, 0, 0}; 
-	
+
 	d->proj = &c.proj;
 	d->view = &c.view; 
-	
+
 	//~
 	float dt = 1/60;
 	ShowWindow(window, SW_SHOW);
-			
-			
-			
+
+
+	// main loop
 	for (;;) {
 		start_frame = Time();
-							
+
 		// event loop
 		events = OSProcessEvents();
 		for (int i = 0; i < events.idx; i++) {
@@ -3953,11 +3973,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				goto release_resources;
 			}
 		}
-							
+
 		r->dirty = 0;
 		d->quads.idx = 0; 
 		d->font.idx = 0 ;
-							
+
 		// Handle window resize
 		RECT rect;
 		GetClientRect(window, &rect);
@@ -3968,14 +3988,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererD3D11Resize(r, width, height);
 			c.aspect_ratio = (float)width/(float)height;
 		}
-							
+		
 		// Don't render when minimized
 		if (width == 0 && height == 0) {
 			Sleep(15); continue;
 		}
-		
-		
-							
+	
+
+
 		//
 		// Update pixel and vertex shaders when changed
 		//
@@ -3995,9 +4015,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->lay_array[i] = layout;
 																			
 				}
-															
 			}
-											
+
 			for (int i = 0; i < r->ps_idx; i++) {
 				FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
 				if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
@@ -4010,18 +4029,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				}
 			}
 		}
-		
-		
-							
+
+
+
 		//
 		// Enable/Disable Free Camera Mode
 		//
-							
+
 		// Update Mouse Clip area
 		GetWindowRect(window, &rc_clip);
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera;
-											
+
 			if (show_free_camera) {
 				// Confine the cursor to the application's window.
 				ClipCursor(&rc_clip);
@@ -4034,24 +4053,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			}
 		}
 		key_tab_pressed = false;
-							
+
 		if (show_free_camera) {
 			SetCursorPos(window_width/2, window_height/2);
 		}
-							
-							
+
+
 		//~
 		// UI
 		//
-							
+
 		static float value = 0; 
-							
-							
+
+
 		UIBegin(ui, r->dirty);
-							
+
 		static b32 show_top_rectangle = 0; 
 		static int show_panel = 1;
-							
+
 		UIEquipChildRadius(5); UIEquipChildBorder(2);
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
@@ -4061,42 +4080,44 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
-	
+
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
-	
+
 			if (UIButton("Show Panel").clicked) {
 				show_panel = 1;
 			}
-											
+
 		}
 		UIPopParent();
 		UIPopParent();
-							
-							
-							
+
 		static int x = 150;
 		static int y = 100;
-							
 		static int relx = 0; 
 		static int rely = 0; 
-							
+		static b32 collided_with_character = false; 
+
 		if (show_panel) {
+			UIEquipChildRadius(10); 
 			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIChildrenSum(1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
-				UIPushParent(panel);
+			UIPushParent(panel);
 			UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "floating panel layout"));
 			{
-															
+
 				static int show_inside_panel = 0;
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
-	if (UIButton("v###1").clicked) {
+
+					UIEquipChildRadius(10); 
+					if (UIButton("v###1").clicked) {
 						show_inside_panel = !show_inside_panel;
 					}
-	
+
 					UI_Widget *rect1 = UICreateRect(UIParentSize(1, 0), UITextContent(1), x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
 					UIInteractWidget(rect1);
+					// TODO(ziv): consider putting this logic in another place
 					if (UIIsActive(rect1)) {
 						x = (int)ui->mouse_pos[0]-relx; 
 						y = (int)ui->mouse_pos[1]-rely; 
@@ -4105,27 +4126,32 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 						relx = (int)ui->mouse_pos[0] - (int)panel->computed_rel_pos[0]; 
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
-																			
+
 					//UIPad(Str8Lit("padding"));
-																			
+
+					UIEquipChildRadius(10); 
 					if (UIButton("X###1").clicked) {
 						show_panel = 0;
 					}
-																			
 				}
 				UIPopParent(); 
-															
+
 				if (show_inside_panel) {
+
+					if (collided_with_character) {
+						UILabel(Str8Lit("Collided With Box"));
+					}
+					
 					if (UIButton("rotate x").activated) {
 						model_rotation.x += 0.1f;
-				}
+					}
 					if (UIButton("rotate y").activated) {
 						model_rotation.y += 0.1f;
 					}
 					if (UIButton("rotate z").activated) {
 						model_rotation.z += 0.1f;
 					}
-																			
+
 					if (UIButton("scale x").activated) {
 						model_scale.x += 0.1f;
 					}
@@ -4135,77 +4161,96 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					if (UIButton("scale z").activated) {
 						model_scale.z += 0.1f;
 					}
-																			
-																			
-																			
+
+
+
 				}
-															
-															
 			}
 			UIPopParent(); 
 			UIPopParent(); 
-											
-											
 		}
+
 		UIEnd(ui);
-							
-							
-							
-							
+
+
+
+
 		//~
 		// Update Game State
 		//
 		
 		static float3 orig, dir; 
-		
 		for (int i = 0; i < events.idx; i++) {
 			OS_Event e = events.list[i]; 
-											
+
 			static float dx = 0, dy = 0;
 			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
 				if (show_free_camera) { 
 					dx = (float)e.value[0];
 					dy = (float)-e.value[1];
-																			
+
 					c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
 					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 				}
 			}
-											else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
 				if (e.value[0] & MouseLeftButton) {
-																			
-					CameraPickingRay(&c, (float)window_width ,(float)window_height, ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
-																			
-					printf("%f %f %f\n", orig.x, orig.y, orig.z);
-					printf("%f %f %f\n", dir.x, dir.y, dir.z);
-																			
+					CameraPickingRay(&c, (float)window_width ,(float)window_height, 
+					ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
 				}
 			}
-											
+
 		}
-							
+
 		float speed = (1+value*10)*dt;
 		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
 		CameraBuild(&c);
-							
+
+
+		// TODO(ziv): move this into another location
+		d->lines.idx = 0;
+		DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
+
+		b32 intersecting = false;
+		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
+		for (int i = 0; i < indicies_count; i += 3) {
+			float3 triangle_to_intersect[3];
+			for (int j = 0; j < 3; j++) {
+				float4 pos = {0};
+				memcpy(&pos, verticies[indicies[i+j]].pos, sizeof(float3));
+				pos.w = 1;
+				pos = pos * model_view_matrix;
+				memcpy(&triangle_to_intersect[j], &pos, sizeof(float3));
+			}
+			intersecting = CollideRayTriangle(orig, dir, triangle_to_intersect);
+			if (intersecting) {
+				break; 
+			}
+		}
+
+		collided_with_character = intersecting;
+
+
+
+
+
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
-							
-							
+
 		//~
 		// Render Game
 		//
-							
+
 		// Update model-view matrix
 		{
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
-											
+
 			// Vertex Contstant Buffer
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
-											
+
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
@@ -4213,11 +4258,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererUpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
 											
 		}
-							
+
 		// clear background
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
-							
+
 		// Draw Entity
 		{
 			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -4227,8 +4272,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			const UINT stride = sizeof(Vertex);
 			const UINT offset = 0;
 
-			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[vertex_buffer.val & 0xffff], &stride, &offset);
-			r->context->IASetIndexBuffer(r->buffer_array[index_buffer.val & 0xffff], DXGI_FORMAT_R16_UINT, 0);
+			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
+			r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
 
 			// Vertex Shader
 			RendererVSSetShader(r, vshader);
@@ -4241,7 +4286,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			// Pixel Shader
 			RendererPSSetShader(r, pshader);
 			RendererPSSetBuffer(r, ps_constant_buffer);
-
 			r->context->PSSetShaderResources(0, 1, &texture_view);
 			r->context->PSSetSamplers(0, 1, &sampler_state);
 
@@ -4255,67 +4299,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 
 
-		d->lines.idx = 0;
-		DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
-
-
-		b32 intersecting = false;
-		float3 triangle_to_intersect[3] = {0};
-		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
-		for (int i = 0; i < indicies_count; i += 3) {
-											
-			for (int j = 0; j < 3; j++) {
-				float4 pos = {0};
-				memcpy(&pos, verticies[indicies[i+j]].pos, sizeof(float3));
-				pos.w = 1;
-				pos = pos * model_view_matrix;
-				
-				memcpy(&triangle_to_intersect[j], &pos, sizeof(float3));
-			}
-
-
-
-			int intersecting = CollideRayTriangle(orig, dir, triangle_to_intersect);
-			if (intersecting) {
-
-				printf("intersecting %d\n", indicies[i]);
-				break; 
-			}
-
-
-			DrawLine(d, triangle_to_intersect[0], triangle_to_intersect[1] );
-			DrawLine(d, triangle_to_intersect[1], triangle_to_intersect[2] );
-			DrawLine(d, triangle_to_intersect[2], triangle_to_intersect[0] );
-
-		}
-
-
-
-		if (0) {
-
-			RendererUpdateBuffer(r, trig_data, triangle_to_intersect,  sizeof(triangle_to_intersect));
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			const UINT stride = sizeof(float3);
-			const UINT offset = 0;
-			r->context->IASetVertexBuffers(0, 1, &r->buffer_array[trig_data.val & 0xffff], &stride, &offset);
-			RendererVSSetShader(r, trig_vs);
-			r->context->RSSetViewports(1, &viewport);
-			RendererPSSetShader(r, trig_ps);
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-			r->context->Draw(3, 0);
-		}
-
-
 
 		DrawSubmitRenderCommands(d);
+
 		RendererD3D11Present(r); // present the resulting image to the screen
 		end_frame = Time(); 
 		dt = (float)(end_frame - start_frame);
 		start_frame = end_frame; // update time for dt calc
 	}
-	
+
 	release_resources:
-	
+
 	InputShutdown(); // rawinput
 	texture_view->Release();
 	sampler_state->Release();

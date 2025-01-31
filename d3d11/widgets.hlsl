@@ -59,7 +59,7 @@ float4 ps_main(PS_INPUT o) : SV_Target {
 	float t_rect_inside = smoothstep(0, .1, distance); 
 	
 	float distance2 = BoarderdRectSDF(pos2-loc-half_size, size-half_size, o.radius);
-	float t_rect_outside = 1-smoothstep(-0.75, 0.5, distance2); 
+	float t_rect_outside = 1-smoothstep(-.75, .5, distance2); 
 
 	float4 background_color = o.color;
 	float4 color = lerp(background_color, float4(0.1,0.2,0.3,1), t_rect_inside);
