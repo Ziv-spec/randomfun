@@ -31,8 +31,8 @@ NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and je
 - Conformity (interfaces, features)
 - Education (Knowledge Fundamentals, Mentorship)
 - Institutional Decline (Effects on us)
-
-
+- Programming is very much like writing anything. You can have an idea of how something should be but only as you implement the system itself is when you actually materialize everything and make sure that it can work. Holes in your thinking are patched, kinks and past assumptions are resolved and the final product is almost always different than what you might have began with. This is also why programming is so hard as your plans almost never go smoothly requiring you to find all of the ways that failures take effect. 
+- can we learn from biological systems? Antifragile systems it is.
 
 For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
 
@@ -100,15 +100,9 @@ For this reason when designing and building a system we should look to simplify 
 - splitting requirements into smaller parts
 - increase requirements to capture more behavior than you need
 
-
 For many engineering disciplines this complexity manifests itself the repetition of similar parts. Designing todays electronics is a prime example of such repetition where many components have been standardized. 
 
-
 Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta mess complex systems tend to be harder to modify then their simpler equivalents. Software is unique in this space as the increase in its complexity is invisible. When building a car you can see clearly when an engine has more parts and is more complex then it's predecessor. When building software you can't notice when the program has become significantly more complex. Most programmers use line count as a measure for complexity but it is only a partial measure. A 10,000 line program which does nothing but print 1 is less complex than a 10,000 line game. The simple fact that software complexity can not be meaningfully measured using a high quality property means that programmers can't know what to look for. What more is even if we have a metric like loc (lins of code) it's effectiveness deminishes over time because of goodhart's law. Tinygrad is a great example for how goodarths law effects metric based programming. Even if we count the lines in a vertical fashion in the tinygrad project horizontal space has become extremely important to utilize and dense. To a large degree this is a way that people optimize for line count while not doing the actual job of simplifying. It's a easy escape. This is what we want to avoid, and can't seem to be able to unless, of course, someone can see through this trickery and strive for the goal of simplicity. Chasing metrics is not the solution, what we need is a new culture.
-
-
-
-
 
 [^1]: https://kristoff.it/blog/simple-not-just-easy/
 [^2]: https://www.youtube.com/watch?v=LKtk3HCgTa8
@@ -118,17 +112,24 @@ https://en.wikipedia.org/wiki/Kolmogorov_complexity
 
 # Meaning
 
-The world is full of meaning that we try to decode and convey, but what is meaning? If you look around during the day the world seems colorful and bright, containing many beautiful colors, sights, sounds, that bless your senses. Just imagine walking on the lush green grass near a great blue lake, gazing at the trees while hearing the water going down stream; you notice a musical chirp of local birds as you advance forward, light dance off puddles near. You stop at the sight of a purple flower with a butterfly sitting atop, amusing yourself, you wait til the flower is left alone, crouch to smell it's odor and happily laugh as your senses are filled with nature's beauty. 
+The world is full of meaning that we try to decode and convey, but what is meaning? If you look around during the day the world seems colorful and bright, containing many beautiful colors, sights, sounds, that bless your senses. Just imagine walking on the lush green grass near a great blue lake, gazing at the trees while hearing the water going down stream; you notice a musical chirp of local birds as you advance forward, light dance off puddles near. You stop at the sight of a purple flower with a butterfly sitting atop, amusing yourself, you wait til the flower is left alone, crouch to smell it's odor, and happily laugh as your senses are filled with nature's beauty. 
 
-If you pause and reflect on your actions now, you might have noticed your brain had made up a visualization using the words written on your screen. It is incredible that your brain can translate words in such a way but, what if you did not know how to read English? You would not be able to visualize what this text tried to convey. What if you had no text at all? In that case you would again find yourself not visualizing and instead continue doing what you were doing previously. In this sense, the text offers a foundation upon which you, the reader, brings it to life. Meaning, then, shifts between content and interpretation in back and forth motion, requiring both the correct content and interpreter for meaning exist. 
+If you pause and reflect on your actions now, you might have noticed your brain had made up a visualization using the words written on your screen. It is incredible that your brain can translate words in such a way but, what if you did not know how to read English? You would not be able to visualize what this text tried to convey. What if you had no text at all? In that case you would again find yourself not visualizing and instead continue doing what you were doing previously. What if you were born in prison and never allowed to see natures beauty? The words in this text would pass through you as though they don't exist. In this sense, the text offers a foundation upon which you, the reader, brings it to life. Meaning, then, shifts between content and interpretation in back and forth motion, requiring both the correct content and interpreter for meaning exist. 
 
 In his seminal text Godel Escher Bach, Hofstadter states that meaning itself is a strange dance between content and interpretation. For meaning to be found, content, which by itself meaningless must be interpreted. When standing on their own, content and interpretation are not in-fact not fixed; they are interchangeable. GEB illustrates this by imagining a world where DNA is similar to all organisms and the decoding mechanism is what makes them unique. For example a cat and a fish would contain the same DNA, but the decoding mechanisms which made them grow is what differentiates between them. The genetic information would then not be contained in the DNA but in the decoding mechanisms themselves. The fact that the decoding mechanisms for life are similar while DNA varies is what makes DNA the content and decoding mechanisms the interpreter. 
 
-Hofstadter expands on the subject by showing just how complicated the dance can get. Our conciseness as he sees is a strange loop; a loop in which the physical reality serves as a platform upon which everything stands. Neurons pass signals which effect thoughts we have and thoughts we have effect the very same neurons that made these thoughts. The full meaning of our thoughts then, is contained both in the neurons that cause them and in the thoughts themselves, messily rotating between levels of self-reference in a "strange loop".
+Hofstadter expands on the subject by showing just how complicated the dance can get. Our conciseness as he sees is a strange loop; a loop in which the physical reality serves as a platform upon which everything stands. Neurons pass signals which effect thoughts we have, and thoughts we have effect the very same neurons that made these thoughts. The full meaning of our thoughts then, is contained both in the neurons that cause them and in the thoughts themselves, constantly rotating between levels of self-reference in a "strange loop". The philosophical implications of his strange loop is not a subject I will discuss, yet, I wanted to illustrate the complex mechanisms by which meaning can arise and the depth of this subject as explored in GEB.
 
 # Compression
 
-Compression is an art of distilling information into it's essence therefore finding meaning. 
+I need to talk about compression since I need to explain how that relates to the design of systems. So I need to relate it to complexity(how to measure and what is it), abstraction(compressing code leads to generalization and abstraction), resilience/redundancy/degeneracy(looking at compression to help understand the properties), beauty(what is good code), machine learning(compression serves as prediction as it generalizes data), philosophy (as it is interesting). 
+
+Different ways of looking at systems holism/reductionism.
+Compression is an art of distilling information into it's essence. 
+what is truly necessary and what is superfluous?
+
+
+
 Language itself is a compact description for the set of all valid sentences. You have letters which are meaningless, words which contain meaning and yet have limited meaning, rules for how to form sentences and you have sentences built out of both words and rules which are meaninful on their own. Infact, language has many interesting properties because of the huge set they create verses the small description required. The explosion of the set of meaningful valid sentences which you can get from a relatively small set of words and rules, is what makes language so powerful. 
 
 Compression will forever stay an art as it is uncomputable. The problem can be restated as finding the shortest description of a program that can produce a file which, in our case, is equivalent to arbitrary data we want to compress. When restated as such, the problem is equivalent to finding the Kolomogorov complexity of said program, which hits the same wall of the Halting Problem.
