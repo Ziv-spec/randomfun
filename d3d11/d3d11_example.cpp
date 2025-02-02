@@ -163,21 +163,7 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] collide a ray with volume 
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
-//
-// TODO(ziv): TODAY!!! 
-// What I want the UI system to do to with events. So since the UI system is an 
-// immediate mode UI, this means that some elements which might be in the back 
-// trigger a action which will get overridden later by another element. Since 
-// that is the case, I can not just simply eat the event the moment it is 
-// creates change; requiring me to have the eating of events happen after all 
-// of the UI has finished the "interacting" part. I most likely will implement 
-// inside `UIBegin` `UIEnd` functions the os event creation (pressed?, extended 
-// functionality of UI) to support things that I would want to have (which 
-// might be keyboard movement support along with controller support for the UI 
-// since I might use it inside of the game once I finish implementing custom 
-// rendering commands and drawing of bitmaps which will happen if I would see
-// them as useful)
-//
+
 // Create a general system for identifying changes to files using their path and
 // updating their inside information when changed. This system should be general 
 // so that any type of resource can be changed. For this I might need to create 
@@ -888,6 +874,7 @@ enum OS_Event_Kind {
 	OS_EVENT_KIND_RAW_MOUSEMOVE, 
 	OS_EVENT_KIND_MOUSE_BUTTON_DOWN, 
 	OS_EVENT_KIND_MOUSE_BUTTON_UP,
+	OS_EVENT_KIND_MOUSE_BUTTON_PRESSED, 
 };
 
 typedef struct {
@@ -1029,6 +1016,8 @@ InputUpdate(LPARAM lparam) {
 					(i & 1) ? OS_EVENT_KIND_MOUSE_BUTTON_UP : OS_EVENT_KIND_MOUSE_BUTTON_DOWN,
 					os_mouse_button[i/2]
 				};
+				
+				
 				OSEventPost(button_event);
 			}
 		}
@@ -2232,11 +2221,14 @@ typedef struct UI_Theme {
 
 typedef struct {
 	OS_Events *events;
+	OS_Event *events_to_eat[5];
+	
 	R_D3D11Context *r;
 	D_Context *d;
+	
 	Arena arena;
 	
-	int mouse_buttons_pressed; 
+	b32 used_press;
 	float mouse_pos[2];
 	
 	// UI Graph
@@ -2744,18 +2736,33 @@ UIBegin(UI_Context *ui, b32 dirty) {
 	
 	// Button actions for UI
 	{ 
-
+		ui->used_press = false;
+		static int mouse_button_pressed = 0; 
+		
 		for (int i = 0; i < ui->events->idx; i++) {
 			OS_Event e = ui->events->list[i];
 			if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
-				ui->mouse_buttons_pressed |= e.value[0];
+				mouse_button_pressed |= e.value[0];
 			}
 			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
-				ui->mouse_buttons_pressed &= ~e.value[0];
+				mouse_button_pressed &= ~e.value[0];
 			}
 		}
-
-
+		
+		for (int i = 0; i < 5; i++) { 
+			
+			if (mouse_button_pressed & (1 << i)) {
+				OS_Event e = {  
+					OS_EVENT_KIND_MOUSE_BUTTON_PRESSED, 
+					 1 << i, 0
+				};
+				ui->events->list[ui->events->idx++] = e;
+				
+			}
+			
+		}
+		
+		
 	}
 	
 }
@@ -2784,6 +2791,20 @@ UIEnd(UI_Context *ui) {
 		// kind of this is where I draw 
 		UICoreLayoutFinalRect(ui, ui->window);
 	}
+	
+	// eat taken events
+	{
+		if (ui->used_press) {
+			for (int i = 0; i < ui->events->idx; i++) {
+				if (ui->events->list[i].kind == OS_EVENT_KIND_MOUSE_BUTTON_PRESSED) {
+					ui->events->list[i].kind = OS_EVENT_KIND_NULL;
+				}
+				
+			}
+		}
+		
+	}
+	
 	
 }
 
@@ -2981,27 +3002,26 @@ UIMakeWidget(String8 text, u32 flags) {
 static UI_Output
 UIInteractWidget(UI_Widget *widget) {
     UI_Output output = {0};
-
-	// TODO(ziv): REMOVE THIS!!!!! MOVE CODE INTO UIBEGIN/UIEND see in comments 
-	// on the top of the code shit.
-
-	static int mouse_buttons_down = 0;
-
+	
+	b32 left_mouse_button_pressed = false;
 	for (int i = 0; i < ui->events->idx; i++) {
-		OS_Event e = ui->events->list[i];
-		if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
-			mouse_buttons_down |= e.value[0];
-		}
-		else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_UP) {
-			mouse_buttons_down &= ~e.value[0];
+		OS_Event *e = &ui->events->list[i]; 
+		if (e->kind == OS_EVENT_KIND_MOUSE_BUTTON_PRESSED && 
+			e->value[0] & MouseLeftButton) {
+			left_mouse_button_pressed = true; 
+			break;
 		}
 	}
-
-
+	
+	b32 used_press = false; 
+	
 	Rect rect = widget->rect;
     // Find if mouse is inside UI hit-box
-	if (ui->active && (ui->active->flags & UI_DRAGGABLE) && mouse_buttons_down & MouseLeftButton) {
+	if (ui->active && (ui->active->flags & UI_DRAGGABLE) && 
+		left_mouse_button_pressed ) {
 		// TODO(ziv): REALLY?
+		
+		used_press = true;
 	}
     else if (rect.minx <= ui->mouse_pos[0] &&
 		ui->mouse_pos[0] <= rect.maxx &&
@@ -3012,10 +3032,11 @@ UIInteractWidget(UI_Widget *widget) {
 
         // widget is active?
         if ((widget->flags & UI_CLICKABLE &&
-			  mouse_buttons_down & MouseLeftButton)) {
+				 left_mouse_button_pressed )) {
             ui->active = widget;
+			used_press = true;
             output.activated = 1;
-        }
+		}
 		else  {
 			if (widget == ui->active)  output.clicked = 1;
 			if (widget->flags & UI_CLICKABLE) {
@@ -3029,22 +3050,25 @@ UIInteractWidget(UI_Widget *widget) {
 			 !(widget->flags & (UI_SLIDERABLE|UI_DRAGGABLE))) {
 		ui->hot = NULL;
         ui->active = NULL;
+		used_press = true;
 	}
 
 
 	if (widget->flags & UI_SLIDERABLE  && ui->hot == widget) {
-		if (mouse_buttons_down & MouseLeftButton) {
+		if (left_mouse_button_pressed) {
 			float width = rect.maxx - rect.minx; 
 			float slider_value = (ui->mouse_pos[0]-rect.minx)/width;
 			widget->active_t = MIN(slider_value, 1);
 			widget->active_t = MAX(widget->active_t, 0);
+			used_press = true;
 		}
 		else {
 			ui->hot = NULL;
 		}
 	}
-
-
+	
+	ui->used_press |= used_press; 
+	
 	output.slider_value = widget->active_t;
 	output.widget = widget;
 
@@ -4193,7 +4217,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 				}
 			}
-			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_DOWN) {
+			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_PRESSED) {
 				if (e.value[0] & MouseLeftButton) {
 					CameraPickingRay(&c, (float)window_width ,(float)window_height, 
 					ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
