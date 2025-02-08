@@ -82,7 +82,7 @@ Complexity is a measure for how intertwined is a system. Complexity is bad for a
 
 Let us consider the inherent properties of this irreducible essence of modern software systems: complexity, conformity, changeability, invisibility, and culture adaptability.
 
-Complexity. When we speak of [complexity](https://en.wikipedia.org/wiki/Complexity) in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how interwind the systems we care about are, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects.
+Complexity. When we speak of complexity in the systems we build, the dimension we care about is from the simple to the complex and it's reverse. This dimension captures how interwind the systems we care about are, as their parts interact in multiple ways and cause non-linear, emergent behavior. Simple system therefore have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects.
 
 A simple analogy can be made when we look no further than the making of bread. In the process of making bread, the doe is usually split into smaller parts shaped into strips and braided before it is finally baked. Splitting the bread and braiding it is not required as bread can be baked braided just as well as a simple lump of doe. Notice how I said that doe has a simple shape while a braided doe does not. If you think about it for a moment, after braiding bread the doe strips interwind and after finishing, reversing this process becomes difficult. If you had put the two strips one next to the other pulling one causes no effect on the others, meanwhile, after braiding pulling a single strip without effects on all others is impossible, you would have to carefully consider how each line moves about it's surroundings as it slips around moving up and down, hopefully not tearing the rest of the doe apart.
 
@@ -109,26 +109,54 @@ Invisibility. Just like finding a single pasta strand in a bowl of tangled pasta
 
 https://en.wikipedia.org/wiki/Kolmogorov_complexity
 
+This post aims at explaining the essential difficulties of software design, providing good theoretical and logical basis for my ideas. It also aims at explaining what are some good tactics and why do they work, along with work frames for how to think about and work on software entities. It should serve as a central post containing aggregation of available information on software design that I have encountered.
 
-# Meaning
+# Meaning (maybe more examples?)
 
 The world is full of meaning that we try to decode and convey, but what is meaning? If you look around during the day the world seems colorful and bright, containing many beautiful colors, sights, sounds, that bless your senses. Just imagine walking on the lush green grass near a great blue lake, gazing at the trees while hearing the water going down stream; you notice a musical chirp of local birds as you advance forward, light dance off puddles near. You stop at the sight of a purple flower with a butterfly sitting atop, amusing yourself, you wait til the flower is left alone, crouch to smell it's odor, and happily laugh as your senses are filled with nature's beauty. 
 
-If you pause and reflect on your actions now, you might have noticed your brain had made up a visualization using the words written on your screen. It is incredible that your brain can translate words in such a way but, what if you did not know how to read English? You would not be able to visualize what this text tried to convey. What if you had no text at all? In that case you would again find yourself not visualizing and instead continue doing what you were doing previously. What if you were born in prison and never allowed to see natures beauty? The words in this text would pass through you as though they don't exist. In this sense, the text offers a foundation upon which you, the reader, brings it to life. Meaning, then, shifts between content and interpretation in back and forth motion, requiring both the correct content and interpreter for meaning exist. 
+If you pause and reflect on your actions now, you might have noticed your brain had made up a visualization using the words written on your screen. Or at least  it could have made them if you wanted. It is incredible that your brain can translate words in such a way but, what if you did not know how to read English? You would not be able to visualize what this text tried to convey. What if you had no text at all? In that case you would again find yourself not visualizing and instead continue doing what you were doing previously. What if you were born in prison and never allowed to see natures beauty? The words in this text would pass through you as though they don't exist. In this sense, the text offers a foundation upon which you, the reader, brings it to life. Meaning, then, shifts between content and interpretation in back and forth motion, requiring both the correct content and interpreter for meaning exist. 
 
 In his seminal text Godel Escher Bach, Hofstadter states that meaning itself is a strange dance between content and interpretation. For meaning to be found, content, which by itself meaningless must be interpreted. When standing on their own, content and interpretation are not in-fact not fixed; they are interchangeable. GEB illustrates this by imagining a world where DNA is similar to all organisms and the decoding mechanism is what makes them unique. For example a cat and a fish would contain the same DNA, but the decoding mechanisms which made them grow is what differentiates between them. The genetic information would then not be contained in the DNA but in the decoding mechanisms themselves. The fact that the decoding mechanisms for life are similar while DNA varies is what makes DNA the content and decoding mechanisms the interpreter. 
 
-Hofstadter expands on the subject by showing just how complicated the dance can get. Our conciseness as he sees is a strange loop; a loop in which the physical reality serves as a platform upon which everything stands. Neurons pass signals which effect thoughts we have, and thoughts we have effect the very same neurons that made these thoughts. The full meaning of our thoughts then, is contained both in the neurons that cause them and in the thoughts themselves, constantly rotating between levels of self-reference in a "strange loop". The philosophical implications of his strange loop is not a subject I will discuss, yet, I wanted to illustrate the complex mechanisms by which meaning can arise and the depth of this subject as explored in GEB.
+Hofstadter expands on the subject by showing just how complicated the dance can get. Our conciseness as he sees is a strange loop; a loop in which the physical reality serves as a platform upon which everything stands. Neurons pass signals which effect thoughts we have, and thoughts we have effect the very same neurons that made these thoughts. The full meaning of our thoughts then, is contained both in the neurons that cause them and in the thoughts themselves, constantly rotating between levels of self-reference in a "strange loop". The philosophical implications of his strange loop is not a subject I will discuss, yet, I wanted to illustrate the complex mechanisms by which meaning can arise, and the depth of this subject as explored in GEB.
 
 # Compression
 
-I need to talk about compression since I need to explain how that relates to the design of systems. So I need to relate it to complexity(how to measure and what is it), abstraction(compressing code leads to generalization and abstraction), resilience/redundancy/degeneracy(looking at compression to help understand the properties), beauty(what is good code), machine learning(compression serves as prediction as it generalizes data), philosophy (as it is interesting). 
+Complexity -> gas model (physics) -> entropy information theory -> compression 
+Physics -> entropy -> complexity -> compression
+
+I need to talk about compression since I need to explain how that relates to the design of systems. So I need to relate it to complexity(how to measure and what is it), abstraction(compressing code leads to generalization and abstraction), resilience/redundancy/degeneracy(looking at compression to help understand the properties, though maybe not), beauty(what is good code), machine learning(compression serves as prediction as it generalizes data, or maybe I would talk only about generality and then about machine learning as a emergent property of generality, idk), philosophy (as it is interesting). 
+
+What I want to say is the following. When abstracting, you compress the meaning of your program by finding commonalities and putting them behind a slim interface for reuse. I will call these interfaces the "basic blocks" of the program. These basic blocks are your explicit distinction and announcement of intention for the block of code you put behind an interface to be used throughout your code. Making sure that this one can be taken apart and reused the most is important for none messy programs. Think about the following: let's say you can do one of two things when you build your next program. You can first design the whole program and it's interfaces, and then fill these interfaces with the corresponding implementation. Or you can build a simple working example and naturally find the basic blocks that best fit the nature of your program as you implement it. By going with the former, you decide on the structure early and may sacrifice the ability you have to compress the program better and create cleaner and better fitting abstractions. You may by doing that create totally redundant operations. By going with the latter, you can better compress your program and better fit it to the problem at hand. It is also the case that when abstractions are hurriedly made the details that you hide may come back to bite you if used incorrectly. 
+
+For systems we design one metric we often hear about is complexity. But, to understand what is complexity and how can we measure it, first need to know how to extract the meaning behind information we possess, in other words compression. 
+
+Complexity, Entropy, Compression. Compression is the art of distilling meaning to it's very essence. To compress well, you have to ask yourself what is truly necessary and what is superfluous. By it's very nature, when compressing, high frequency information is discarded or assigned a lower importance and low frequency information is prioritized. Compression in this sense allows for details to be left out for generality to take form.
+
+When looking into any large system the term "complexity" naturally arises. The term in this post is used to describe how interwind the systems we care about are, as their parts interact in multiple ways and cause non-linear or emergent behavior. Simple system by that definition have parts which can be isolated from the rest, changes to one part does not effect others, no unexpected ramifications or unwanted side effects.
+
+Although we have defined complexity as such, in different fields the meanings of the term complexity differs. Since I will be slightly touching upon information theory, a clear distinction of terms must be made. 
+
+Entropy is ... 
+
+Complexity, on the other hand, is a measure of exactly how much talking you must do in order to describe a given state of a system. In information theory a common way measure complexity is called Kolmogorov Complexity. 
+
+Going back to the subject of system design, and our original definition of complexity as the interwindness of a system, 
+
+Warren Weaver's thoughts on Disorganized Complexity and Organized Complexity: 
+Disorganized Complexity is a system with many many disconnected parts, operating in random yet, their chaotic interaction is predictable via probabilistic computations. e.g. Fluids, gas, most physics where many particles are involved. n the other hand he saw Organized Complexity as a system where the interactions between all the parts are anything but accidental. The internal interactions of the systems parts allow for the coordinated system to manifest global properties not carried by it's individual parts. The emergent behavior these systems exhibit is a property of the system as a whole. e.g. Markets as the system with people all around the world as the parts in the system; the biological process of life from DNA in a molecule soup to a living being or a self-organizing living systems. 
+
+
+with the next subject being Abstraction which uses compression & meaning.
+In information theory
+
+
+Compressing as a measure for complexity? 
+The ultimate theoretical compressor is Kolmogorov complexity of a program.
+Complexity is a measure for how intertwined is a system.
 
 Different ways of looking at systems holism/reductionism.
-Compression is an art of distilling information into it's essence. 
-what is truly necessary and what is superfluous?
-
-
 
 Language itself is a compact description for the set of all valid sentences. You have letters which are meaningless, words which contain meaning and yet have limited meaning, rules for how to form sentences and you have sentences built out of both words and rules which are meaninful on their own. Infact, language has many interesting properties because of the huge set they create verses the small description required. The explosion of the set of meaningful valid sentences which you can get from a relatively small set of words and rules, is what makes language so powerful. 
 
@@ -160,7 +188,6 @@ There are popular approaches for thinking about complex systems. The holistic ap
 
 Biological systems seem to contain endless amounts of complexity inside their inner workings and yet they are capable of changing and adapting better than any system we humans can design. This is going to be a very large premise into the idea that we can learn from biological systems and try to achieve their positive characteristics.
 
-
 Another aspect which GEB book has touched upon is how the brain compresses the information which it holds. It seems like symbols that we use to convey meaning though are connected in many ways. Think of the word home which is connected to a building and a place to live in and your home and so on. There are infinite ways to connect between symbols and our brains seem to give weight to the connection importance. The weight assigned to the connection between two symbols will determine the likelihood of the brain to make a connection between the two symbols. You can think of it like a path of least resistance is formed for strong connections of symbols which is what forms opinion and knowledge in our brains. That said, weak connections with enough conviction can become stronger and strong connections weaker. The space of possible connections is never lost and instead is morphing to accommodate changes knowledge and update it's belief system. This is part of what I believe makes the brain so strong and anti-fragile with respect to knowledge acquisition and retention. 
 
 This makes me think that if we can make some program where the space of possible solutions to the problem is large. We can have a dynamic weight system for solving it. For example if a plain needs a auto-pilot control system which has full control over an air-craft. We would like the output space of possible outcomes to not be too constraint. Think of a unexpected plain loss of engines and or extreme situation which the plain has not expected before. Humans have the ability to adapt to this situation with their ability of understanding the situation they are at and can think of a plan to get out of the situation. Machines on the other hand do not have such general capacity. To correct for this reality we would have to create a system which is capable of solving more paths than we plan the plain on taking. The space of possible maneuvers can be seen as the entire space, and we won't subtract the space and instead apply a weighting to the paths we would want to take. With of course the common paths having strong weights which lead to their solutions; uncommon paths with weak links should be saved for a time where unexpected things are in need of resolution. Constant updating should occur to strengthen and weaken links according to the result which we see from the data we get back. 
@@ -185,9 +212,7 @@ the endless growth of complexity of software. For some this complexity is manife
 size and resource utilization is high due to its nature, for most I would say, this is not the case. Complexity also harms the cost of maintenance. Adobe has made maintaining and adding features it's software a technical nightmare. Old 
 bugs and crashes haunt Adobe Premiere to this day[^1] with no saving grace in sight. 
 
-
 [^1]: adobe link to people talknig about how much it suck but it also can't change
-
 
 How do we handle the complexity of the programs that we create? 
     - Refactoring
