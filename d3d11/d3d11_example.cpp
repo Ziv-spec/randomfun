@@ -982,7 +982,6 @@ static bool
 InputUpdate(LPARAM lparam) {
 	
 	UINT dwSize;
-	
 	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
 	
 	LPBYTE lpb = new BYTE[dwSize];

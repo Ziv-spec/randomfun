@@ -1,3 +1,4 @@
+# A trip learning compression through https://akreson.github.io/en/posts/entropy-encoding-part1/
 
 import numpy as np 
 from collections import defaultdict
@@ -69,13 +70,83 @@ def part2_1():
     encoded = encode(message)
     decoded = decode(encoded)
     print(f'{len(message)=} {encoded=}')
+
+    # verify no mistakes in compression
     for m, d in zip(message, decoded): 
         assert(m == d)
 
 def part2_2(): 
     # The building of 'real' Arithmetic Coding not bounded by 
     # precision problems of using 32/64bit floats
-    pass
+
+    message = np.array([c for c in 'AACBBCAAACCCAAABBBBBBBBBBBBBBBBBBBABAACBBBBBBBB'])
+    unique, counts = np.unique(message, return_counts=True)
+    probs = counts/counts.sum() # frequency
+    
+    # building of model 
+    model = defaultdict(lambda: (0,0,10**9)) # default is 0
+
+    pi_sum = 0
+    for ui, pi in zip(unique, probs):
+        # 'c' : cdf(low, high)
+        denominator = 10**9
+        integer_pi = int(pi * denominator)
+        model[ui] = pi_sum, pi_sum+integer_pi, denominator
+        pi_sum += integer_pi
+
+
+    def encode(message):
+
+        buffer = 0
+        pending_bits = 0
+        
+        low, high = 0, 0xffffffff
+        for c in message: 
+            cdf_lower, cdf_upper, denom = model[c]
+            r = high - low +1
+            high = low + int(r*cdf_upper/denom)
+            low  = low + int(r*cdf_lower/denom)
+
+            if (high < 0x80000000):
+              buffer <<= 1
+              while (pending_bits > 0): 
+                  pending_bits -= 1
+                  buffer <<= 1
+
+              low <<= 1
+              high <<= 1
+              high |= 1
+              high &= 0xffffffff; low &= 0xffffffff # snapping back to 32 bit
+            elif (low >= 0x80000000):
+              buffer <<= 1
+              buffer |= 1
+              while (pending_bits > 0): 
+                  pending_bits -= 1
+                  buffer <<= 1
+                  buffer |= 1
+
+              low <<= 1
+              high <<= 1
+              high |= 1
+              high &= 0xffffffff; low &= 0xffffffff # snapping back to 32 bit
+            elif (low >= 0x40000000 and high < 0xC0000000):
+              pending_bits += 1
+              low <<= 1
+              low &= 0x7FFFFFFF
+              high <<= 1
+              high |= 0x80000001
+              high &= 0xffffffff; low &= 0xffffffff # snapping back to 32 bit
+            else:
+              break
+
+        return int((low + high)/2)
+
+    def decode(encoded):
+        pass
+
+    encoded = encode(message)
+    print(encoded)
+    decoded = decode(encoded)
 
 # part1()
 # part2_1()

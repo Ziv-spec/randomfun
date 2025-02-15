@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "b7cddfcfa27689a7",
+        "id": "6d639f1e840486d2",
         "type": "tabs",
         "children": [
           {
-            "id": "9a6b81a7dbec24fc",
+            "id": "4c532eaa8513062e",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/Notes On War.md",
+                "file": "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Notes On War"
+              "title": "The Core Of Program Will define How It Will Evolve"
             }
           }
         ]
@@ -176,29 +176,29 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9a6b81a7dbec24fc",
+  "active": "4c532eaa8513062e",
   "lastOpenFiles": [
-    "Zettelkasten/Cutting Weed.md",
-    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
-    "Zettelkasten/Human over-optimization and Goodhart's law.md",
-    "Zettelkasten/Links To Use.md",
-    "Zettelkasten/Notes On War.md",
-    "Zettelkasten/Degeneracy And Redundancy.md",
-    "Zettelkasten/Kraft-McMillan inequality.md",
-    "Zettelkasten/Information Theory.md",
-    "Zettelkasten/Investment.md",
-    "Zettelkasten/software-design.md",
-    "Zettelkasten/Complexity.md",
-    "Zettelkasten/Meaning.md",
-    "Zettelkasten/Abstraction.md",
     "Zettelkasten/Understanding The Problem.md",
-    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
-    "Zettelkasten/Code-Reuse.md",
-    "Zettelkasten/Avoiding Unnecessary Complexity.md",
-    "Zettelkasten/Memory Management Trade-Offs.md",
-    "Zettelkasten/Meaning.md~",
-    "Zettelkasten/GZAR Reflections.md",
     "Zettelkasten/The Promise Of AI.md",
+    "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+    "Zettelkasten/Notes On War.md",
+    "Zettelkasten/Memory Management Trade-Offs.md",
+    "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Meaning.md",
+    "Zettelkasten/Links To Use.md",
+    "Zettelkasten/Kraft-McMillan inequality.md",
+    "Zettelkasten/Investment.md",
+    "Zettelkasten/Information Theory.md",
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/GZAR Reflections.md",
+    "Zettelkasten/Degeneracy And Redundancy.md",
+    "Zettelkasten/Cutting Weed.md",
+    "Zettelkasten/Complexity.md",
+    "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
+    "Zettelkasten/Code-Reuse.md",
+    "Zettelkasten/Abstraction.md",
+    "Zettelkasten/software-design.md",
+    "Zettelkasten/Meaning.md~",
     "Zettelkasten/2024-05-11.md",
     "Untitled.canvas",
     "Zettelkasten/Untitled.md"
