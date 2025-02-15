@@ -164,6 +164,8 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
 
+// [ ] Implement high level abstraction for a pipline pass
+
 // Create a general system for identifying changes to files using their path and
 // updating their inside information when changed. This system should be general 
 // so that any type of resource can be changed. For this I might need to create 
@@ -187,11 +189,10 @@ typedef struct { float r, g, b, a; } Color;
 // areas where the api uses nodes, create special functions handling all
 // of these types of interactions. Or at least consider making some
 // unified way of doing said operations 
-
+//
 // TODO(ziv): figure out how to standardize handle creation, destruction and 
 // management. I don't want to have to copy around the same code this many times as 
 // I have (for each new handle all new code which is mostly the same).
-
 
 //==============================================================================
 // # Understanding the Graphics Pipeline[8]: 
@@ -1251,6 +1252,7 @@ typedef struct {
 	ID3D11DepthStencilView *zbuffer;
 	ID3D11Texture2D *zbuffer_texture;
 	ID3D11RasterizerState1* rasterizer_cull_back;
+	ID3D11RasterizerState1* rasterizer_cull_front;
 	
 	D3D11_VIEWPORT *viewport;
 	b32 dirty; // window size changed
@@ -1756,11 +1758,19 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		rasterizer_desc.CullMode = D3D11_CULL_BACK;
 		
 		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
-		
-		// NOTE(ziv): For shadowmap it will be useful to have a rasterizer which will cull the front triangles
-		//rasterizer_desc.CullMode = D3D11_CULL_FRONT;
-		//device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_back);
 	}
+	
+	// Create a Rasterizer
+	ID3D11RasterizerState1* rasterizer_cull_front;
+	{
+		D3D11_RASTERIZER_DESC1 rasterizer_desc = {};
+		rasterizer_desc.FillMode = D3D11_FILL_SOLID; // D3D11_FILL_WIREFRAME;
+		rasterizer_desc.CullMode = D3D11_CULL_FRONT;
+		
+		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_front);
+	}
+	
+	
 	
 	r->window = window; 
 	r->device = device; 
@@ -1771,6 +1781,7 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->zbuffer = zbuffer;
 	r->zbuffer_texture = zbuffer_texture;
 	r->rasterizer_cull_back = rasterizer_cull_back;
+	r->rasterizer_cull_front = rasterizer_cull_front;
 }
 
 static void
@@ -1799,10 +1810,6 @@ RendererDeInit(R_D3D11Context *r) {
 		if (r->buffer_array[i]) r->buffer_array[i]->Release(); 
 		if (r->srv_array[i]) r->srv_array[i]->Release(); 
 	}
-	
-	
-	
-	
 	
 }
 
@@ -1886,6 +1893,7 @@ RendererD3D11Present(R_D3D11Context *r) {
 		FatalError("Failed to present swap chain! Device lost?");
 	}
 }
+
 
 //~ 
 // Draw
@@ -3918,7 +3926,45 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture->Release();
 		free(bytes);
 	}
-
+	
+	
+	//~ JFA Init 
+	ID3D11ShaderResourceView *jfa_mask_resource;
+	ID3D11RenderTargetView *jfa_mask_render_target;
+	{
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = window_width;
+		texture_desc.Height             = window_height;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_R8_UNORM;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+		
+		ID3D11Texture2D* texture;
+		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+		r->device->CreateShaderResourceView(texture, NULL, &jfa_mask_resource);
+		r->device->CreateRenderTargetView(texture, NULL, &jfa_mask_render_target);
+		
+		texture->Release();
+	}
+	
+	VSHandle jfa_mask_vshader = RendererCreateVSShader(r, "../mask.hlsl", "vs", format, ArrayLength(format));
+	PSHandle jfa_mask_pshader = RendererCreatePSShader(r, "../mask.hlsl", "ps"); 
+	BFHandle jfa_vs_cbuffer = RendererCreateBuffer(r, 
+												   NULL, 
+												   sizeof(matrix)*2, 
+												   1,
+												   R_BIND_CONSTANT_BUFFER, 
+												   { 
+													   R_USAGE_DYNAMIC, 
+													   R_CPU_ACCESS_WRITE, 
+												   } 
+												   );
+	
+	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
@@ -3930,24 +3976,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	RECT rc_old_clip;        // previous area for ClipCursor
 	GetClipCursor(&rc_old_clip);
 	GetWindowRect(window, &rc_clip);
-
-
-	// 
-	// Draw triangle
-	// 
-
-	float3 triangle[] = { 
-		{ -.5, -.5 , 0 },
-		{   0,  .5 , 0 },
-		{  .5, -.5 , 0 }
-	}; 
-	BFHandle trig_data = RendererCreateBuffer(r, triangle, sizeof(float3), ArrayLength(triangle), R_BIND_VERTEX_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE});
-	R_LayoutFormat trig_format[] = {
-		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }
-	};
-	VSHandle trig_vs = RendererCreateVSShader(r, "../trig.hlsl", "vs", trig_format, ArrayLength(trig_format));
-	PSHandle trig_ps = RendererCreatePSShader(r, "../trig.hlsl", "ps");
-
 
 	//~
 	// Main Game Loop
@@ -4026,6 +4054,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		{
 			for (int i = 0; i < r->vs_idx; i++) {
 				FILETIME last_write_time = Win32GetLastFileWriteTime(r->vs_file_names_and_time[i].file_name);
+				Assert(last_write_time.dwLowDateTime != 0 && last_write_time.dwHighDateTime !=0);
+				
+				
 				if (CompareFileTime(&last_write_time,&r->vs_file_names_and_time[i].last_write_time) != 0) {
 					r->vs_file_names_and_time[i].last_write_time = last_write_time;
 					ID3D11InputLayout  *layout = NULL;
@@ -4233,7 +4264,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 		// TODO(ziv): move this into another location
 		d->lines.idx = 0;
-		DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
+		//DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
 
 		b32 intersecting = false;
 		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
@@ -4274,7 +4305,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
-
+			
+			RendererUpdateBuffer(r, jfa_vs_cbuffer, &vs_cbuf, sizeof(matrix)*2); 
+			
 			// Pixel Contstant Buffer
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
@@ -4282,14 +4315,52 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererUpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
 											
 		}
-
+		
+		
+		
 		// clear background
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
-
+		
+		// Draw outline
+		if (1) { 
+			
+			// Create mask of the object
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			const UINT stride = sizeof(Vertex);
+			const UINT offset = 0;
+			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
+			r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
+			RendererVSSetShader(r, jfa_mask_vshader);
+			RendererVSSetBuffer(r, jfa_vs_cbuffer);
+			
+			D3D11_VIEWPORT viewport = {0};
+			viewport.Width = (FLOAT)window_width;
+			viewport.Height = (FLOAT)window_height;
+			viewport.MaxDepth = 1;
+			r->viewport = &viewport;
+			
+			r->context->RSSetViewports(1, &viewport);
+			r->context->RSSetState(r->rasterizer_cull_front);
+			RendererPSSetShader(r, jfa_mask_pshader);
+			r->context->OMSetRenderTargets(1, &jfa_mask_render_target, NULL);
+			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
+			
+			
+			// jfa init
+			
+			
+			
+			
+			
+		}
+		
+		
+		
+		
+		
 		// Draw Entity
 		{
-			r->context->ClearDepthStencilView(r->zbuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 			// Input Assembler
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -4304,7 +4375,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			RendererVSSetBuffer(r, cbuffer);
 
 			// Rasterizer Stage
-			r->context->RSSetViewports(1, &viewport);
+			r->context->RSSetViewports(1,  r->viewport);
 			r->context->RSSetState(r->rasterizer_cull_back);
 
 			// Pixel Shader
@@ -4314,8 +4385,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->PSSetSamplers(0, 1, &sampler_state);
 
 			// Output Merger
-			r->context->OMSetDepthStencilState(r->depth_stencil_state, 0);
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, r->zbuffer);
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
