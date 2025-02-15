@@ -3927,7 +3927,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	}
 	
 	
-	//~ JFA Init 
+	//~ JFA
 	ID3D11ShaderResourceView *jfa_mask_resource;
 	ID3D11RenderTargetView *jfa_mask_render_target;
 	{
@@ -3962,6 +3962,60 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 													   R_CPU_ACCESS_WRITE, 
 												   } 
 												   );
+	
+	// INIT
+	ID3D11ShaderResourceView *jfa_init_resource;
+	ID3D11RenderTargetView *jfa_init_render_target;
+	{
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = window_width;
+		texture_desc.Height             = window_height;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM; // DXGI_FORMAT_R16G16_UNORM;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+		
+		ID3D11Texture2D* texture;
+		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+		r->device->CreateShaderResourceView(texture, NULL, &jfa_init_resource);
+		r->device->CreateRenderTargetView(texture, NULL, &jfa_init_render_target);
+		
+		texture->Release();
+	}
+	
+	VSHandle jfa_init_vshader = RendererCreateVSShader(r, "../jfa_init.hlsl", "vs", NULL, 0);
+	PSHandle jfa_init_pshader = RendererCreatePSShader(r, "../jfa_init.hlsl", "ps"); 
+
+/* 	
+	
+	
+	// JFA Algo
+	ID3D11RenderTargetView *jfa_tex0_render_target;
+	{
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = window_width;
+		texture_desc.Height             = window_height;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET;
+		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+		
+		ID3D11Texture2D* texture;
+		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+		r->device->CreateRenderTargetView(texture, NULL, &jfa_mask_render_target);
+		
+		texture->Release();
+	}
+	 */
+
+	
+	
 	
 	
 	D3D11_VIEWPORT viewport = {0};
@@ -4325,30 +4379,48 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (1) { 
 			
 			// Create mask of the object
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			const UINT stride = sizeof(Vertex);
-			const UINT offset = 0;
-			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
-			r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
-			RendererVSSetShader(r, jfa_mask_vshader);
-			RendererVSSetBuffer(r, jfa_vs_cbuffer);
-			
-			D3D11_VIEWPORT viewport = {0};
-			viewport.Width = (FLOAT)window_width;
-			viewport.Height = (FLOAT)window_height;
-			viewport.MaxDepth = 1;
-			r->viewport = &viewport;
-			
-			r->context->RSSetViewports(1, &viewport);
-			r->context->RSSetState(r->rasterizer_cull_front);
-			RendererPSSetShader(r, jfa_mask_pshader);
-			r->context->OMSetRenderTargets(1, &jfa_mask_render_target, NULL);
-			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
-			
+			{
+				r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				const UINT stride = sizeof(Vertex);
+				const UINT offset = 0;
+				r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
+				r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
+				RendererVSSetShader(r, jfa_mask_vshader);
+				RendererVSSetBuffer(r, jfa_vs_cbuffer);
+				
+				D3D11_VIEWPORT viewport = {0};
+				viewport.Width = (FLOAT)window_width;
+				viewport.Height = (FLOAT)window_height;
+				viewport.MaxDepth = 1;
+				r->viewport = &viewport;
+				
+				r->context->RSSetViewports(1, &viewport);
+				r->context->RSSetState(r->rasterizer_cull_front);
+				RendererPSSetShader(r, jfa_mask_pshader);
+				r->context->OMSetRenderTargets(1, &jfa_mask_render_target, NULL);
+				r->context->DrawIndexed((UINT)indicies_count, 0, 0);
+			}
 			
 			// jfa init
-			
-			
+			{
+				ID3D11RenderTargetView* nullRTV = NULL;
+				r->context->OMSetRenderTargets(1, &nullRTV, NULL); // Unbind from slot 0 to bind the mask
+				
+				r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+				RendererVSSetShader(r, jfa_init_vshader);
+				D3D11_VIEWPORT viewport = {0};
+				viewport.Width = (FLOAT)window_width;
+				viewport.Height = (FLOAT)window_height;
+				viewport.MaxDepth = 1;
+				r->viewport = &viewport;
+				r->context->RSSetViewports(1, &viewport);
+				r->context->PSSetShaderResources(0, 1, &jfa_mask_resource);
+				r->context->PSSetSamplers(0, 1, &sampler_state);
+				RendererPSSetShader(r, jfa_init_pshader);
+				r->context->RSSetState(NULL);
+				r->context->OMSetRenderTargets(1, &jfa_init_render_target, NULL);
+				r->context->DrawInstanced(4, 1, 0, 0);
+			}
 			
 			
 			
@@ -4357,7 +4429,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		
-		
+		#if 1
 		// Draw Entity
 		{
 
@@ -4389,12 +4461,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
 
-
-
-
-
 		DrawSubmitRenderCommands(d);
-
+		#endif 
 		RendererD3D11Present(r); // present the resulting image to the screen
 		end_frame = Time(); 
 		dt = (float)(end_frame - start_frame);
