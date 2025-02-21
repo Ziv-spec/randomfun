@@ -10,7 +10,7 @@ struct Vertex {
 	float2 uv : Texture;
 };
 
-float4  vs(Vertex v) : SV_Position {
+float4 vs(Vertex v) : SV_Position {
 	return mul(float4(v.pos, 1), mul(transform, projection));
 }
 
