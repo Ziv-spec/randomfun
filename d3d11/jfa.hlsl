@@ -20,7 +20,7 @@ float2 ps(float4 pos : SV_Position) : SV_Target {
 	float2 correct_uv = float2(0, 0);
 	float2 inv_size = float2(1.f/800.f, 1.f/600.f);
 
-	int step = 4; // TODO(ziv): not a constant!!!
+	int step = 14; // TODO(ziv): not a constant!!!
 	// find the closest one to the pixel itself
 	for (int u = -1; u <= 1; u++) {
 		for (int v = -1; v <= 1; v++) {

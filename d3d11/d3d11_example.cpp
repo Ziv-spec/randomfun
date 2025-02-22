@@ -567,6 +567,25 @@ MemArenaAlloc(Arena *arena, size_t size) {
 	return NULL;
 }
 
+//~
+// Linked List
+// 
+
+#define DLLPushBack_NP(f, l, n, next, prev) ((f)==0?\
+((f)=(l)=(n), (n)->next=(n)->prev=0):\
+((n)->prev=(l), (l)->next=(n), (l)=(n), (n)->next=0))
+
+#define DLLRemove_NP(f,l,n, next, prev) (((f)==(n)?\
+((f)=(f)->next,(f)->prev=0):\
+(l)==(n)?\
+((l)=(l)->prev,(l)->next=0):\
+((n)->next->prev=(n)->prev,\
+(n)->prev->next=(n)->next)))
+
+
+#define DLLPushBack(f, l, n) DLLPushBack(f, l, n, next, prev)
+#define DLLPushFront(f, l, n) DLLPushBack(f, l, n, prev, next)
+#define DLLRemove(f, l, n) DLLRemove_NP(f, l, n, next, prev)
 
 //~
 // String8
@@ -1176,7 +1195,7 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 }
 
 //~
-// D3D11 Renderer (uses handles as a medium for resource acquisition[7]) 
+// D3D11 Renderer core (uses handles as a medium for resource acquisition[7]) 
 //
 
 struct Vertex {
@@ -1893,6 +1912,52 @@ RendererD3D11Present(R_D3D11Context *r) {
 	}
 }
 
+static void 
+RendererD3D11SetBlendState() {
+	
+}
+
+
+// 
+// Renderer High level API
+// 
+
+/* 
+ R_Pass pass = { 
+	 R_TOPOLOGY_,
+	 RendererVSCreateShader(...), { 
+		 RendererCreateBuffer(...),
+		 RendererCreateBuffer(...),
+	 }, 
+	 RendererPSCreateShader(...), {
+		 RendererCreateBuffer(),
+		 RendererCreateBuffer(),
+		 RendererCreateBuffer(),
+	 },
+ }; 
+ 
+ RendererUpdateBuffer(...);
+ RendererUpdateBuffer(...);
+ RendererUpdateBuffer(...);
+ RendererUpdateBuffer(...);
+ RendererSetBlendState(...);
+ RendererPassDrawInstaned(r, &pass, render_target);
+ */
+
+
+typedef int RTHandle;
+
+typedef struct {
+	VSHandle vshader;
+	BFHandle vs_resources[0x8];
+	PSHandle pshader;
+	BFHandle ps_resources[0x8];
+} R_Pass;
+
+static void
+RendererPassDrawInstaned(R_D3D11Context *r, R_Pass *pass, RTHandle render_target) {
+	
+}
 
 //~ 
 // Draw
@@ -2043,7 +2108,7 @@ DrawSubmitRenderCommands(D_Context *d) {
 	R_D3D11Context *r = d->r;
 
 	// Draw Lines
-	if (1){
+	{
 
 		const UINT stride = sizeof(float3);
 		const UINT offset = 0;
@@ -3794,7 +3859,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Font
 	//
 
-
 	// Texture Atlas
 	ID3D11ShaderResourceView* atlas_resource_view;
 	{
@@ -4018,9 +4082,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	VSHandle jfa_solid_vshader = RendererCreateVSShader(r, "../jfa_solid.hlsl", "vs", NULL, 0);
 	PSHandle jfa_solid_pshader = RendererCreatePSShader(r, "../jfa_solid.hlsl", "ps"); 
-	
-	
-	
 	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
@@ -4373,14 +4434,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 											
 		}
 		
-		
-		
 		// clear background
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
 		// Draw outline
-		if (intersecting) { 
+		if (1 || intersecting) { 
 			
 			// Create mask of the object
 			{
@@ -4406,6 +4465,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				r->context->RSSetState(r->rasterizer_cull_back);
 				RendererPSSetShader(r, jfa_mask_pshader);
 				r->context->OMSetRenderTargets(1, &jfa_mask_render_target, NULL);
+				r->context->OMSetBlendState(NULL, NULL, 0xffffffff); // set default blend state
+				
 				r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 			}
 			
@@ -4416,7 +4477,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				
 				float black[] = { 0, 0, 0, 0 };
 				r->context->ClearRenderTargetView(jfa_init_render_target, black);
-				
 				
 				r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 				RendererVSSetShader(r, jfa_init_vshader);
@@ -4436,13 +4496,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			// jfa
 			{
-				
 					ID3D11RenderTargetView* nullRTV = NULL;
 					r->context->OMSetRenderTargets(1, &nullRTV, NULL);
 				
 				float black[] = { 0, 0, 0, 0 };
 				r->context->ClearRenderTargetView(jfa_mask0_render_target, black);
-				
 				
 					r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 					RendererVSSetShader(r, jfa_vshader);
@@ -4455,10 +4513,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->PSSetShaderResources(0, 1, &jfa_init_resource);
 					r->context->PSSetSamplers(0, 1, &sampler_state);
 					RendererPSSetShader(r, jfa_pshader);
-					r->context->RSSetState(NULL);
 				r->context->OMSetRenderTargets(1, &jfa_mask0_render_target, NULL);
 					r->context->DrawInstanced(4, 1, 0, 0);
-				
 			}
 			
 			// using the jfa rt along with the mask to create final image
@@ -4478,7 +4534,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->PSSetShaderResources(0, 1, &jfa_mask0_resource_view);
 					r->context->PSSetSamplers(0, 1, &sampler_state);
 				RendererPSSetShader(r, jfa_solid_pshader);
-					r->context->RSSetState(NULL);
 					r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 					r->context->DrawInstanced(4, 1, 0, 0);
 				}
@@ -4487,7 +4542,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		
-		#if 1
 		// Draw Entity
 		{
 
@@ -4519,8 +4573,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
 
-		DrawSubmitRenderCommands(d);
-		#endif 
+		 DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
 		end_frame = Time(); 
 		dt = (float)(end_frame - start_frame);
