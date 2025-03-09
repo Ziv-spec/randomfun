@@ -12,15 +12,18 @@ float4 vs(uint vid : SV_VERTEXID) : SV_Position {
 sampler sampler0 : register(s0);
 Texture2D<float> mask : register(t0);
 
+cbuffer ps_constant_buffer : register(b0) {
+	float2 inv_size;
+};
+
 float2 ps(float4 pos : SV_Position) : SV_Target {
 
 	//  This shader pass samples 9 texels in a grid and gets the distance from the invoking pixel to the position stored in each of those 9 texels, then outputs the value of the closest one.
 
 	float smallest_dist = 1.#INF;
 	float2 correct_uv = float2(0, 0);
-	float2 inv_size = float2(1.f/800.f, 1.f/600.f);
 
-	int step = 14; // TODO(ziv): not a constant!!!
+	int step = 2; // TODO(ziv): not a constant!!!
 	// find the closest one to the pixel itself
 	for (int u = -1; u <= 1; u++) {
 		for (int v = -1; v <= 1; v++) {

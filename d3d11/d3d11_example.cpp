@@ -1895,6 +1895,7 @@ RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, uns
 
 static void
 RendererD3D11Present(R_D3D11Context *r) { 
+	
 	// present the backbuffer to the screen
 	bool vsync = TRUE; 
 	HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
@@ -1923,7 +1924,7 @@ RendererD3D11SetBlendState() {
 // 
 
 /* 
- R_Pass pass = { 
+ R_Pass pass = {
 	 R_TOPOLOGY_,
 	 RendererVSCreateShader(...), { 
 		 RendererCreateBuffer(...),
@@ -1932,7 +1933,7 @@ RendererD3D11SetBlendState() {
 	 RendererPSCreateShader(...), {
 		 RendererCreateBuffer(),
 		 RendererCreateBuffer(),
-		 RendererCreateBuffer(),
+		 RendererCreateTexture2D(),
 	 },
  }; 
  
@@ -1942,7 +1943,8 @@ RendererD3D11SetBlendState() {
  RendererUpdateBuffer(...);
  RendererSetBlendState(...);
  RendererPassDrawInstaned(r, &pass, render_target);
- */
+ 
+*/
 
 
 typedef int RTHandle;
@@ -3998,7 +4000,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		D3D11_TEXTURE2D_DESC texture_desc = {};
 		texture_desc.Width              = window_width;
 		texture_desc.Height             = window_height;
-		texture_desc.MipLevels          = 1;
+		texture_desc.MipLevels          =1;
 		texture_desc.ArraySize          = 1;
 		texture_desc.Format             = DXGI_FORMAT_R8_UNORM;
 		texture_desc.SampleDesc.Count   = 1;
@@ -4024,8 +4026,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 												   { 
 													   R_USAGE_DYNAMIC, 
 													   R_CPU_ACCESS_WRITE, 
-												   } 
-												   );
+												   } );
+	
+	BFHandle inv_size_cbuffer = RendererCreateBuffer(r, 
+												   NULL, 
+												   sizeof(float)*2, 
+												   1,
+												   R_BIND_CONSTANT_BUFFER, 
+												   {
+													   R_USAGE_DYNAMIC, 
+													   R_CPU_ACCESS_WRITE, 
+												   } );
+	
+	
 	
 	// INIT
 	ID3D11ShaderResourceView *jfa_init_resource;
@@ -4424,6 +4437,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
 			
+			float inv_size[] = { 1/(float)window_width, 1/(float)window_height };
+			RendererUpdateBuffer(r, inv_size_cbuffer, inv_size, 2*sizeof(float)); 
+			
 			RendererUpdateBuffer(r, jfa_vs_cbuffer, &vs_cbuf, sizeof(matrix)*2); 
 			
 			// Pixel Contstant Buffer
@@ -4434,13 +4450,93 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 											
 		}
 		
+		if (r->dirty) {
+			// MASK 
+			jfa_mask_resource->Release(); 
+			jfa_mask_render_target->Release(); 
+			jfa_mask_resource = NULL;
+			jfa_mask_render_target = NULL;
+			
+			{
+				D3D11_TEXTURE2D_DESC texture_desc = {};
+				texture_desc.Width              = window_width;
+				texture_desc.Height             = window_height;
+				texture_desc.MipLevels          = 1;
+				texture_desc.ArraySize          = 1;
+				texture_desc.Format             = DXGI_FORMAT_R8_UNORM;
+				texture_desc.SampleDesc.Count   = 1;
+				texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+				texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+				texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+				
+				ID3D11Texture2D* texture;
+				r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+				r->device->CreateShaderResourceView(texture, NULL, &jfa_mask_resource);
+				r->device->CreateRenderTargetView(texture, NULL, &jfa_mask_render_target);
+				
+				texture->Release();
+			}
+			
+			
+			jfa_init_resource->Release(); 
+			jfa_init_render_target->Release(); 
+			jfa_init_resource = NULL; 
+			jfa_init_render_target = NULL;
+			
+				// INIT
+			{
+			D3D11_TEXTURE2D_DESC texture_desc = {};
+					texture_desc.Width              = window_width;
+					texture_desc.Height             = window_height;
+					texture_desc.MipLevels          = 1;
+					texture_desc.ArraySize          = 1;
+					texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
+					texture_desc.SampleDesc.Count   = 1;
+					texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+					texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+					texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+					
+					ID3D11Texture2D* texture;
+					r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+					r->device->CreateShaderResourceView(texture, NULL, &jfa_init_resource);
+					r->device->CreateRenderTargetView(texture, NULL, &jfa_init_render_target);
+					texture->Release();
+		}
+			
+			// JFA
+			jfa_mask0_render_target->Release();
+			jfa_mask0_resource_view->Release(); 
+			jfa_mask0_resource_view = NULL; 
+			jfa_mask0_render_target = NULL;
+			{
+				D3D11_TEXTURE2D_DESC texture_desc = {};
+				texture_desc.Width              = window_width;
+				texture_desc.Height             = window_height;
+				texture_desc.MipLevels          = 1;
+				texture_desc.ArraySize          = 1;
+				texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
+				texture_desc.SampleDesc.Count   = 1;
+				texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+				texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+				texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+				
+				ID3D11Texture2D* texture;
+				r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+				r->device->CreateRenderTargetView(texture, NULL, &jfa_mask0_render_target);
+				r->device->CreateShaderResourceView(texture, NULL, &jfa_mask0_resource_view);
+				
+				texture->Release();
+			}
+		}
+		
+		
 		// clear background
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
 		// Draw outline
-		if (1 || intersecting) { 
-			
+			if (1 || intersecting) { 
+							
 			// Create mask of the object
 			{
 				
@@ -4489,6 +4585,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				r->context->PSSetShaderResources(0, 1, &jfa_mask_resource);
 				r->context->PSSetSamplers(0, 1, &sampler_state);
 				RendererPSSetShader(r, jfa_init_pshader);
+				RendererPSSetBuffer(r, inv_size_cbuffer);
 				r->context->RSSetState(NULL);
 				r->context->OMSetRenderTargets(1, &jfa_init_render_target, NULL);
 				r->context->DrawInstanced(4, 1, 0, 0);
@@ -4513,6 +4610,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->PSSetShaderResources(0, 1, &jfa_init_resource);
 					r->context->PSSetSamplers(0, 1, &sampler_state);
 					RendererPSSetShader(r, jfa_pshader);
+				RendererPSSetBuffer(r, inv_size_cbuffer);
 				r->context->OMSetRenderTargets(1, &jfa_mask0_render_target, NULL);
 					r->context->DrawInstanced(4, 1, 0, 0);
 			}
@@ -4534,7 +4632,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->PSSetShaderResources(0, 1, &jfa_mask0_resource_view);
 					r->context->PSSetSamplers(0, 1, &sampler_state);
 				RendererPSSetShader(r, jfa_solid_pshader);
-					r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+				RendererPSSetBuffer(r, inv_size_cbuffer);
+				r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 					r->context->DrawInstanced(4, 1, 0, 0);
 				}
 							

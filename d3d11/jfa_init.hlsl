@@ -11,16 +11,17 @@ float4 vs(uint vid : SV_VERTEXID) : SV_Position {
 sampler sampler0 : register(s0);
 Texture2D<float> texture0 : register(t0);
 
+cbuffer ps_constant_buffer : register(b0) {
+	float2 inv_size;
+};
+
 float2 ps(float4 p : SV_Position) : SV_Target {
 
-	float inv_window_height = 1.f/600.f; 
-	float inv_window_width  = 1.f/800.f;
-	
 	// TODO(ziv): figure out how the hell am I supposed to divide by this stuff
-	float  color =  texture0.Sample(sampler0, float2(p.x*inv_window_width, p.y*inv_window_height));
+	float  color =  texture0.Sample(sampler0, float2(p.x, p.y)*inv_size);
 
 	float2 uv = p.xy * color;
-	float2 result = float2(uv.x/800.f, uv.y/600.f);
+	float2 result = uv * inv_size;
 
 	return result;
 }

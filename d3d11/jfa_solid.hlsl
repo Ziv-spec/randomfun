@@ -10,8 +10,12 @@ float4 vs(uint vid : SV_VERTEXID) : SV_Position {
 sampler sampler0 : register(s0);
 Texture2D<float2> jfa_tex : register(t0);
 
+cbuffer ps_constant_buffer : register(b0) {
+	float2 inv_size;
+};
+
 float4 ps(float4 pos : SV_Position) : SV_Target {
-	float2 color =  jfa_tex.Sample(sampler0, pos.xy*float2(1.f/800.f, 1.f/600.f));
+	float2 color =  jfa_tex.Sample(sampler0, pos.xy*inv_size);
 	if (color.y == 0) discard; 
 	if (color.x == 0) discard; 
 
