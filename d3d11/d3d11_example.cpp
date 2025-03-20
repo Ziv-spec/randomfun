@@ -4437,7 +4437,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
 			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
 			
-			float inv_size[] = { 1/(float)window_width, 1/(float)window_height };
+			float inv_size[] = { 1/(float)window_width, 1/(float)window_height};
 			RendererUpdateBuffer(r, inv_size_cbuffer, inv_size, 2*sizeof(float)); 
 			
 			RendererUpdateBuffer(r, jfa_vs_cbuffer, &vs_cbuf, sizeof(matrix)*2); 
@@ -4535,7 +4535,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
 		// Draw outline
-			if (1 || intersecting) { 
+			if (intersecting) { 
 							
 			// Create mask of the object
 			{
