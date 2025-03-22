@@ -4536,7 +4536,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Draw outline
 			if (intersecting) { 
-							
+			// TODO(ziv): Currently this is using too much of the GPU. 
+			// this is the case since I am working on the whole screen a couple of times 
+			// one after the other. I need to find how this can be made better. Since 
+			// Whether by using lower resolution screen first or any other solution. 
+			
 			// Create mask of the object
 			{
 				
