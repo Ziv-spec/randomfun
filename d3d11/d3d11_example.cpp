@@ -130,7 +130,7 @@ typedef struct { float r, g, b, a; } Color;
 //   [x] resolving constraints robustness and accuracy improvement
 //   [ ] UI Customization 
 //     [x] border
-//     [ ] rounded corners
+//     [ ] rounded corners?
 //     [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
 //     [ ] bitmaps?
 //
@@ -2111,7 +2111,6 @@ DrawSubmitRenderCommands(D_Context *d) {
 
 	// Draw Lines
 	{
-
 		const UINT stride = sizeof(float3);
 		const UINT offset = 0;
 
@@ -2185,7 +2184,6 @@ DrawSubmitRenderCommands(D_Context *d) {
 		r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
 		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		RendererDrawInstanced(r, 4, d->font.idx, 0, 0);
-
 	}
 }
 
@@ -2918,7 +2916,6 @@ UICompareKey(UIID k1, UIID k2) {
 
 static UI_Widget *
 UIMakeWidget(String8 text, u32 flags) {
-	Assert(ui && "Your code sucks, you can't even provide a simple pointer correctly. Meh");
 
 	//
 	// Get entry from hashmap if exists
@@ -4415,9 +4412,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 
 		collided_with_character = intersecting;
-
-
-
 
 
 		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
