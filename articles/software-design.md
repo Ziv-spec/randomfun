@@ -1,9 +1,11 @@
 
+These are my unprocessed thoughts on some matters; they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change yet this text does not. This text is fragile so make sure you are not.
+
 Article on system design. This should include the following: 
 
 Essential properties of designing systems which will not change. 
-Handling Complexity of systems 
-Handling Invisibility of code 
+Handling Complexity of systems
+Handling Invisibility of code
 Handling Cost of building and using systems
 Handling Changeability and evolution of systems 
 Handling Conformity to interfaces, features and more 
@@ -34,11 +36,13 @@ NOTE(ziv): Rethink about the history part. I quite enjoy writing about it and je
 - Programming is very much like writing anything. You can have an idea of how something should be but only as you implement the system itself is when you actually materialize everything and make sure that it can work. Holes in your thinking are patched, kinks and past assumptions are resolved and the final product is almost always different than what you might have began with. This is also why programming is so hard as your plans almost never go smoothly requiring you to find all of the ways that failures take effect. 
 - can we learn from biological systems? Antifragile systems it is.
 
-For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence, humans seem to not only survive great calamities but also advance their knowledge and capabilities through and through. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
+For years now it seems humans have been the dominant species on this planet. Organized together in weird structures, held by stories and powered by intelligence; humans seem to defy all logic by surviving great calamities, adapting, and growing stronger from these experiences. For as much as I would love to jump into the meat of this article I believe, to appreciate it fully, it is important to remember the challenges we as species had to overcome to get to where we are.
 
 # History of our kind
 
-The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that, with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
+The first homo-sapiens were hunter-gatherers, roaming large areas around without attachment, gathering mostly scarce plants that managed to survive the cold climate. These times were marked by their climate instability and hostile environment for food growth and development. It likely human potential for progress was held back to a degree by such environment. Around 13,000 years ago the world entered the Younger Dryas period, a millennium-long cold snap that temporarily reversed the warming process experienced since the Last Glacial Maximum[^1]. Around 12,000 years ago the Younger Dryas ended and the Holocene, the current era, began. Climate stabilized forming the climate patterns we know today. 
+
+The effects on plants has been dramatic. Randall Carlson in his essay "Redemption Of The Beast" reviewed carbon-dioxide and its effects on the biosphere. In his essay he looks extensively at the effects carbon-dioxide can have on plants since plants are fundamental to all living organisms. He kindly points out that with the effects of a hotter planet, more stable climate, and larger carbon-dioxide reserves, in the last 11,000 years plants experienced a period of growth and health. Recent data from NASA's satellite imagery shows the world has become greener[^6] from carbon-dioxide fertilization. These macro changes beginning 11,000 years ago have most likely prompted the world wide domestication of different crop types in different parts of the world, with grains being notable for humans development[^7]. 
 
 > If we consider why the human population has never been as great as the present we are lead directly to the realization that for most of the time that modern homo sapiens sapiens has occupied this planet, the Earth has been in the grip of the brutal cold of an ice age. We know from recent history that times of global cooling have been detrimental to human population growth and times of global warming have been conducive to population expansion and social advancement. [see: Redemption Of The Beast, Randall Carlson pp 80]
 
@@ -56,12 +60,6 @@ Complex societies of those times were still relatively simple in modern terms. L
 rewrite and rethink: - "
 From ancient construction of Gobekli Tepe, to the Great Pyramids, and today's large marvels like the Burj Khalifa, seemingly magical constructions were enabled by constant innovation in design and technology.
 
-Couple things to remember about our kind: 
-1. Emotions have a real impact on actions ( explain )
-2. 
-
-
-
 
 [^1]: https://www.haaretz.com/archaeology/2021-11-22/ty-article/study-reveals-how-end-of-ice-age-led-prehistoric-humans-to-settle-down/0000017f-efac-df98-a5ff-efadcc2b0000
 [^2]: https://randallcarlson.com/wp-content/uploads/2022/10/The-Redemption-of-the-Beast.pdf
@@ -72,12 +70,9 @@ Couple things to remember about our kind:
 [^7]: https://warwick.ac.uk/fac/soc/economics/staff/omoav/mmp_15_nov_2020.pdf
 
 
-
 In the recent times computers have risen they quickly became integral to human life. We rely on carefully manufactured pieces of sand to help us do almost anything imaginable. Forming a cloud of tiny devices surrounding us; tiny superpowers we can use. We communicate long distances with our phones, make online purchases on our computers, entertain ourselves using our TV, research using computer models and so much more. Much in the same way cars assist humans in going further distances faster and unlocking opportunities otherwise deemed impossible computers allow us to make computations faster, augmenting all aspects of modern life.
 
 With time, cultural changes and introduction to new words help designers talk about the dimensions of their design. One such dimension is complexity. "
-
-
 
 
 *The lead:*
@@ -333,6 +328,34 @@ I want to share a small bit of my experience with productivity. For quite the lo
 
 After around a year which I took a break from programming, I returned and found out that I was very very slow in my thinking. Almost too slow even I would say as I spent an entire day doing almost nothing. The big revelation was of course setting a short time limit. I set a 15 minute time limit and saw my productivity shoot. The next day I set a 1 hour time limit still good results. The urgency for pushing through the times where you are unsure as to how to continue with doing something which will let you push into the correct direction has been the major contributing factor. 
 
-Not only creating urgency of work is important, I have also found that reflecting our my work has done wonders in finding what are the things that I may be lacking and having some sort of metric for evaluating my work is what I should be concentrating my time now. That said we know from Goodhart's law that any metric we use as a proxy for the real goal would eventually grow old and become the new goal.
+Not only creating urgency of work is important, I have also found that reflecting our my work has done wonders in finding what are the things that I may be lacking and having some sort of metric for evaluating my work is what I should be concentrating my time now. That said we know from Goodhart's law that any metric we use as a proxy for the real goal would eventually grow old and become the new goal so I can't be sure this would end up so well as I would like. But I will report further when I learn more.
+
+===
+
+
+# Justice
+
+As I think about it some more, actually the idea of exploring justice is more enticing to me than ever. This is because it would set me up for good action when faced with situations where justice is of great importance. What is justice? How do I know whether the actions of another are in-fact just or not. Does it matter? Should I be just? Should I be with people who are good and just or not? Can such people change? 
+
+In Plato's Republic he notes that when comparing between ultimate justice and ultimate evil/in-justice we know that being the ultimate evil is more beneficial to the individual. The ultimate in-justice is fooling everybody that your control and benefit is good. A false king sitting on the throne benefiting, fooling everybody while not ever getting caught, is the ultimate evil. Since you never fact the consequences. Whereas ultimate just would be just to everybody but might get screwed by the evil king even if just. So ultimate evil no downside great upside, ultimate just has great downside (lost reputation/money/more) and no materialistic or spiritual upside.
+
+When bringing the discussion to our daily lives: cheating is often seen as evil. And here again, we can go into the just/in-just argument with great tools to guide us. A cheater that doesn't get caught is the ultimate evil. While someone who doesn't cheat is just. So again why should anybody be just when then can be in-just and get away with it? The common solution to why you should be just then is that you will get caught. This is a reasonable response but doesn't really cover the whole spectrum. What about when you don't caught. Does it not bring more upside than downside if you are a really good manipulator. This is probably why many people cheat. It is because they see the upside and don't believe that there is a great enough downside to their behavior. I also think that not only that but you can also see that they truly don't see this as wrong. At least when they do it. 
+
+Here I believe that we can go into an even more philosophical realm of right/wrong and meaning. Where is meaning? For all I can see meaning is found in both the content and the interpreter. Content itself is meaningless. Just like a world in a foreign language sounds meaningless to you if you don't know the language. Yet the interpreter is meaningless too without content to interpret. Just without hearing words you can't interpret something thus gain meaning you want to get conveyed. So we know that content and the interpreter, standing on their own, are meaningless. Meaning can only be found in a strange dance between content and interpretation. 
+
+If the meaning of anything is in the eyes of the observer just as much as it is in reality. Nothing is right or wrong fundamentally. The then only right action for dealing with somebody who sees the world differently and believes that they can cheat and get away with it is: don't be friends with such people, or, try to change their world. Since I don't believe that changing somebody's world is a easy feat, a practical implementation of an action here is just to lose contact with the problematic people. That being said, I do think that for some cases it is beneficial to seek changing someone's view of the world. This is the hard way. A battle which will have to be fought until one side is weakened enough that the other can force their way in. A battle for right or wrong; a battle with only one winner or two losers. 
+
+# Vengeance
+
+From seeing Naruto and reflecting on my life, it seems that the question of vengeance, returning eye for and eye, is not as simple as I once thought. If for any bad action that one does, you will return equally, the actions you both will inflict one one another will get worse. Vengeance causes more vengeance as it pulls more people into the cycle. Like a chain with a broken link, the upper part of the chain stays the same but the lower part which depends on the link follows it. In Naruto we see this in the form of killing of Sasuke. If Sasuke is killed, Naruto and his friends will not forgive the ones who did so and try to take revenge by killing them. If they succeed, the other party will do the same taking the other links in the chain with them into a cycle of revenge and vengeance. To stop this cycle you must be higher than these actions and find it in yourself to forgive the other side so the cycle never begins as it is hard to stop or understand other other side to stop the cycle. Stopping the cycle is hard because understating the other side is hard. In Naruto the character Pain is a great example of someone who has good intentions yet bad actions, making Naurto extremely hateful of him. Yet, by understating one another they have forgave one another stopping Pain's actions. The series shows us that there are many ways of achieving peace. Yet, not all paths are equally as likely to succeed; for some ways are fundamentally more reasonable towards human nature than others.
+
+When looked in a more general case: wars between nations seem to have similar yet slightly different cause and effect. For nations what is important are their internal and external interests. The reason for war is usually less emotional at the start but always very emotional when war erupts, since this is what makes people move. As is the case in the Pele pone Asian War, the Athens and the Spartans went to war not in response to allied countries provoking on another but the growing threat Athens posed on Sparta and the reverse. Of course that was only in the beginning. Near the beginning of war, emotion took over causing hate to sprout; allied forces joined in the effort putting fuel to fire, causing the more allied forces to join, and commencing the war effort. It is through this benefit thinking orientation leading to emotional hate making everyone to pick sides and eventually fight each for their cause, that war comes into existence. 
+
+Both sides believe they are in the right. It is a fact that for each on their own, they have in their minds full rights to harm the other for the pain they feel. I for example have fully seen what this is like in the recent war in Israel that began on October 7, 2023. Israeli's had felt like it was fully justified to kill many Palestinians for the horrible actions that a few took. In a day or two Ham's managed to kill more than a thousand Israelis; a mortality rate not seen in years and years of small specialized operations in Gaza. Ham's was of course planning for years this operation of theirs. They for reasons which we might not fully understand have choose to hurt Israel in a grand way which was not seen in decades. For them the decision was natural, they want to eliminate the Zionists. On the other side, the pain people felt was real. The fear people felt was real. Reality hit Israel hard and people were emotional. Their friends died, whole families burnt alive, babies were killed, relatives were on the verge of death, houses burnt, and the sound of gunfire was loud and clear. War was a result of heightened emotions incurred by the Hamas operation and of course each side only thinking about their own pain.
+
+At the beginning of war when the severity of the situation was not understood people were afraid and scrambled to stabilize the situation. Many civilians rushed to the army to join the efforts of repelling Ham's militants from the Israeli border. 
+
+I think that actions speak louder than thoughts. For this reason I will try to put this to the test. I have someone that I maybe don't hate but I don't like as I have in he past. I will to to see whether by talking and trying to understand one another can we amend the weird status we are stuck at right now.
+
 
 
