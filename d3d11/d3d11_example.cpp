@@ -164,7 +164,13 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] consider makeing octtree to "simplify" collision detection
 //   [ ] shader to show selection
 
+
+// ========================================================
 // [ ] Implement high level abstraction for a pipline pass
+// [ ] Make pixelated look -- working on it now :)
+// [ ] ECS for game objects (also hot reload everything?)
+// ========================================================
+
 
 // Create a general system for identifying changes to files using their path and
 // updating their inside information when changed. This system should be general 
@@ -2110,7 +2116,7 @@ DrawSubmitRenderCommands(D_Context *d) {
 	R_D3D11Context *r = d->r;
 
 	// Draw Lines
-	{
+	if (0){
 		const UINT stride = sizeof(float3);
 		const UINT offset = 0;
 
@@ -2940,8 +2946,6 @@ UIMakeWidget(String8 text, u32 flags) {
     //
     // Create and add the widget to the graph
     //
-
-
 
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[ui->widgets_idx++];
@@ -4093,6 +4097,46 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	VSHandle jfa_solid_vshader = RendererCreateVSShader(r, "../jfa_solid.hlsl", "vs", NULL, 0);
 	PSHandle jfa_solid_pshader = RendererCreatePSShader(r, "../jfa_solid.hlsl", "ps"); 
 	
+	int down_sample_multiplier = 4;
+	
+	// down-sampled buffer
+	ID3D11ShaderResourceView *down_sampled_resource;
+	ID3D11RenderTargetView *down_sampled_rtv;
+	{
+		D3D11_TEXTURE2D_DESC texture_desc = {};
+		texture_desc.Width              = window_width  / down_sample_multiplier;
+		texture_desc.Height             = window_height / down_sample_multiplier;
+		texture_desc.MipLevels          = 1;
+		texture_desc.ArraySize          = 1;
+		texture_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+		texture_desc.SampleDesc.Count   = 1;
+		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
+		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
+		
+		ID3D11Texture2D* texture;
+		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
+		r->device->CreateRenderTargetView(texture, NULL, &down_sampled_rtv);
+		r->device->CreateShaderResourceView(texture, NULL, &down_sampled_resource);
+		
+		texture->Release();
+	}
+	
+	float full_screen_verticies[] = {
+		-1,  1, 
+		 1,   1, 
+		-1, -1, 
+		1,  -1,
+	};
+	BFHandle full_screen_vertex_buffer = RendererCreateBuffer(r, full_screen_verticies, sizeof(float)*2, 4, R_BIND_VERTEX_BUFFER, { R_USAGE_DEFAULT } ); 
+	R_LayoutFormat downsample_format[] = {
+		{ "Position", R_FORMAT_R32G32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA },
+	};
+	VSHandle downsample_vshader = RendererCreateVSShader(r, "../downsample.hlsl", "vs", downsample_format, 1);
+	PSHandle downsample_pshader = RendererCreatePSShader(r, "../downsample.hlsl", "ps"); 
+	
+	
+	
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
@@ -4419,7 +4463,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		//~
 		// Render Game
 		//
-
+		
 		// Update model-view matrix
 		{
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
@@ -4528,6 +4572,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
+		
 		// Draw outline
 			if (intersecting) { 
 			// TODO(ziv): Currently this is using too much of the GPU. 
@@ -4631,7 +4676,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->PSSetSamplers(0, 1, &sampler_state);
 				RendererPSSetShader(r, jfa_solid_pshader);
 				RendererPSSetBuffer(r, inv_size_cbuffer);
-				r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+				r->context->OMSetRenderTargets(1, &down_sampled_rtv, NULL);
 					r->context->DrawInstanced(4, 1, 0, 0);
 				}
 							
@@ -4653,9 +4698,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			// Vertex Shader
 			RendererVSSetShader(r, vshader);
 			RendererVSSetBuffer(r, cbuffer);
-
+			
+			
+			D3D11_VIEWPORT viewport = {0};
+			viewport.Width = (FLOAT)window_width/2;
+			viewport.Height = (FLOAT)window_height/2;
+			viewport.MaxDepth = 1;
+			
 			// Rasterizer Stage
-			r->context->RSSetViewports(1,  r->viewport);
+			r->context->RSSetViewports(1, &viewport);
 			r->context->RSSetState(r->rasterizer_cull_back);
 
 			// Pixel Shader
@@ -4665,11 +4716,32 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->PSSetSamplers(0, 1, &sampler_state);
 
 			// Output Merger
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			r->context->OMSetRenderTargets(1, &down_sampled_rtv, NULL);
 
 			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
 		}
-
+		
+		
+		// draw downsampled texture onto the frame buffer
+		{
+			ID3D11RenderTargetView* nullRTV = NULL;
+			r->context->OMSetRenderTargets(1, &nullRTV, NULL);
+			
+			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+			const UINT stride = sizeof(float)*2;
+			const UINT offset = 0;
+			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, full_screen_vertex_buffer), &stride, &offset);
+			RendererVSSetShader(r, downsample_vshader);
+			r->context->RSSetViewports(1, r->viewport);
+			RendererPSSetShader(r, downsample_pshader);
+			r->context->PSSetShaderResources(0, 1, &down_sampled_resource);
+			r->context->PSSetSamplers(0, 1, &sampler_state); // point sampler
+			
+			// Output Merger
+			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
+			r->context->Draw(4, 0);
+		}
+		
 		 DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
 		end_frame = Time(); 

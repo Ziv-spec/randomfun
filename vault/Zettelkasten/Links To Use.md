@@ -16,6 +16,12 @@ Things to explore in programming:
     Efficiency seems to not be a concern when "velocity" is a term commonly used so everything must be fast. 
 
 
+# Searching for flights
+
+https://www.flightradar24.com/
+https://www.gulliver.co.il/
+
+
 #### Links - Blogs
 
 Price's law 
