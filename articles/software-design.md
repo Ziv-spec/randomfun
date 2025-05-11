@@ -361,4 +361,117 @@ At the beginning of war when the severity of the situation was not understood pe
 I think that actions speak louder than thoughts. For this reason I will try to put this to the test. I have someone that I maybe don't hate but I don't like as I have in he past. I will to to see whether by talking and trying to understand one another can we amend the weird status we are stuck at right now.
 
 
+# The timeless way of building 
+
+The author believes that today we build lifeless buildings. Buildings that don't have a fire or a quality to them to bring our souls to peace a quiet that we desire. He thinks that the methods and disciplines we have today are what binds our thoughts and ways to create such lifeless creations. By first understanding the method and then shedding it, is how he intends to make us not only understand but also follow the timeless way.
+
+chatpers 1-3 what is the quality? and what is it not?
+
+alive, whole, comfortable, free, exact, egoless 
+
+I believe that what he means in the quality is that he wants randomness of the human guide. He does not want complete chaos for it lacks the quality and not complete rigid structure for it also lacks the quality. Insteads the author ops for slight randomness of humans guided by a structure that one follows. The structure only acts as a guide for the final deisions is always upto the effort and needs of the human who want's his "dream" or so called feeling which he will impart with the structure. 
+
+The quality is alive in that it make us feel alive in them, whole in that they don't contradict the vision of the man who made them, comfortable for they are made for real people who seek comfort which is not absolute, free in it's form to take any shape that we wish to impart it, and yet exact in that some structure must be upheld for some regular shape to take place instead of chaos, it must carry thoughtfulness which makes things work towards some benefit instead of just existing or even destroying. 
+
+I for myself can say that I felt this quality in a wooden house in the north where my family for a couple years went on vacation there. I remember how warm the house felt, with the green grass complimenting it's nature; the cozy feel which is given by the screaching sounds of wood when walking and the scenery of mountains when looking outside, the grapevines growing on the sides of the main walk way and the calmness which the environment had as it was peaceful. All these attributes contributed into making a kind of quality which I had not felt from any other house I had been to.
+
+I also remember the feeling of a shabat in Liam's house. The large table near the kitchen had a very largness to it which made it feel like a large family (which they are with all the guests they had yeah..). I remember at Yoni's house the tall ceiling and the long table which had some comfort and largeness of life. Along with some simplicity to it's interior design.
+
+chapters 4-6  the quality lies in the events that happen in a place more than the place itself, yet they can not be separated for they effect each other. 
+The roads that we use to get around, the parks that we use to communicate with our friends, and so on... these are places where the events that take place in them are helped by the environment which they occur in
+
+quote: "A building or a town is given it's character, essentially, by those events which keep on happening there most often." chapter 4, page 66
+
+chapter 7 when every small atom of a village has the quality only then the holistic bigger village contains it too (as everything amplifies this feeling)
+
+chapter 8 the problem with modern building is that each part is modular and eventually the same whereas nature gives the similar patterns yet never two exact ones (trees are never the same although there are many trees, same with leaves and so on..) 
+
+In much of the same nature that history doesn't repeat by rhymes he wants our buildings to rhyme not repeat one another.Not only that but also you have to consider the fact that the materials which you choose to use are going to effect positively/negatively the anti-fragile process of evolution of your house. If you are going to use unbreakable materials to preserve everything you will not have the ability to change anything with time. Nothing will crumble and ask for replacement, nothing will cry for death to be reborn anew. 
+
+chapter 9 there is no way to achieve the quality in a human made design(far too complex) but by the generative process of creation where trial and error are accepted (just like designing code) 
+
+The author understand that for the natural growth of a building/town, you have to have many individual parts which work together yet are each autonomous on their own. Some parts can be mistakes and die while others are a great success. The nature of such of a planning is that it should be anti-fragile by nature of how it is allowed to grow. This also means that you can't have only artisans and architects help design and build all the places we want, we must have the many people that live and interact with their environment to find the right structures with the nameless quality, because otherwise you just don't have enough autonomous people who care for their surroundings to make the process work as intended. But these people who we add should be allowed to make small changes to the whole and usually defined to what they can easily access and change (their own house, garden, so on..)
+
+chapter 10 here we learn about the language which is used to build in the timeless way. The language is of fundamental information about the environment and rules which are applied based on it. The author wants us to understand that his language is isomorphic to some formal language. This is important because it shows us how it is built and how to follow it. Built from the constraints of the environment and rules which experience shows, the language takes shape allowing the same variety and complexity which you would expect out of a formal system, which means that it compresses well and has many pathways which you can take. This is just like any formal system highly anti-fragile for the combination amount is very high while the fundamental maxims which you work with are very few. 
+
+
+chapter 11-12 this language is fundamental. everybody follows a rule of thumb (which means that we constantly make assumptions and have prejudice for certain actions) and this is why some things are so repetitive (which is not all that bad if understood) so make sure you have good rules of thumb and that you follow through with them. 
+
+quote: 
+Architects are responsible for no more than perhaps 5 percent of all the buildings in the world. 
+Most buildings, streets, shops, offices, rooms, kitchens, cafes, factories, gas stations, freeways, bridges... which give the world it's form, come from an entirely different source. 
+They come from the work of thousands of different people.
+They come from the decisions of administrators, hardware store-owners, housewives, official building department, local bankers, carpenters, public works, departments, gardeners, painters, city councils, families ...  [ pp 200 ]
+
+NOTE: look at a picture of the shrine Ise, in Japan 
+
+chapter 13 the language which modern buildings are created by, is one which does not produce the fire which we want. The wanted language which people had in the past has been broken down. The language of the past is one where the people who used it also experienced it. Most children knew how to generally layout a house even if not build it, they also had their experience with it since the lived in their houses. Language like that had the benefit of benefiting of evolution of ideas where failing  ideas would be discarded and winning ideas would last. The reason for the breakdown of language is that it has all become centralized by a few "specialists". A specialists can not adapt his design for my needs even if he has the best of intentions. When dealing with planning of large populations, the result is abstract and not intentional, it least a bitter taste for beauty and comfort.
+
+chapter 14: A pattern which can be shared. Understanding how to see patterns, define them, make sure they are worthwhile, use them. Here we can see practical advice around these patterns for building our language to use when we want to design something. 
+
+chapter 15: how do we know that a pattern is actually good and does what it sets todo? we can't rely on fragile techniques which are analytical but instead look into anti-fragile techniques which is just to test and see how we feel about the creation ourselves. 
+
+chapter 16 kind of a weird too complex way of looking at building the language. I think he tries too hard to make it formal. Although mostly our intuition can guess what he means. Also, he states that the language is complete once we can visualize it as a whole. But from my experience we can only do that once we actually try and use the language to create something from it. Only in that case can we make sure that we don't miss any details. This is like in programming while I can theorize about anything and try to create YAML diagrams only by implementing the features themselves, can you actually know what works and what doesn't work. 
+
+The author claims that the real work of design is of building the language, which of course makes sense from what we know about his language and ideas. 
+
+chapter 17: from a language that builds a house, building, park and so on.. to a language used to describe a village, town, city. The language he proposes it incomplete since it must utilize the people's ideas themselves to fit it into the specific area people and culture. To complete it a decentralized process of people trying the ideas must be done: define, discuss, criticize, and improve the patterns to fit the needs of the people. Then the last step is to share so the work of people is cumulative.
+
+quote: What we need is a way of understanding the forces which cuts through this intellectual difficulty and goes closer to the empirical core. [ pp 286 ] 
+...
+To do this, we must rely on more than intellect. 
+
+chapter 18: just a repeating of the idea that the process which the author wants to exemplify is that of growth. The town grows from the actions of the people that hopefully share a common language, because of their culture, location and past, they can share the meaning and experience of building and thus grow a town in according to the timeless method.
+
+chapter 19-20: the differentiation process is just making "greedy" decisions based on context. So you take the optimal next step given the steps before and continue onwards, which is done since it allows for great adaptability but, comes at a cost of having to make sure that the order in which the patterns are taken is constant. Also this is slightly unique in that it takes the "whole" into consideration. You must take into account how each change is going to effect the rest so although greedy, the cost function which calculates the step is quite complex. 
+
+The best example I came up with which is quite simple to understand is speaking: when you speak you say a single word one at a time. Each word is part of the whole idea you want to make across, each word is said by thinking of what would lead me to the whole best, each step is greedy yet looks at the whole picture to come up with something to represent it best. Of course sometimes you make mistakes and then try to fix them but that is part of our nature. The ability to make these changes is what makes language anti-fragile. 
+
+chapter 21: an example of designing a single building 
+chapter 22: an example of designing a large hospital
+chapter 23: theory of construction (without drawing first, but marking, and modeling) 
+chapter 24: people live in a place and repair it constantly change it and evolve it to become better in the future. 
+chapter 25: Can a town emerge from the decentralized spontaneous actions of the individual?
+chapter 26: A somewhere justification chapter for the author for why he is correct 
+chapter 27: throwing away your ego and fear and just build whatever you feel is most natural for the place (following the patterns you know) 
+
+I don't remember the page sadly: 
+quote: Each pattern is a three-part rule, which expresses a relation between a certain context, a problem, and a solution. 
+
+
+
+
+----- Thinking about it for some time, I think that the book does not cover simplicity as beauty. When something is too complex for the task that it tries to solve it is not going to feel beautiful I think (something to think about). This I know from programming, but I am not 100% sure how this would translate to programming, as there might be key differences to learn about. 
+
+
+My Review Of The Timeless Way Of Building: 
+
+The book is structured in four parts. The beginning is a summery of the whole book, reading it will allow one to understand not only what is the book going to talk about, but also it's fundamental structure. The other three parts are about the elusive quality the author wants buildings to contain, then, how can we reach this quality, lead by practical examples of how he did it, making his ideas more concrete.
+
+Chapter 8 is where we learn about why the book was written. We learn that modern building is lifeless, boring almost, and so modular and reused that it lacks any character. They don't trigger the same emotions that older buildings, towns, villages, contain. When entering a old cathedral that was built by the people who lived there, you find an elusive quality that makes you feel a certain way. Whether because of the sheer size, art, light, sound, history, location, materials, colors, and so on...you can tell immediately the grandness and beauty the place has; along with the spiritual nature it contains. Hell, even a regular house can be made alive. 
+
+I for myself can say that I felt this quality in a wooden house in the north where my family for a couple years went on vacation there. I remember how warm the house felt, with the green grass complimenting it's nature; the cozy old feel which is given by the slight screeching sounds of wood when walking and the scenery of mountains when looking outside, the grapevines growing on the sides of the main walk way and the calmness which the environment had. Peace. The fun we had wen we all sat around the big table after cooking a meal, going to the pool, enjoying life, eating to our hearts content. All these attributes contributed into making a kind of quality which I had not felt from any other house I had been to. One which I am longing for to this day (to a degree, and without any relation to the book). 
+
+The author correctly recognizes that the quality lies in the events that happen in a place more than the place itself; yet they can not be separated as they effect each other, for without the place there would be no events. The roads that we use to get around, the parks that we use to communicate with our friends, and so on... these are places where events that take place in them, are helped by the environment which they occur in. Each part of a village in this way if it hast the quality can contribute to the holistic big picture we want to create. 
+
+"A building or a town is given it's character, essentially, by those events which keep on happening there most often." - [ chapter 4, page 66 ]
+
+Buildings that we see today have almost no variation. They all are rectangular with many rooms and layouts which are repeated. Nature also repeats yet we don't find trees repeat the same way: although there are many trees, each of their twigs and leaves are have slight variations all over, giving them their character and uniqueness. They follow the pattern of a leave or twig as we recognize them yet contain variations we appreciate. In much of the same nature that history doesn't repeat, it rhymes, he wants our buildings to rhyme not repeat one another. 
+
+To do so is impossible though our current centralized methodologies. Architects who build massive constructions may do so by abstracting the needs of the people and the events which occur in the places they build, but they do not attend to the specific needs the people have, they don't make the place unique. It is far too complex to do it in such a way. 
+
+The timeless way of building is, in-fact, a decentralized process where people have a common shared language for building, and the building or town or village or city grow organically from the gradual attending of needs, the people themselves help to attend their needs they can tell not only what they are but have a language to communicate it well. Each decision on it's own might not be perfect but with time, as you make old wrong decisions, learn, and modify, you grow. We want autonomous people making their own decisions about how to build. But these people who we add should be allowed to make small changes to the whole and usually defined to what they can easily access and change (their own house, garden, so on..) and do so using the shared language they have. We know whether we are right or wrong when we feel a certain way. Every human will recognize this feeling when things are right or wrong. 
+
+Nothing will cry so hard for it's own death as it wishes to be reborn anew, then a building that not longer fits it's owners.
+
+The language proposed is isomorphic in my mind to a formal method. It has axioms, which are truths about building, such as the space we have for a building is 100m^2, and light comes from the south-eastern side; it also has rules which we gather and learn about or invent, for how should we build given the axioms. The patterns which form inside the language have a great variety, but they always follow the rules. Another name which he gives this language is "rules of thumb". Everybody follows rules of thumb when doing well... most things in the world, and so does building. 
+
+"Architects are responsible for no more than perhaps 5 percent of all the buildings in the world. 
+Most buildings, streets, shops, offices, rooms, kitchens, cafes, factories, gas stations, freeways, bridges... which give the world it's form, come from an entirely different source. 
+They come from the work of thousands of different people.
+They come from the decisions of administrators, hardware store-owners, housewives, official building department, local bankers, carpenters, public works, departments, gardeners, painters, city councils, families ..."  [ pp 200 ]
+
+It is a fact that this method can work. Most of the world is built this way.
+
+
 

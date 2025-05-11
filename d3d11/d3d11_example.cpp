@@ -165,9 +165,10 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] shader to show selection
 
 
+// TODO(ziv):
 // ========================================================
-// [ ] Implement high level abstraction for a pipline pass
-// [ ] Make pixelated look -- working on it now :)
+	// [ ] Implement high level abstraction for a pipline pass
+// [ ] Make pixelated look 
 // [ ] ECS for game objects (also hot reload everything?)
 // ========================================================
 
@@ -1919,58 +1920,11 @@ RendererD3D11Present(R_D3D11Context *r) {
 	}
 }
 
-static void 
-RendererD3D11SetBlendState() {
-	
-}
 
-
-// 
-// Renderer High level API
-// 
-
-/* 
- R_Pass pass = {
-	 R_TOPOLOGY_,
-	 RendererVSCreateShader(...), { 
-		 RendererCreateBuffer(...),
-		 RendererCreateBuffer(...),
-	 }, 
-	 RendererPSCreateShader(...), {
-		 RendererCreateBuffer(),
-		 RendererCreateBuffer(),
-		 RendererCreateTexture2D(),
-	 },
- }; 
- 
- RendererUpdateBuffer(...);
- RendererUpdateBuffer(...);
- RendererUpdateBuffer(...);
- RendererUpdateBuffer(...);
- RendererSetBlendState(...);
- RendererPassDrawInstaned(r, &pass, render_target);
- 
-*/
-
-
-typedef int RTHandle;
-
-typedef struct {
-	VSHandle vshader;
-	BFHandle vs_resources[0x8];
-	PSHandle pshader;
-	BFHandle ps_resources[0x8];
-} R_Pass;
-
-static void
-RendererPassDrawInstaned(R_D3D11Context *r, R_Pass *pass, RTHandle render_target) {
-	
-}
 
 //~ 
 // Draw
 // 
-
 
 typedef struct {
 	R_D3D11Context *r;
@@ -4017,8 +3971,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		texture->Release();
 	}
 	
-	VSHandle jfa_mask_vshader = RendererCreateVSShader(r, "../mask.hlsl", "vs", format, ArrayLength(format));
-	PSHandle jfa_mask_pshader = RendererCreatePSShader(r, "../mask.hlsl", "ps"); 
+	VSHandle jfa_mask_vshader = RendererCreateVSShader(r, "../jfa_mask.hlsl", "vs", format, ArrayLength(format));
+	PSHandle jfa_mask_pshader = RendererCreatePSShader(r, "../jfa_mask.hlsl", "ps"); 
 	BFHandle jfa_vs_cbuffer = RendererCreateBuffer(r, 
 												   NULL, 
 												   sizeof(matrix)*2, 
@@ -4097,7 +4051,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	VSHandle jfa_solid_vshader = RendererCreateVSShader(r, "../jfa_solid.hlsl", "vs", NULL, 0);
 	PSHandle jfa_solid_pshader = RendererCreatePSShader(r, "../jfa_solid.hlsl", "ps"); 
 	
-	int down_sample_multiplier = 4;
+	int down_sample_multiplier = 1;
 	
 	// down-sampled buffer
 	ID3D11ShaderResourceView *down_sampled_resource;
@@ -4658,6 +4612,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					r->context->DrawInstanced(4, 1, 0, 0);
 			}
 			
+			r->context->ClearRenderTargetView(down_sampled_rtv, background_color);
 			// using the jfa rt along with the mask to create final image
 			{
 				
@@ -4686,7 +4641,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		// Draw Entity
 		{
-
+			
+			
 			// Input Assembler
 			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			const UINT stride = sizeof(Vertex);
@@ -4701,8 +4657,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			
 			D3D11_VIEWPORT viewport = {0};
-			viewport.Width = (FLOAT)window_width/2;
-			viewport.Height = (FLOAT)window_height/2;
+			viewport.Width = (FLOAT)window_width/(float)down_sample_multiplier;
+			viewport.Height = (FLOAT)window_height/(float)down_sample_multiplier ;
 			viewport.MaxDepth = 1;
 			
 			// Rasterizer Stage
@@ -4732,7 +4688,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			const UINT offset = 0;
 			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, full_screen_vertex_buffer), &stride, &offset);
 			RendererVSSetShader(r, downsample_vshader);
-			r->context->RSSetViewports(1, r->viewport);
+			
+			r->context->RSSetViewports(1,r->viewport);
 			RendererPSSetShader(r, downsample_pshader);
 			r->context->PSSetShaderResources(0, 1, &down_sampled_resource);
 			r->context->PSSetSamplers(0, 1, &sampler_state); // point sampler
@@ -4741,6 +4698,48 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
 			r->context->Draw(4, 0);
 		}
+		
+		#if 0 
+		// vision for api
+		{ 
+			
+			// clear render target
+			
+			float full_screen_verticies[] = {
+				-1,  1, 1,   1, 
+				-1, -1, 1,  -1,
+			};
+			R_Buffer_Desc buff_desc = {  };
+			R_Buffer vbuff = r_create_buffer(full_screen_verticies, &buff_desc);
+			
+			R_Shaders_Desc shdr_desc = { 
+				.vs = "../downsample.hlsl", 
+				.vs_ep = "vs", 
+				.ps = "../downsample.hlsl", 
+				.ps_ep = "ps", 
+				.layout = { 
+					{ "Position", R_FORMAT_R32G32_FLOAT }, 
+				}
+			};
+			R_Shaders shdr =  r_create_shaders(&shdr_desc);
+			
+			R_Pipline_Desc pip_desc = {
+				.shaders = shdr, 
+				.vs_bindings = { }, 
+				.ps_bindings = { },
+				.samplers = { point_sampler },
+				.textures = { downsampled_render }, 
+			};
+			R_Pipline pip = r_create_pipline(&pip_desc);
+			
+			// drawing
+			r_clear_render_target(render_target);
+			r_set_blend_state(&blend_state);
+			r_switch_pipline(&pip);
+			r_draw(render_target, 4, 0);
+			
+		}
+		#endif
 		
 		 DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
