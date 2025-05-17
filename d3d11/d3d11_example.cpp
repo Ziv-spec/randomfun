@@ -1920,6 +1920,167 @@ RendererD3D11Present(R_D3D11Context *r) {
 	}
 }
 
+//~
+
+typedef struct R_Buffer_Desc R_Buffer_Desc;
+typedef struct R_Buffer R_Buffer;
+typedef struct R_Shader_Desc R_Shader_Desc;
+typedef struct R_Shader R_Shader;
+typedef struct R_Pipline_Desc R_Pipline_Desc;
+typedef struct R_Pipline R_Pipline;
+
+struct R_Buffer_Desc {
+	int element_count;
+	int element_size;
+	
+	int usage;          // how will the buffer get used (default, immutable, dynamic, staging) 
+	int bind_flags;     // type of buffer: constant, vertex, index ...
+	int cpu_access_flags; // access the cpu has to the buffer
+	int misc;           // additional buffer types and things idk
+	}; 
+
+struct R_Buffer {
+	int something; 
+}; 
+
+static R_Buffer
+r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
+	
+	ID3D11Buffer *buffer = NULL;
+	ID3D11ShaderResourceView* buffer_srv = NULL;
+	{
+		
+		D3D11_BUFFER_DESC d3d11_desc = {0};
+		
+		d3d11_desc.ByteWidth = (desc->element_size* desc->element_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
+		d3d11_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
+		d3d11_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
+		d3d11_desc.CPUAccessFlags = desc->cpu_access_flags ? g_renderer_to_d3d11_buffer_flags[desc->cpu_access_flags] : 0;
+		d3d11_desc.MiscFlags = desc->misc ? g_renderer_to_d3d11_buffer_flags[desc->misc] : 0;
+		d3d11_desc.StructureByteStride = desc->element_size;
+		
+		D3D11_SUBRESOURCE_DATA subresource_data = {data};
+		r->device->CreateBuffer(&d3d11_desc, data ? &subresource_data : NULL, &buffer);
+		
+		if (desc->misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
+			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
+			rv_desc.Format = DXGI_FORMAT_UNKNOWN;
+			rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+			rv_desc.Buffer.NumElements = desc->element_count;
+			r->device->CreateShaderResourceView(buffer, &rv_desc, &buffer_srv);
+		}
+		
+	}
+	
+	R_Buffer result = {
+		0
+	};
+	return result; 
+}
+
+
+struct R_Layout {
+	const char name[0x10]; 
+	R_Format format;
+	int offset;
+};
+
+struct R_Shader_Desc {
+	const char *vs; 
+	const char *vs_ep; // entry point
+	const char *ps; 
+	const char *ps_ep; // entry point
+	R_Layout layout[0x10];
+};
+
+struct R_Shader {
+	ID3D11VertexShader *vshader; 
+	ID3D11InputLayout  *layout;
+	ID3D11PixelShader *pshader;
+}; 
+
+static R_Shader
+r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
+	
+	
+	ID3D11VertexShader *vshader; 
+	ID3D11InputLayout  *layout;
+	
+		// Create Vertex Shader
+	{
+		UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error  = NULL;
+		ID3DBlob *vblob;
+		if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(desc->vs)).data, NULL, NULL, desc->vs_ep, "vs_5_0", flags, 0, &vblob, &error))) {
+			const char *message = (const char *)error->GetBufferPointer();
+			OutputDebugStringA(message);
+			Assert(!"Failed to compile vertex shader!");
+		}
+		r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, &vshader);
+		
+		if (desc->layout[0].name != NULL) {
+			// Vertex Shader Fromat Descriptor
+			D3D11_INPUT_ELEMENT_DESC vs_format_desc[0x10]; 
+			
+			unsigned int i = 0;
+			for (; i < 0x10 && desc->layout[i].name != NULL; i++) {
+				vs_format_desc[i].SemanticName = desc->layout[i].name; 
+				vs_format_desc[i].SemanticIndex = 0;
+				vs_format_desc[i].Format = g_renderer_to_dxgi_format[desc->layout[i].format];
+				vs_format_desc[i].InputSlot = 0; 
+				vs_format_desc[i].AlignedByteOffset = desc->layout[i].offset; 
+				vs_format_desc[i].InputSlotClass = (D3D11_INPUT_CLASSIFICATION)0; // input per vertex data
+				vs_format_desc[i].InstanceDataStepRate = 0;
+			};
+			
+			r->device->CreateInputLayout(vs_format_desc, i, vblob->GetBufferPointer(), vblob->GetBufferSize(), &layout);
+		}
+		vblob->Release();
+	}
+	
+	ID3D11PixelShader *pshader;
+	{
+		// Create Pixel Shader 
+		UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+#ifdef _DEBUG
+		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+		ID3DBlob *error = NULL;
+		ID3DBlob *pblob;
+		if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(desc->ps)).data, NULL, NULL, desc->ps_ep, "ps_5_0", flags, 0, &pblob, &error))) {
+			const char *message = (const char *)error->GetBufferPointer();
+			OutputDebugStringA(message);
+			Assert(!"Failed to compile pixel shader!");
+		}
+		r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, &pshader);
+		pblob->Release();
+	}
+	
+	R_Shader result = { 
+		vshader, 
+		layout, 
+		pshader
+	};
+	
+	return result;
+}
+
+struct R_Pipline_Desc {
+	R_Shader shaders; 
+	R_Buffer vs_bindings[0x10]; 
+	R_Buffer ps_bindings[0x10]; 
+	R_Sampler samplers[0x10];
+	R_Texture textures[0x10];
+};
+
+
 
 
 //~ 
@@ -4721,7 +4882,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					{ "Position", R_FORMAT_R32G32_FLOAT }, 
 				}
 			};
-			R_Shaders shdr =  r_create_shaders(&shdr_desc);
+			R_Shader shdr =  r_create_shaders(&shdr_desc);
 			
 			R_Pipline_Desc pip_desc = {
 				.shaders = shdr, 
@@ -4731,6 +4892,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				.textures = { downsampled_render }, 
 			};
 			R_Pipline pip = r_create_pipline(&pip_desc);
+			
 			
 			// drawing
 			r_clear_render_target(render_target);
