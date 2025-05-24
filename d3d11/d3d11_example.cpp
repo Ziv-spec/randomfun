@@ -1933,14 +1933,15 @@ struct R_Buffer_Desc {
 	int element_count;
 	int element_size;
 	
-	int usage;          // how will the buffer get used (default, immutable, dynamic, staging) 
-	int bind_flags;     // type of buffer: constant, vertex, index ...
+	int usage;            // how will the buffer get used (default, immutable, dynamic, staging) 
+	int bind_flags;       // type of buffer: constant, vertex, index ...
 	int cpu_access_flags; // access the cpu has to the buffer
-	int misc;           // additional buffer types and things idk
-	}; 
+	int misc;             // additional buffer types and things idk
+	};
 
 struct R_Buffer {
-	int something; 
+	ID3D11Buffer *buffer;
+	ID3D11ShaderResourceView* buffer_srv;
 }; 
 
 static R_Buffer
@@ -1952,7 +1953,7 @@ r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
 		
 		D3D11_BUFFER_DESC d3d11_desc = {0};
 		
-		d3d11_desc.ByteWidth = (desc->element_size* desc->element_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
+		d3d11_desc.ByteWidth = (desc->element_size * desc->element_count) + 0xf & 0xfffffff0; // constant buffers must be aligned to 16 boundry
 		d3d11_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
 		d3d11_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
 		d3d11_desc.CPUAccessFlags = desc->cpu_access_flags ? g_renderer_to_d3d11_buffer_flags[desc->cpu_access_flags] : 0;
@@ -1973,8 +1974,9 @@ r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
 	}
 	
 	R_Buffer result = {
-		0
+		buffer, buffer_srv
 	};
+	
 	return result; 
 }
 
@@ -2072,6 +2074,17 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 	return result;
 }
 
+typedef struct R_Sampler R_Sampler; 
+typedef struct R_Texture R_Texture;
+
+struct R_Sampler {
+	ID3D11SamplerState *sampler;
+}; 
+
+struct R_Texture {
+	ID3D11Texture2D *texture; // support for 3d textures?
+};
+
 struct R_Pipline_Desc {
 	R_Shader shaders; 
 	R_Buffer vs_bindings[0x10]; 
@@ -2080,7 +2093,41 @@ struct R_Pipline_Desc {
 	R_Texture textures[0x10];
 };
 
+typedef struct R_Pipline {
+	
+	int something;
+} R_Pipeline; 
 
+static R_Pipline 
+r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
+	
+	r->context->IASetInputLayout(desc->shaders.layout);
+	r->context->VSSetShader(desc->shaders.vshader, NULL, 0);
+	r->context->PSSetShader(desc->shaders.pshader, NULL, 0);
+	
+	// bind all the bindings
+	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
+		r->context->VSSetConstantBuffers(0, 1, &desc->vs_bindings[i].buffer);
+		if (desc->vs_bindings[i].buffer_srv) {
+			// r->context->VSSetShaderResources(0, 1, &);
+		}
+	}
+	
+	// bind all the bindings
+	for (int i = 0; i < 0x10 && desc->ps_bindings[i].buffer != NULL; i++) {
+		r->context->PSSetConstantBuffers(0, 1, &desc->ps_bindings[i].buffer);
+		if (desc->ps_bindings[i].buffer_srv) {
+			// r->context->PSSetShaderResources(0, 1, &texture_view);
+		}
+	}
+	
+	
+	R_Pipline result = { 
+		0
+	};
+	
+	return result;
+}
 
 
 //~ 
@@ -4891,13 +4938,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				.samplers = { point_sampler },
 				.textures = { downsampled_render }, 
 			};
-			R_Pipline pip = r_create_pipline(&pip_desc);
 			
 			
 			// drawing
 			r_clear_render_target(render_target);
 			r_set_blend_state(&blend_state);
-			r_switch_pipline(&pip);
+			r_switch_pipline(&pip_desc);
 			r_draw(render_target, 4, 0);
 			
 		}
