@@ -109,7 +109,7 @@ static unsigned short program[] = {
 static unsigned short blue_patch[] = {
 	// Instructions
 	0x7000, 
-	0x7ca0,
+	0x7c90,
 	0x9026, 0x0009,
 	0x902c, 0x0053, 
 	0x902e, 0x00a9,
@@ -356,7 +356,7 @@ static void
 st_vector(short *code) { 
 	printf("vector: ");
 
-	short xy_data_words = (*code & 0x01ff); //  + 1;
+	short xy_data_words = (*code & 0x01ff) + 1;
 	printf("data words: %d\n", xy_data_words);
 	code = code + 1;
 
@@ -367,39 +367,19 @@ st_vector(short *code) {
 		short xvec = *code; code = code + 1;
 		short yvec = *code; code = code + 1;
 		
-		// for some reason it seems first point is normal
-		// second point has something called "bright up" essentially 
-		// an or with 0x8000 for a "bright up" on the xvec
-
-		/*
-		if (i % 2 == 0) {
-			printf("(%hd %hd) ", 0x8000 - xvec , yvec);
-		}
-		else { 
-			printf("(%hd %hd) ", xvec & 0x0fff, yvec );
-		}
-		*/
-
-
 		printf("\t(%hx, %hx) (%hi %hi)\n", xvec, yvec,  xvec &0xffff, yvec &0xffff);
-		/*
-		xvec = ((xvec & 0x8fff) == xvec) ? xvec & 0x0fff: 0x8000 - xvec;
-		yvec = ((yvec & 0x8fff) == yvec) ? yvec & 0x0fff: 0x8000 - yvec;
-		printf("(%x %x) ", xvec, yvec);
-		*/
 	}
 	printf("\n");
 }
 
 int main() { 
 
-
-	if (program[0] != 0x7000) {
+	if (blue_patch[0] != 0x7000) {
 		printf("not format\n");
 		return -1;
 	}
 
-	unsigned short *opcode = program + 1;
+	unsigned short *opcode = blue_patch + 1;
 	unsigned short code = *opcode & 0xf800;
 
 

@@ -2093,6 +2093,29 @@ struct R_Pipline_Desc {
 	R_Texture textures[0x10];
 };
 
+typedef struct {
+	ID3D11RenderTargetView *target;
+} R_RenderTarget;
+
+static void
+r_clear_render_target(R_D3D11Context *r, R_RenderTarget *rt) {
+	r->context->OMSetRenderTargets(1, &rt->target, NULL);
+}
+
+typedef struct R_BlendState {
+	ID3D11BlendState1 *blend;
+} R_BlendState;
+
+static R_BlendState *default_blend; // default blend is given by a null
+
+static void
+r_set_blend_state(R_D3D11Context *r, R_BlendState *blend) {
+	// TODO(ziv): what should i do about the two other variables 
+	// I need while setting the blend state?
+	r->context->OMSetBlendState(blend->blend, NULL, 0xffffffff); // set default
+}
+
+
 typedef struct R_Pipline {
 	
 	int something;
@@ -2108,8 +2131,8 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 	// bind all the bindings
 	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
 		r->context->VSSetConstantBuffers(0, 1, &desc->vs_bindings[i].buffer);
-		if (desc->vs_bindings[i].buffer_srv) {
-			// r->context->VSSetShaderResources(0, 1, &);
+		if (desc->vs_bindings[i].buffer_srv ) {
+			r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
 		}
 	}
 	
@@ -4002,7 +4025,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// Quad
 	//
 
-
+	
 	ID3D11BlendState1 *blend_state_use_alpha = NULL;
 	{
 		// DestColor = SrcColor*SrcBlend <ColorOp> DestColor*DestBlend
