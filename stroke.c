@@ -291,6 +291,50 @@ static unsigned short blue_patch[] = {
 };
 
 
+static unsigned short centering[] = {
+	0x7000,
+	0x9008,
+	0x000F,
+	0x9002,
+	0x001d, 
+	0x9002,
+	0x001f, 
+	0x9002,
+	0x0021, 
+	0x9002,
+	0x0023,
+	0x9002,
+	0x0025,
+	0x9002,
+	0x0027,
+	0x0803,
+
+	0x1800, 0x0540,
+	0x87ff, 0x0540,
+	0x0590, 0x07ff,
+	0x8590, 0x1800,
+	0x07ff, 0x1a6f,
+	0x9800, 0x1a6f,
+	0x1ac0, 0x1800,
+	0x9ac0, 0x07ff,
+
+	0x7800, 0x019a,
+	0x9800, 0x1e67,
+	0x7e67, 0x1800, 
+	0x819a, 0x1800,
+	0x07ff, 0x1e67,
+	0x87ff, 0x019a, 
+	0x019a, 0x07ff,
+	0x9e67, 0x07ff,
+	0x1E67, 0x0000,
+
+	0x819a, 0x0000,
+	0x0000, 0x019a, 
+	0x8000, 0x1e67, 
+	0x0300, 0x0300, 
+	0x9cff, 0x1cff
+};
+
 static void 
 st_rect(short *code) {
 
@@ -352,12 +396,18 @@ st_linecolor(short *code, int format) {
 	printf("colorline: %s\n", colors[rgb]);
 }
 
+static int
+st_defl(int cord) { 
+	int value = cord & 0x7ff;
+	return ((cord & 0x1800) == 0) ? vaule : -(0x7ff - value);
+}
+
 static void 
 st_vector(short *code) { 
-	printf("vector: ");
+	//printf("vector: ");
 
 	short xy_data_words = (*code & 0x01ff) + 1;
-	printf("data words: %d\n", xy_data_words);
+	//printf("data words: %d\n", xy_data_words);
 	code = code + 1;
 
 	if ((*code & 0x800) == 0x8000) return; // flag should not reset
@@ -367,7 +417,8 @@ st_vector(short *code) {
 		short xvec = *code; code = code + 1;
 		short yvec = *code; code = code + 1;
 		
-		printf("\t(%hx, %hx) (%hi %hi)\n", xvec, yvec,  xvec &0xffff, yvec &0xffff);
+		// printf("\t(%hx, %hx) (%d %d)\n", xvec, yvec, st_defl(xvec), st_defl(yvec)  );
+		printf("[%d, %d],\n", st_defl(xvec), st_defl(yvec));
 	}
 	printf("\n");
 }
@@ -379,7 +430,7 @@ int main() {
 		return -1;
 	}
 
-	unsigned short *opcode = blue_patch + 1;
+	unsigned short *opcode = blue_patch+ 1;
 	unsigned short code = *opcode & 0xf800;
 
 
