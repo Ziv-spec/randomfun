@@ -149,6 +149,11 @@ typedef struct { float r, g, b, a; } Color;
 //   [ ] Shadow Mapping? - or precompute all shadow information
 //
 
+// In the UI rendering side I need some sort of making strategy for 
+// colliding rectangles so that both text and the rectangles themselves 
+// wouldn't weirdly collide as they currently do. I believe that with 
+// some blending options this might be possible
+
 //  ============== goals for today ==============
 // [ ] Expand renderer capabilities (bitmaps etc..)
 // [ ] make input system as events and shit (working)
@@ -1097,13 +1102,16 @@ static bool key_left;
 
 bool show_free_camera = false;
 
+static bool running = true;
+
 static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	
 	switch (message)
     {
 		case WM_DESTROY: {
-			OSEventPost({ OS_EVENT_KIND_QUIT });
-			//PostQuitMessage(0);
+			//OSEventPost({ OS_EVENT_KIND_QUIT });
+			PostQuitMessage(0);
+			running = false;
 			return 0;
 		} break;
 		
@@ -1621,8 +1629,22 @@ RendererBFToPointer(R_D3D11Context *r, BFHandle handle) {
 	return &r->buffer_array[idx]; 
 }
 
+enum R_Topology {
+	R_TOPOLOGY_TRIANGLESTRIP = 0, 
+	R_TOPOLOGY_TRIANGLELIST,
+	R_TOPOLOGY_COUNT,
+};
+
+static D3D11_PRIMITIVE_TOPOLOGY r_topology_to_d3d11_topology[] = { 
+	D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP, 
+	D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, 
+};
+
 static void
 RendererInit(R_D3D11Context *r, HWND window) {
+	
+	// NOTE(ziv): if this fails you have failed to add a memeber to the 'r_topology_to_d3d11_topology' array and you are required to do so
+	Assert(ArrayLength(r_topology_to_d3d11_topology) == R_TOPOLOGY_COUNT);
 	
 	r->arena = (Arena *)malloc(sizeof(Arena));
 	MemArenaInit(r->arena, 0x1000); 
@@ -1795,8 +1817,8 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_front);
 	}
 	
-	
-	
+	// Set all information into the context
+	{
 	r->window = window; 
 	r->device = device; 
 	r->context = context;
@@ -1807,8 +1829,9 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->zbuffer_texture = zbuffer_texture;
 	r->rasterizer_cull_back = rasterizer_cull_back;
 	r->rasterizer_cull_front = rasterizer_cull_front;
+	}
+	
 }
-
 static void
 RendererDeInit(R_D3D11Context *r) {
 	r->device->Release();
@@ -1922,14 +1945,28 @@ RendererD3D11Present(R_D3D11Context *r) {
 
 //~
 
-typedef struct R_Buffer_Desc R_Buffer_Desc;
-typedef struct R_Buffer R_Buffer;
-typedef struct R_Shader_Desc R_Shader_Desc;
-typedef struct R_Shader R_Shader;
-typedef struct R_Pipline_Desc R_Pipline_Desc;
-typedef struct R_Pipline R_Pipline;
+typedef struct {
+	char name[0x10]; 
+	R_Format format;
+	int offset;
+} R_Layout;
 
-struct R_Buffer_Desc {
+typedef struct {
+	const char *vs; 
+	const char *vs_ep; // entry point
+	const char *ps; 
+	const char *ps_ep; // entry point
+	R_Layout layout[0x10];
+} R_Shader_Desc;
+
+typedef struct {
+	ID3D11VertexShader *vshader; 
+	ID3D11InputLayout  *layout;
+	ID3D11PixelShader *pshader;
+} R_Shader; 
+
+typedef struct {
+	void *data;
 	int element_count;
 	int element_size;
 	
@@ -1937,15 +1974,55 @@ struct R_Buffer_Desc {
 	int bind_flags;       // type of buffer: constant, vertex, index ...
 	int cpu_access_flags; // access the cpu has to the buffer
 	int misc;             // additional buffer types and things idk
-	};
+} R_Buffer_Desc;
 
-struct R_Buffer {
+typedef struct {
 	ID3D11Buffer *buffer;
 	ID3D11ShaderResourceView* buffer_srv;
-}; 
+	R_Buffer_Desc *desc; 
+} R_Buffer;  
+
+typedef struct {
+	ID3D11SamplerState *sampler;
+} R_Sampler; 
+
+struct R_Texture {
+	ID3D11Texture2D *texture; // support for 3d textures?
+};
+
+struct R_Pipline_Desc {
+	R_Topology topo; 
+	R_Shader shaders; 
+	R_Buffer vs_bindings[0x10]; 
+	R_Buffer ps_bindings[0x10]; 
+	R_Sampler samplers[0x10];
+	R_Texture textures[0x10]; // these are inputs into the ps
+};
+
+typedef struct { 
+	ID3D11ShaderResourceView* srv; // shader input
+	ID3D11RenderTargetView *rtv; // shader ouptut
+} R_Texture2D; 
+
+typedef struct {
+	float x, y, width, height;
+	float min_depth, max_depth; // depth of image (usually 0-1)
+} R_Viewport;
+
+typedef struct R_BlendState {
+	ID3D11BlendState1 *blend;
+} R_BlendState;
+
+enum R_Cull_Mode_Flags { 
+	R_CULL_MODE_NULL = 0, // remove culling
+	R_CULL_MODE_BACK, 
+	R_CULL_MODE_FRONT,
+};
+
+
 
 static R_Buffer
-r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
+r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
 	
 	ID3D11Buffer *buffer = NULL;
 	ID3D11ShaderResourceView* buffer_srv = NULL;
@@ -1960,8 +2037,8 @@ r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
 		d3d11_desc.MiscFlags = desc->misc ? g_renderer_to_d3d11_buffer_flags[desc->misc] : 0;
 		d3d11_desc.StructureByteStride = desc->element_size;
 		
-		D3D11_SUBRESOURCE_DATA subresource_data = {data};
-		r->device->CreateBuffer(&d3d11_desc, data ? &subresource_data : NULL, &buffer);
+		D3D11_SUBRESOURCE_DATA subresource_data = {desc->data};
+		r->device->CreateBuffer(&d3d11_desc, desc->data ? &subresource_data : NULL, &buffer);
 		
 		if (desc->misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
 			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
@@ -1974,32 +2051,12 @@ r_create_buffer(R_D3D11Context *r, void *data, R_Buffer_Desc *desc) {
 	}
 	
 	R_Buffer result = {
-		buffer, buffer_srv
+		buffer, buffer_srv, desc
 	};
 	
 	return result; 
 }
 
-
-struct R_Layout {
-	const char name[0x10]; 
-	R_Format format;
-	int offset;
-};
-
-struct R_Shader_Desc {
-	const char *vs; 
-	const char *vs_ep; // entry point
-	const char *ps; 
-	const char *ps_ep; // entry point
-	R_Layout layout[0x10];
-};
-
-struct R_Shader {
-	ID3D11VertexShader *vshader; 
-	ID3D11InputLayout  *layout;
-	ID3D11PixelShader *pshader;
-}; 
 
 static R_Shader
 r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
@@ -2030,7 +2087,7 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 			D3D11_INPUT_ELEMENT_DESC vs_format_desc[0x10]; 
 			
 			unsigned int i = 0;
-			for (; i < 0x10 && desc->layout[i].name != NULL; i++) {
+			for (; i < 0x10 && desc->layout[i].name[0] != NULL; i++) {
 				vs_format_desc[i].SemanticName = desc->layout[i].name; 
 				vs_format_desc[i].SemanticIndex = 0;
 				vs_format_desc[i].Format = g_renderer_to_dxgi_format[desc->layout[i].format];
@@ -2074,83 +2131,129 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 	return result;
 }
 
-typedef struct R_Sampler R_Sampler; 
-typedef struct R_Texture R_Texture;
-
-struct R_Sampler {
-	ID3D11SamplerState *sampler;
-}; 
-
-struct R_Texture {
-	ID3D11Texture2D *texture; // support for 3d textures?
-};
-
-struct R_Pipline_Desc {
-	R_Shader shaders; 
-	R_Buffer vs_bindings[0x10]; 
-	R_Buffer ps_bindings[0x10]; 
-	R_Sampler samplers[0x10];
-	R_Texture textures[0x10];
-};
-
-typedef struct {
-	ID3D11RenderTargetView *target;
-} R_RenderTarget;
-
 static void
-r_clear_render_target(R_D3D11Context *r, R_RenderTarget *rt) {
-	r->context->OMSetRenderTargets(1, &rt->target, NULL);
+r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
+	
+	r->context->IASetPrimitiveTopology(r_topology_to_d3d11_topology[desc->topo]);
+	r->context->IASetInputLayout(desc->shaders.layout);
+	r->context->VSSetShader(desc->shaders.vshader, NULL, 0);
+	r->context->PSSetShader(desc->shaders.pshader, NULL, 0);
+	r->context->RSSetViewports(1,r->viewport);
+	
+	
+		// bind all vs bindings
+	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
+		Assert(desc->vs_bindings[i].desc);  // must be set by 'r_create_buffer'
+		
+		switch (desc->vs_bindings[i].desc->bind_flags) 
+		{
+			case R_BIND_VERTEX_BUFFER: {
+				// vertex buffer
+				const UINT stride = desc->vs_bindings[i].desc->element_size;
+				const UINT offset = 0; // this can change and I might have uses for it
+				// TODO(ziv): Think of ways to integrate this nicely into my API
+				r->context->IASetVertexBuffers(0, 1, &desc->vs_bindings[0].buffer, &stride, &offset);
+			} break; 
+			
+			case R_BIND_CONSTANT_BUFFER: {
+				// constant buffer
+				r->context->VSSetConstantBuffers(0, 1, &desc->vs_bindings[i].buffer);
+				if (desc->vs_bindings[i].buffer_srv ) {
+					r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
+				}
+			} break; 
+			
+			case R_BIND_INDEX_BUFFER: {
+				r->context->IASetIndexBuffer(desc->vs_bindings[i].buffer, DXGI_FORMAT_R16_UINT, 0);
+				
+			} break; 
+			
+			case R_BIND_SHADER_RESOURCE: {
+				r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
+			} break;
+			
+			
+			default: {
+				Assert(!"Unhandled case!!! Buffer created without buffer binding type.");
+			} break; 
+		}
+		
+		}
+	
+		// bind all the ps bindings
+		for (int i = 0; i < 0x10 && desc->ps_bindings[i].buffer != NULL; i++) {
+		Assert(desc->ps_bindings[i].desc);  // must be set by 'r_create_buffer'
+		
+		switch(desc->ps_bindings[i].desc->bind_flags) {
+			
+			case R_BIND_CONSTANT_BUFFER: {
+				r->context->PSSetConstantBuffers(0, 1, &desc->ps_bindings[i].buffer);
+			} break; 
+			
+			case R_BIND_SHADER_RESOURCE: {
+				//r->context->PSSetShaderResources(0, 1, &texture_view);
+				Assert(!"Not implemented");
+			} break;
+			
+			default: {
+				Assert(!"Tried to bind wrong buffer type to a pixel shader");
+			} break;
+		} 
+	}
+	
+	// set samplers 
+	// set textures
 }
 
-typedef struct R_BlendState {
-	ID3D11BlendState1 *blend;
-} R_BlendState;
+static void 
+r_draw(R_D3D11Context *r, R_Texture2D target, int vertex_count, int start_vertex_position) {
+	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+	r->context->Draw(vertex_count, start_vertex_position);
+}
 
-static R_BlendState *default_blend; // default blend is given by a null
+static void 
+r_draw_indexed(R_D3D11Context *r, R_Texture2D target, int index_count, 
+			   int start_index_position, int start_vertex_position) {
+	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+	r->context->DrawIndexed(index_count, start_index_position, start_vertex_position);
+}
+
+static void 
+r_draw_instanced(R_D3D11Context *r, R_Texture2D target, 
+				 int vertex_count_per_instance, int instance_count, 
+				 int start_vertex_position, int start_instance_position) {
+	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+	r->context->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_position, start_instance_position);
+}
 
 static void
-r_set_blend_state(R_D3D11Context *r, R_BlendState *blend) {
+r_fill_texture(R_D3D11Context *r, R_Texture2D texture, float color[4]) {
+	r->context->ClearRenderTargetView(texture.rtv, color);
+}
+
+static void
+r_set_cull_mode(R_D3D11Context *r, R_Cull_Mode_Flags mode) {
+	if (mode == R_CULL_MODE_BACK) r->context->RSSetState(r->rasterizer_cull_back);
+	else if (mode == R_CULL_MODE_FRONT) r->context->RSSetState(r->rasterizer_cull_front);
+	else if (mode == R_CULL_MODE_NULL) r->context->RSSetState(NULL);
+	else Assert(!"this cull mode does not exist");
+}
+
+static void
+r_set_blend_mode(R_D3D11Context *r, R_BlendState *blend) {
 	// TODO(ziv): what should i do about the two other variables 
 	// I need while setting the blend state?
 	r->context->OMSetBlendState(blend->blend, NULL, 0xffffffff); // set default
 }
 
-
-typedef struct R_Pipline {
-	
-	int something;
-} R_Pipeline; 
-
-static R_Pipline 
-r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
-	
-	r->context->IASetInputLayout(desc->shaders.layout);
-	r->context->VSSetShader(desc->shaders.vshader, NULL, 0);
-	r->context->PSSetShader(desc->shaders.pshader, NULL, 0);
-	
-	// bind all the bindings
-	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
-		r->context->VSSetConstantBuffers(0, 1, &desc->vs_bindings[i].buffer);
-		if (desc->vs_bindings[i].buffer_srv ) {
-			r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
-		}
-	}
-	
-	// bind all the bindings
-	for (int i = 0; i < 0x10 && desc->ps_bindings[i].buffer != NULL; i++) {
-		r->context->PSSetConstantBuffers(0, 1, &desc->ps_bindings[i].buffer);
-		if (desc->ps_bindings[i].buffer_srv) {
-			// r->context->PSSetShaderResources(0, 1, &texture_view);
-		}
-	}
-	
-	
-	R_Pipline result = { 
-		0
-	};
-	
-	return result;
+static void
+r_set_viewport(R_D3D11Context *r, R_Viewport viewport) {
+	// NOTE(ziv): This is a trick, it  can be done since
+	// R_Viewport and D3D11_VIEWPORT are identical
+	D3D11_VIEWPORT *d3d11_viewport = (D3D11_VIEWPORT *)&viewport;
+	r->context->RSSetViewports(1, d3d11_viewport);
 }
+
 
 
 //~ 
@@ -3993,9 +4096,98 @@ int main()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
+	
+	#if 1
+	HWND window = Win32CreateWindow();
+	InputInitialize(window);
+	R_D3D11Context renderer = {0}; 
+	R_D3D11Context *r = &renderer; 
+	RendererInit(&renderer, window);
+	ShowWindow(window, SW_SHOW);
+	
+	
+	D3D11_VIEWPORT viewport = {0};
+	viewport.Width = (FLOAT)window_width;
+	viewport.Height = (FLOAT)window_height;
+	viewport.MaxDepth = 1;
+	r->viewport = &viewport;
+
+#define EXPAND_ARRAY(arr) arr, ArrayLength(arr), sizeof(arr[0])
+	
+	float2 full_screen_verticies[] = {
+		-1,  1, 1,  1,
+		-1, -1, 1, -1,
+	};
+	R_Buffer_Desc buff_desc = { 
+		EXPAND_ARRAY(full_screen_verticies),
+		R_USAGE_IMMUTABLE,
+		R_BIND_VERTEX_BUFFER
+	};
+	R_Buffer vbuff = r_create_buffer(r, &buff_desc);
+	
+	R_Shader_Desc shdr_desc = { 
+		"../downsample.hlsl", "vs", 
+		"../downsample.hlsl", "ps", 
+		{
+			{ "Position", R_FORMAT_R32G32_FLOAT } 
+		}
+	};
+	R_Shader downsample =  r_create_shaders(r, &shdr_desc);
+	
+	R_Texture2D screen = { 0, r->frame_buffer_view };
+	
+	while (running) {
+		
+		// Handle input
+		MSG msg;
+		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&msg);
+			DispatchMessageA(&msg);
+		}
+		
+		// Handle window resize
+		RECT rect;
+		GetClientRect(window, &rect);
+		LONG width = rect.right - rect.left;
+		LONG height = rect.bottom - rect.top;
+		if (width != window_width || height != window_height) {
+			window_width = width; window_height = height;
+			RendererD3D11Resize(r, width, height);
+		screen.rtv = r->frame_buffer_view;
+		}
+		
+		
+		// NOTE(ziv): if texture is a render target view as it should be 
+		// then I will just use the fill render target view function 
+		// provided by the d3d11 lib 
+		
+		
+		R_Pipline_Desc pipline_desc = {
+			R_TOPOLOGY_TRIANGLESTRIP,
+			downsample,// shaders
+			{ vbuff }, // vs_bindings 
+			{ }        // ps_bindings
+		};
+		
+		//float color[4] = { 0, 1, 1, 1 }; 
+		//r_fill_texture(r, screen, color);
+		r_switch_pipline(r, &pipline_desc);
+		//r_set_cull_mode(R_CULL_MODE_NULL); // cull back/front
+		//r_set_blend_mode(blend_something); // 3 blend modes
+		//r_set_viewport(r, {0, 0, (float)window_width, (float)window_height}); 
+		r_draw(r, screen, 4, 0);
+
+		
+		RendererD3D11Present(r);
+	}
+	//release_resources: 
+	
+	return 0; 
+#endif 
+	
+	
+	#if 0
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
-
-
 	HWND window = Win32CreateWindow(); 
 	InputInitialize(window);
 
@@ -4930,47 +5122,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r->context->Draw(4, 0);
 		}
 		
-		#if 0 
-		// vision for api
-		{ 
-			
-			// clear render target
-			
-			float full_screen_verticies[] = {
-				-1,  1, 1,   1, 
-				-1, -1, 1,  -1,
-			};
-			R_Buffer_Desc buff_desc = {  };
-			R_Buffer vbuff = r_create_buffer(full_screen_verticies, &buff_desc);
-			
-			R_Shaders_Desc shdr_desc = { 
-				.vs = "../downsample.hlsl", 
-				.vs_ep = "vs", 
-				.ps = "../downsample.hlsl", 
-				.ps_ep = "ps", 
-				.layout = { 
-					{ "Position", R_FORMAT_R32G32_FLOAT }, 
-				}
-			};
-			R_Shader shdr =  r_create_shaders(&shdr_desc);
-			
-			R_Pipline_Desc pip_desc = {
-				.shaders = shdr, 
-				.vs_bindings = { }, 
-				.ps_bindings = { },
-				.samplers = { point_sampler },
-				.textures = { downsampled_render }, 
-			};
-			
-			
-			// drawing
-			r_clear_render_target(render_target);
-			r_set_blend_state(&blend_state);
-			r_switch_pipline(&pip_desc);
-			r_draw(render_target, 4, 0);
-			
-		}
-		#endif
+		
+		
+		
 		
 		 DrawSubmitRenderCommands(d);
 		RendererD3D11Present(r); // present the resulting image to the screen
@@ -4990,4 +5144,5 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	d->font.srv[1]->Release();
 	RendererDeInit(r);
 	return 0;
+	#endif 
 }
