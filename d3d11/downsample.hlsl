@@ -9,5 +9,6 @@ sampler sampler0 : register(s0);
 Texture2D texture0 : register(t0);
 
 float4 ps(float4 pos : SV_Position) : SV_Target {
-	return texture0.Sample(sampler0, pos.xy/float2(800.f, 600.f)); 
+	// return texture0.Sample(sampler0, pos.xy/float2(800.f, 600.f)); 
+	return float4(1, 1, 0, 1);
 }
