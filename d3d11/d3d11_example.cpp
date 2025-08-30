@@ -71,141 +71,6 @@ typedef struct { float r, g, b, a; } Color;
 // https://gist.github.com/mmozeiko/c136c1cfce9fe4267f3c8f7b90f8e4d4
 // https://gist.github.com/mmozeiko/b8ccc54037a5eaf35432396feabbe435
 
-
-// TODO(ziv):
-// [ ] ===== OS =====
-//   [x] implement fullscreen alt+enter
-//   [ ] Memory allocation system
-//   [ ] Update on Resize for fluid screen resize handling?
-//   [ ] Input
-//    [ ] make input as events
-//    [x] mouse input
-//    [ ] keyboard input
-//    [ ] controller input
-//
-// [ ] ===== Renderer ===== (things I know how to do, no necessarily things which a "renderer" is able to do
-//   [x] Texture mapping
-//   [x] Obj dynamic lighting(global illumination + point light)
-//   [x] Font Rendering (bitmap version)
-//   [x] Face Culling
-//   [x] z-buffer
-//   [ ] Draw
-//     [x] DrawQuad (drawing a general syleized quad for UI)
-//     [x] fix drawing issuess with border / radius 
-//     [x] Renderer and Draw seperation (DrawQuad should not use the renderer but a draw context)
-//   [ ] Create all types of buffers and store them (interface is a handle)
-//   [ ] Bind all types of buffers
-//   [ ] Allow Updating of buffers (uploading to gpu)
-//   [ ] Dynamic updating of resources when file changes (to shaders, textures, models)
-//
-// [ ] ===== UI =====
-//   [x] finally make the push-pop utilities for higherarchy building
-//   [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
-//   [x] theme - uploaded to gpu once, rendered using it
-//   [x] font rendering (text displayed on screen) 
-//    [x] make font stay same size on resize
-//    [x] buttons draw their font
-//    [x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
-//   [x] add support for border/no-border
-//   [x] hot animation
-//   [x] use DrawQuad and make it in a better location
-//   [x] active animation
-//   [x] fix button clicking when button is hot but mouse is outside window
-//   [x] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
-//   [x] make widget allocator smarter (apperently it was)
-//   [x] prune out widgets that are no longer part of higherarchy
-//   [x] add support for rounded corners, custom color (per vertex?)
-//   [x] make text confirm to widget dimenions (kind of, this might need a change)
-//   [x] allow widgets to have different positions on screen (not all relative to 0,0)
-//   [x] resolve sizing conflicts and adhere to it's strictness
-//   [x] add slider widget (think about how to render that)
-//     [x] make slider colors not be funny
-//   [x] Make hash of id smarter (support for ###unique_id)
-//   [x] make a panel widget that moves using this not all relative (to show capability not real widget)
-//   [x] fix bug when two buttons with the same hash get pruned and then created (creation step would add old pruned button)
-//   [x] make layout be simpler Equip semantics (for user facing code)
-//   [x] remove UI_Layout it doesn't help really and makes things combersome and less understandable
-//   [x] use var args for functions accepting strings
-//   [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
-//   [x] resolving constraints robustness and accuracy improvement
-//   [ ] UI Customization 
-//     [x] border
-//     [ ] rounded corners?
-//     [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
-//     [ ] bitmaps?
-//
-// [x] ===== Camera =====
-//   [x] Normal Camera
-//   [x] Free Camera
-//   [x] Mouse screen to world projection
-//
-// [ ] editor for the game
-//
-// [ ] ===== Game =====
-//   [x] Obj loading (with position, textures, normals)
-//   [x] Obj dynamic transformation
-//   [ ] Obj Outlines?
-//   [ ] Pixelated look
-//   [ ] Shadow Mapping? - or precompute all shadow information
-//
-
-// In the UI rendering side I need some sort of making strategy for 
-// colliding rectangles so that both text and the rectangles themselves 
-// wouldn't weirdly collide as they currently do. I believe that with 
-// some blending options this might be possible
-
-//  ============== goals for today ==============
-// [ ] Expand renderer capabilities (bitmaps etc..)
-// [ ] make input system as events and shit (working)
-// [ ] Expand renderer capabilities 
-//   [x] create buffers (constant/structured)
-//   [x] create pixel and vertex shaders
-//   [x] hot reload shaders as needed 
-//   [ ] Create textures 
-//   [ ] Create blend states
-//
-// [ ] Make Object selection
-//   [x] collide a ray with volume 
-//   [ ] consider makeing octtree to "simplify" collision detection
-//   [ ] shader to show selection
-
-
-// TODO(ziv):
-// ========================================================
-	// [ ] Implement high level abstraction for a pipline pass
-// [ ] Make pixelated look 
-// [ ] ECS for game objects (also hot reload everything?)
-// ========================================================
-
-
-// Create a general system for identifying changes to files using their path and
-// updating their inside information when changed. This system should be general 
-// so that any type of resource can be changed. For this I might need to create 
-// special functions that accept certain layout and are capable of doing the 
-// actual operation.
-//
-// Allow fast paths to render things in the renderer.
-// some way to package together all of the resources and juts to 
-// you know.. render it. Almost like a object that you can bind 
-// things to. Then you specify that you want to draw it and well.. 
-// it draws. 
-// This would help me to make the objects inside the scene
-//
-// Expand capabilities of drawing lib
-// currenly I have many things which I would 
-// love to draw but I don't have the utilities 
-// set up to easily draw for debugging and non-
-// debugging purposes. 
-//
-// TODO(ziv): For graph building inside of the UIMakeWidget and other 
-// areas where the api uses nodes, create special functions handling all
-// of these types of interactions. Or at least consider making some
-// unified way of doing said operations 
-//
-// TODO(ziv): figure out how to standardize handle creation, destruction and 
-// management. I don't want to have to copy around the same code this many times as 
-// I have (for each new handle all new code which is mostly the same).
-
 //==============================================================================
 // # Understanding the Graphics Pipeline[8]: 
 //
@@ -771,6 +636,11 @@ Win32CreateWindow() {
 	return window;
 }
 
+static void 
+Win32ShowWindow(HWND window) {
+	ShowWindow(window, SW_SHOW);
+}
+
 
 static WINDOWPLACEMENT g_previous_window_placement = { sizeof(g_previous_window_placement) };
 
@@ -883,7 +753,7 @@ typedef struct {
     Gamepad_Buttons buttons;
     float left_trigger;
     float right_trigger;
-    float left_thumbstick_x;;
+    float left_thumbstick_x;
     float left_thumbstick_y;
     float right_thumbstick_x;
     float right_thumbstick_y;
@@ -1286,6 +1156,9 @@ typedef struct {
 	ID3D11Texture2D *zbuffer_texture;
 	ID3D11RasterizerState1* rasterizer_cull_back;
 	ID3D11RasterizerState1* rasterizer_cull_front;
+	ID3D11SamplerState *point_sampler; 
+	ID3D11SamplerState *linear_sampler; 
+
 	
 	D3D11_VIEWPORT *viewport;
 	b32 dirty; // window size changed
@@ -1428,6 +1301,7 @@ X(R_BIND_VERTEX_BUFFER, D3D11_BIND_VERTEX_BUFFER),     \
 X(R_BIND_INDEX_BUFFER, D3D11_BIND_INDEX_BUFFER),       \
 X(R_BIND_CONSTANT_BUFFER, D3D11_BIND_CONSTANT_BUFFER), \
 X(R_BIND_SHADER_RESOURCE, D3D11_BIND_SHADER_RESOURCE), \
+X(R_BIND_RENDER_TARGET, D3D11_BIND_RENDER_TARGET),     \
 X(R_USAGE_DEFAULT, D3D11_USAGE_DEFAULT),               \
 X(R_USAGE_IMMUTABLE, D3D11_USAGE_IMMUTABLE),           \
 X(R_USAGE_DYNAMIC, D3D11_USAGE_DYNAMIC),               \
@@ -1816,7 +1690,32 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		
 		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_front);
 	}
-	
+
+	// Create Default Point Sampler
+	ID3D11SamplerState* point_sampler;
+	{
+		D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		
+		device->CreateSamplerState(&sampler_desc, &point_sampler);
+	}
+	// Create Default Linear Sampler
+	ID3D11SamplerState* linear_sampler;
+	{
+		D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		
+		device->CreateSamplerState(&sampler_desc, &linear_sampler);
+	}
+		
 	// Set all information into the context
 	{
 	r->window = window; 
@@ -1829,6 +1728,8 @@ RendererInit(R_D3D11Context *r, HWND window) {
 	r->zbuffer_texture = zbuffer_texture;
 	r->rasterizer_cull_back = rasterizer_cull_back;
 	r->rasterizer_cull_front = rasterizer_cull_front;
+	r->point_sampler = point_sampler; 
+	r->linear_sampler = linear_sampler;
 	}
 	
 }
@@ -1943,7 +1844,7 @@ RendererD3D11Present(R_D3D11Context *r) {
 	}
 }
 
-//~
+//~ renderer.h
 
 typedef struct {
 	char name[0x10]; 
@@ -1982,22 +1883,22 @@ typedef struct {
 	R_Buffer_Desc *desc; 
 } R_Buffer;  
 
+enum R_Sampler_Flag {
+	R_SAMPLER_POINT,  // point sampler 
+	R_SAMPLER_LINEAR, // linear interpolation sampler
+};
+
 typedef struct {
-	ID3D11SamplerState *sampler;
-} R_Sampler; 
-
-struct R_Texture {
-	ID3D11Texture2D *texture; // support for 3d textures?
-};
-
-struct R_Pipline_Desc {
-	R_Topology topo; 
-	R_Shader shaders; 
-	R_Buffer vs_bindings[0x10]; 
-	R_Buffer ps_bindings[0x10]; 
-	R_Sampler samplers[0x10];
-	R_Texture textures[0x10]; // these are inputs into the ps
-};
+	void *data; 
+	int width; 
+	int height;
+	int format;
+	int bind_flags; // RenderTargetView/ShaderResourceView
+	int cpu_access_flags; 
+	int usage;
+	int miplevels;
+	// TODO(ziv): consider adding mmsa information 
+} R_Texture2D_Desc;
 
 typedef struct { 
 	ID3D11ShaderResourceView* srv; // shader input
@@ -2005,11 +1906,20 @@ typedef struct {
 } R_Texture2D; 
 
 typedef struct {
+	R_Topology topo; 
+	R_Shader shaders; 
+	R_Buffer vs_bindings[0x10]; 
+	R_Buffer ps_bindings[0x10]; 
+	R_Texture2D textures[0x10]; // these are inputs into the ps
+	R_Sampler_Flag samplers[0x10];
+} R_Pipline_Desc;
+
+typedef struct {
 	float x, y, width, height;
 	float min_depth, max_depth; // depth of image (usually 0-1)
 } R_Viewport;
 
-typedef struct R_BlendState {
+typedef struct {
 	ID3D11BlendState1 *blend;
 } R_BlendState;
 
@@ -2056,6 +1966,42 @@ r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
 	
 	return result; 
 }
+
+static R_Texture2D
+r_create_texture2d(R_D3D11Context *r, R_Texture2D_Desc *desc) {
+
+		D3D11_TEXTURE2D_DESC d3d_desc = {};
+		d3d_desc.Width = (UINT)desc->width;
+		d3d_desc.Height = (UINT)desc->height;
+		d3d_desc.MipLevels = desc->miplevels;
+		d3d_desc.ArraySize = 1;
+		d3d_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO(ziv): CHANGE THIS!
+		d3d_desc.SampleDesc.Count = 1;
+		d3d_desc.SampleDesc.Quality = 0;
+		d3d_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
+		d3d_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
+
+		D3D11_SUBRESOURCE_DATA data = {};
+		data.pSysMem     = desc->data;
+		data.SysMemPitch = (UINT)desc->width * sizeof(UINT); // TOOD(ziv): change this to format size
+
+		ID3D11Texture2D* texture2d;
+		r->device->CreateTexture2D(&d3d_desc, &data, &texture2d);
+
+		ID3D11ShaderResourceView* texture_resource_view = NULL;
+		ID3D11RenderTargetView *texture_render_target_view = NULL;
+		if (d3d_desc.BindFlags == D3D11_BIND_SHADER_RESOURCE)
+			r->device->CreateShaderResourceView(texture2d, NULL, &texture_resource_view);
+	if (d3d_desc.BindFlags == D3D11_BIND_RENDER_TARGET)
+			r->device->CreateRenderTargetView(texture2d, NULL, &texture_render_target_view);
+		texture2d->Release();
+
+		R_Texture2D result = {
+			texture_resource_view, texture_render_target_view
+		}; 
+		return result;
+}
+
 
 
 static R_Shader
@@ -2141,6 +2087,8 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 	r->context->RSSetViewports(1,r->viewport);
 	
 	
+	 int slot = 0;
+	
 		// bind all vs bindings
 	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
 		Assert(desc->vs_bindings[i].desc);  // must be set by 'r_create_buffer'
@@ -2157,10 +2105,14 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 			
 			case R_BIND_CONSTANT_BUFFER: {
 				// constant buffer
-				r->context->VSSetConstantBuffers(0, 1, &desc->vs_bindings[i].buffer);
+				
 				if (desc->vs_bindings[i].buffer_srv ) {
 					r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
 				}
+				else {
+					r->context->VSSetConstantBuffers(slot++, 1, &desc->vs_bindings[i].buffer);
+				}
+				
 			} break; 
 			
 			case R_BIND_INDEX_BUFFER: {
@@ -2201,8 +2153,14 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 		} 
 	}
 	
+	
+	// TODO(ziv): make this dynamic!!!!!
+	
 	// set samplers 
+	r->context->PSSetSamplers(0, 1, &r->point_sampler);
+	
 	// set textures
+	r->context->PSSetShaderResources(0, 1, &desc->textures[0].srv);
 }
 
 static void 
@@ -2253,6 +2211,15 @@ r_set_viewport(R_D3D11Context *r, R_Viewport viewport) {
 	D3D11_VIEWPORT *d3d11_viewport = (D3D11_VIEWPORT *)&viewport;
 	r->context->RSSetViewports(1, d3d11_viewport);
 }
+
+static void
+r_update_gpu_buffer(R_D3D11Context *r, R_Buffer buffer, void *data, int size) {
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	r->context->Map(buffer.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	memcpy(mapped.pData, data, size);
+	r->context->Unmap(buffer.buffer, 0);
+}
+
 
 
 
@@ -3631,11 +3598,8 @@ static void
 CameraBuild(Camera *c) {
 	Assert(c);
 	
-	
-	
 	// NOTE(ziv): D3D11 uses a left-handed coordinate system[2]
 	// Along side that it also uses a column major matricies[3]
-	
 	
 	// The lookat matrix is a matrix created from a 'single' vector
 	// pointing in the forward direction of the player looking at the
@@ -4096,16 +4060,16 @@ int main()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
-	
+
 	#if 1
+	// TODO(ziv): make sure that win32createwindow takes in a name parameter and so on...
 	HWND window = Win32CreateWindow();
+
 	InputInitialize(window);
-	R_D3D11Context renderer = {0}; 
-	R_D3D11Context *r = &renderer; 
+
+	R_D3D11Context renderer = {0}, *r = &renderer; 
 	RendererInit(&renderer, window);
-	ShowWindow(window, SW_SHOW);
-	
-	
+
 	D3D11_VIEWPORT viewport = {0};
 	viewport.Width = (FLOAT)window_width;
 	viewport.Height = (FLOAT)window_height;
@@ -4113,38 +4077,130 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	r->viewport = &viewport;
 
 #define EXPAND_ARRAY(arr) arr, ArrayLength(arr), sizeof(arr[0])
-	
-	float2 full_screen_verticies[] = {
-		-1,  1, 1,  1,
-		-1, -1, 1, -1,
+
+	// Create model vertex buffer
+	size_t verticies_count, indicies_count;
+	R_Buffer cube_vbuf, cube_ibuf;
+	{
+		bool success = ObjLoadFile("../resources/cube.obj", NULL, &verticies_count, NULL, &indicies_count);
+		Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
+
+		Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex));
+		unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
+		success = ObjLoadFile("../resources/cube.obj", verticies, &verticies_count, indicies, &indicies_count);
+		Assert(success && "Failed extracting model data");
+
+		R_Buffer_Desc vdesc = { 
+			verticies, (int)verticies_count, sizeof(Vertex),
+			R_USAGE_IMMUTABLE, R_BIND_VERTEX_BUFFER, 
+		};
+		cube_vbuf = r_create_buffer(r, &vdesc); 
+
+		R_Buffer_Desc idesc = { 
+			indicies, (int)indicies_count, sizeof(u16),
+			R_USAGE_IMMUTABLE, R_BIND_INDEX_BUFFER,
+		};
+		cube_ibuf = r_create_buffer(r, &idesc); 
+	}
+
+	struct VSConstantBuffer {
+		matrix transform;
+		matrix projection;
+		matrix normal_transform;
+		float3 lightposition;
 	};
-	R_Buffer_Desc buff_desc = { 
-		EXPAND_ARRAY(full_screen_verticies),
-		R_USAGE_IMMUTABLE,
-		R_BIND_VERTEX_BUFFER
+
+	struct PSConstantBuffer {
+		float3 point_light_position;
+		float3 sun_light_direction;
 	};
-	R_Buffer vbuff = r_create_buffer(r, &buff_desc);
-	
-	R_Shader_Desc shdr_desc = { 
-		"../downsample.hlsl", "vs", 
-		"../downsample.hlsl", "ps", 
-		{
-			{ "Position", R_FORMAT_R32G32_FLOAT } 
-		}
-	};
-	R_Shader downsample =  r_create_shaders(r, &shdr_desc);
-	
+
+	// Create Constant buffers
+	R_Buffer vs_constant_buffer, ps_constant_buffer;
+	{
+		R_Buffer_Desc desc = {
+			NULL, 1, sizeof(VSConstantBuffer), 
+			R_USAGE_DYNAMIC, R_BIND_CONSTANT_BUFFER, R_CPU_ACCESS_WRITE
+		};
+		vs_constant_buffer = r_create_buffer(r, &desc);
+
+		desc.element_size = sizeof(PSConstantBuffer);
+		ps_constant_buffer = r_create_buffer(r, &desc);
+	}
+
+	// Create The Image To Sample From
+	R_Texture2D image;
+	{
+
+		// Load Image
+		int tex_w, tex_h, tex_num_channels;
+		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
+		Assert(bytes);
+		int pitch = 4 * tex_w;
+
+		R_Texture2D_Desc desc = {
+			bytes, tex_w, tex_h,
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+			R_BIND_SHADER_RESOURCE, 
+			0, 0, 1
+		};
+		image = r_create_texture2d(r, &desc);
+		free(bytes);
+	}
+
+	// Create Shaders For Cube Model
+	R_Shader cube_shdr;
+	{
+		R_Shader_Desc desc = {
+			"../shaders.hlsl", "vs_main",
+			"../shaders.hlsl", "ps_main",
+			{
+				{ "Position", R_FORMAT_R32G32B32_FLOAT, offsetof(struct Vertex, pos) },
+				{ "Normal", R_FORMAT_R32G32_FLOAT, offsetof(struct Vertex, norm) },
+				{ "Texture", R_FORMAT_R32G32_FLOAT, offsetof(struct Vertex, uv) } 
+			}
+		};
+		cube_shdr = r_create_shaders(r, &desc);
+	}
+
 	R_Texture2D screen = { 0, r->frame_buffer_view };
+
+	Win32ShowWindow(window);
+
+	//~ Game State
+
+	Camera c = {0};
+	CameraInit(&c);
+	c.aspect_ratio = (float)window_width/(float)window_height;
+	c.pos.z -= 5;
+	c.yaw = 3.14f/2;
+	c.off = {0, 0, 0}; 
+
+	// projection matrix variables
+	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
+	float3 model_scale       = { 1, 1, 1 }; // { 1.5f, 1.5f, 1.5f };
+	float3 model_translation = { 0.0f, 0.0f, 4.0f };
+
+	// global directional light
+	float3 sun_direction = { 0, 0, 1 };
+	// point light
+	float3 lightposition = {  0, 0, 2 };
+
+	TimeInit(); 
 	
+	// more things that I need I guess...
+	double start_frame = Time(), end_frame;
+	float dt = 1/60;
+
 	while (running) {
-		
+
 		// Handle input
 		MSG msg;
 		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
-		
+
 		// Handle window resize
 		RECT rect;
 		GetClientRect(window, &rect);
@@ -4156,36 +4212,71 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		screen.rtv = r->frame_buffer_view;
 		}
 		
+		float speed = 10*dt;
+		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
+		CameraBuild(&c);
+		
 		
 		// NOTE(ziv): if texture is a render target view as it should be 
 		// then I will just use the fill render target view function 
 		// provided by the d3d11 lib 
-		
-		
-		R_Pipline_Desc pipline_desc = {
-			R_TOPOLOGY_TRIANGLESTRIP,
-			downsample,// shaders
-			{ vbuff }, // vs_bindings 
-			{ }        // ps_bindings
-		};
-		
-		//float color[4] = { 0, 1, 1, 1 }; 
-		//r_fill_texture(r, screen, color);
-		r_switch_pipline(r, &pipline_desc);
-		//r_set_cull_mode(R_CULL_MODE_NULL); // cull back/front
-		//r_set_blend_mode(blend_something); // 3 blend modes
-		//r_set_viewport(r, {0, 0, (float)window_width, (float)window_height}); 
-		r_draw(r, screen, 4, 0);
 
+
+		// Draw Model
+		{
+			float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
+			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
+			
+			// update data in the cpu
+			VSConstantBuffer vs_cbuf;
+			vs_cbuf.transform        = model_view_matrix;
+			vs_cbuf.projection       = c.proj;
+			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
+			
+			PSConstantBuffer ps_cbuf;
+			ps_cbuf.point_light_position = lightposition - translate_vector;
+			ps_cbuf.sun_light_direction = sun_direction;
+			
+			// update gpu data
+			r_update_gpu_buffer(r, vs_constant_buffer, &vs_cbuf, sizeof(vs_cbuf));
+			r_update_gpu_buffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf));
+			
+			R_Pipline_Desc pipline_desc = {
+				R_TOPOLOGY_TRIANGLELIST,
+				cube_shdr,// shaders
+				{ cube_vbuf, cube_ibuf, vs_constant_buffer }, // vs_bindings 
+				{ ps_constant_buffer }, // ps_bindings
+				{ image },
+				{ } // still need sampler
+			};
+
+			float color[4] = { 0, 1, 1, 1 }; 
+			r_fill_texture(r, screen, color);
+			r_switch_pipline(r, &pipline_desc);
+			r_set_cull_mode(r, R_CULL_MODE_BACK); // cull back/front
+			r_draw_indexed(r, screen, (int)indicies_count, 0, 0);
+		}
 		
+		
+
 		RendererD3D11Present(r);
+		end_frame = Time();
+		dt = (float)(end_frame - start_frame);
+		start_frame = end_frame; // update time for dt calc
 	}
 	//release_resources: 
-	
+
 	return 0; 
+	
+	
+	
+	
+	
+	
+	
 #endif 
-	
-	
+
+
 	#if 0
 	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
 	HWND window = Win32CreateWindow(); 
@@ -4529,7 +4620,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	//~
 	// Main Game Loop
 	//
-
 
 	// projection matrix variables
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };

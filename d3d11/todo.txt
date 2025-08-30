@@ -1,0 +1,138 @@
+
+TODO(ziv):
+[ ] ===== OS =====
+ [x] implement fullscreen alt+enter
+ [ ] Memory allocation system
+ [ ] Update on Resize for fluid screen resize handling?
+ [ ] Input
+	[ ] make input as events
+	[x] mouse input
+	[ ] keyboard input
+	[ ] controller input
+
+[ ] ===== Renderer ===== (things I know how to do, no necessarily things which a "renderer" is able to do
+ [x] Texture mapping
+ [x] Obj dynamic lighting(global illumination + point light)
+ [x] Font Rendering (bitmap version)
+ [x] Face Culling
+ [x] z-buffer
+ [ ] Draw
+	 [x] DrawQuad (drawing a general syleized quad for UI)
+	 [x] fix drawing issuess with border / radius 
+	 [x] Renderer and Draw seperation (DrawQuad should not use the renderer but a draw context)
+ [ ] Create all types of buffers and store them (interface is a handle)
+ [ ] Bind all types of buffers
+ [ ] Allow Updating of buffers (uploading to gpu)
+ [ ] Dynamic updating of resources when file changes (to shaders, textures, models)
+
+[ ] ===== UI =====
+ [x] finally make the push-pop utilities for higherarchy building
+ [x] use text as id (meaning I need more than just the text itself, I also would need loc..)
+ [x] theme - uploaded to gpu once, rendered using it
+ [x] font rendering (text displayed on screen) 
+	[x] make font stay same size on resize
+	[x] buttons draw their font
+	[x] resizeable font (not truly resizeable font but controllable by FAT_PIXEL_SIZE constant)
+ [x] add support for border/no-border
+ [x] hot animation
+ [x] use DrawQuad and make it in a better location
+ [x] active animation
+ [x] fix button clicking when button is hot but mouse is outside window
+ [x] complete UI_SIZEKIND_CHILDRENSUM in offline layout system 
+ [x] make widget allocator smarter (apperently it was)
+ [x] prune out widgets that are no longer part of higherarchy
+ [x] add support for rounded corners, custom color (per vertex?)
+ [x] make text confirm to widget dimenions (kind of, this might need a change)
+ [x] allow widgets to have different positions on screen (not all relative to 0,0)
+ [x] resolve sizing conflicts and adhere to it's strictness
+ [x] add slider widget (think about how to render that)
+	 [x] make slider colors not be funny
+ [x] Make hash of id smarter (support for ###unique_id)
+ [x] make a panel widget that moves using this not all relative (to show capability not real widget)
+ [x] fix bug when two buttons with the same hash get pruned and then created (creation step would add old pruned button)
+ [x] make layout be simpler Equip semantics (for user facing code)
+ [x] remove UI_Layout it doesn't help really and makes things combersome and less understandable
+ [x] use var args for functions accepting strings
+ [x] make internal strings be a copy of strings given (so that state would no be effected by user code)
+ [x] resolving constraints robustness and accuracy improvement
+ [ ] UI Customization 
+	 [x] border
+	 [ ] rounded corners?
+	 [ ] custom drawing hooks? (I am unsure as to whether I should care...) 
+	 [ ] bitmaps?
+
+[x] ===== Camera =====
+ [x] Normal Camera
+ [x] Free Camera
+ [x] Mouse screen to world projection
+
+[ ] editor for the game
+
+[ ] ===== Game =====
+ [x] Obj loading (with position, textures, normals)
+ [x] Obj dynamic transformation
+ [ ] Obj Outlines?
+ [ ] Pixelated look
+ [ ] Shadow Mapping? - or precompute all shadow information
+
+
+In the UI rendering side I need some sort of making strategy for 
+colliding rectangles so that both text and the rectangles themselves 
+wouldn't weirdly collide as they currently do. I believe that with 
+some blending options this might be possible
+
+============== goals for today ==============
+[ ] Expand renderer capabilities (bitmaps etc..)
+[ ] make input system as events and shit (working)
+[ ] Expand renderer capabilities 
+ [x] create buffers (constant/structured)
+ [x] create pixel and vertex shaders
+ [x] hot reload shaders as needed 
+ [ ] Create textures 
+ [ ] Create blend states
+
+[ ] Make Object selection
+ [x] collide a ray with volume 
+ [ ] consider makeing octtree to "simplify" collision detection
+ [ ] shader to show selection
+
+
+TODO(ziv):
+========================================================
+ [ ] Implement high level abstraction for a pipline pass
+[ ] Make pixelated look 
+[ ] ECS for game objects (also hot reload everything?)
+========================================================
+
+
+Create a general system for identifying changes to files using their path and
+updating their inside information when changed. This system should be general 
+so that any type of resource can be changed. For this I might need to create 
+special functions that accept certain layout and are capable of doing the 
+actual operation.
+
+Expand capabilities of drawing lib
+currenly I have many things which I would 
+love to draw but I don't have the utilities 
+set up to easily draw for debugging and non-
+debugging purposes. 
+
+TODO(ziv): For graph building inside of the UIMakeWidget and other 
+areas where the api uses nodes, create special functions handling all
+of these types of interactions. Or at least consider making some
+unified way of doing said operations 
+
+TODO(ziv): figure out how to standardize handle creation, destruction and 
+management. I don't want to have to copy around the same code this many times as 
+I have (for each new handle all new code which is mostly the same).
+
+
+
+TODO(ziv): At the end of the frame, be sure to unbind all resource channels (that is, stream sources, texture stages, and current indices). Doing so will ensure that dangling references to resources are removed before they cause the resource manager to keep resources resident that are actually no longer in use. 
+
+
+
+
+
+
+

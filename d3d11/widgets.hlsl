@@ -43,6 +43,7 @@ PS_INPUT vs_main(uint widgetid : SV_INSTANCEID, uint vertexid : SV_VERTEXID) {
 }
 
 
+
 // https://iquilezles.org/articles/distfunctions2d/
 float BoarderdRectSDF(float2 pixel, float2 halfsize, float radius) {
 	return length(max(abs(pixel)-halfsize+radius, 0.))-radius;

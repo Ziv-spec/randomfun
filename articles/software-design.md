@@ -1,4 +1,29 @@
 
+Trekking Patagonia list: 
+    - Down jacket
+    - hardshell jacket
+    - fleece
+    - warmer pants
+    - rain jacket
+    - wind pants
+    - base layer shirt
+    - base layer pants
+    - socks 3 for cold, and another 3 for hot days
+    - trekking shoes 
+    - tent
+    - light pants
+    - very light shorts (running ones) 
+
+Things to buy: 
+    - socks (check which ones are best). There are underlayer socks to prevent blisters also
+    - heat saving pants (as a base layer). I don't think I need anything fance
+    - mat for sleeping both solid and inflatable form
+    - water filtering solution (one that you can squeeze
+    - fleece or micro-fleece (check which one). Doesn't seem to matter all that much
+    - head lamp
+
+
+
 These are my unprocessed thoughts on some matters; they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change yet this text does not. This text is fragile so make sure you are not.
 
 Article on system design. This should include the following: 

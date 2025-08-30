@@ -1,15 +1,32 @@
 
 # The Timeless Way Of Building Book Review 
 
-Recently I read Christopher Alexander's "The Timeless Way Of Building". The book is an architecture book disguised as a philosophy book disguised as a systems book. I have found it's ideas to be quite similar to other fields, and after poking around, it seems to have had great influence on software architecture along with architecture in general as you would expect. 
+The book details Alexander's gripe with modern lifeless buildings, venerating old design with their elusive "Quality" he so carefully defines the shape of.
+
+Book layout:
+    Nameless Quality
+    Modernism lacks it, Traditionalism has it (the problem)
+    The Timeless Way (solution)
+    Practical application
+
+Recently I read Christopher Alexander's "The Timeless Way Of Building". The book is an architecture book but not in the typical way people might assume or find in a bookstore. You won't find layout pictures or abstract theories on building and form. Instead, it is a philosophical book, leaning towards a more spiritual view of buildings and ideals of them. That said, you will find many of his ideas are more general then what a surface level scan might show, and after poking around, it seems to truly have had influence on software architecture, a completely different subject.
 
 ## The Quality Without A Name
 
-The book details Alexander's gripe with modern lifeless buildings, venerating old design with their elusive "Quality" he so carefully defines the shape of. To explain this "quality without a name" he uses many words that only describe a little of what he means (alive, whole, comfortable, free, exact, egoless). Each helping to carve out small pieces and define the shape that is his quality.
+The book begins by searching for a certain quality the author believes to hold the key to the making of a great building. 
+
+This quality as we learn is without a name, and rightfully so. Looking at traditional homes 
+
+
+Alexander's theory is that there is a certain quality in buildings which emerges 
+The author believes that t here is some quality with out a name and we should search for it in buildings we build. 
+that exists in traditional homes which makes them 
+
+ To explain this "quality without a name" he uses many words that only describe a little of what he means (alive, whole, comfortable, free, exact, egoless). Each helping to carve out small pieces and define the shape that is his quality.
 
 The quality is alive in that it make us feel alive in them, whole in that they don't contradict the vision of the man who made them, comfortable for they are made for real people who seek comfort which is not absolute, free in it's form to take any shape that we wish to impart it, and yet exact in that some structure must be upheld for some regular shape to take place instead of chaos; it must carry thoughtfulness which makes things work towards some benefit instead of just existing or even destroying.
 
-I for myself can say that I felt this quality in a wooden house up north where my family sometimes go on vacation. I remember entering this building mesmerized, looking at the scenery of mountains when looking outside, grapevines growing on the sides of the main walk way and the calmness which the environment had. The peace. How warm the house felt, with the green grass complimenting it's nature; the cozy old feel which is given by the slight screeching sounds of wood when walking. The fun we had as we all sat around the big table after cooking a meal, going to the pool, enjoying life, eating to our hearts content, laughing together. All these attributes contributed into making a kind of quality which I had not felt from any other house I had been to. It facilitated the place for our once in a year meet ups that have were in great part a succeeded because of it.
+I for myself can say that I felt this quality in a wooden house up north where my family sometimes go on vacation. I remember entering this building mesmerized, looking at the scenery of mountains when looking outside, grapevines growing on the sides of the main walk way and the calmness which the environment had. The peace. How warm the house felt, with the green grass complimenting it's nature; the cozy old feel which is given by the slight screeching sounds of wood when walking. The fun we had as we all sat around the big table after cooking a meal, going to the pool, enjoying life, eating to our hearts content, laughing together. All these attributes contributed into making a kind of quality which I had not felt from any other house I had been to. It facilitated the place for our once in a year meet-ups that have were in great part a succeeded because of it.
 
 ## Shaped By Events
 
