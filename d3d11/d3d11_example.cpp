@@ -5234,5 +5234,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	d->font.srv[1]->Release();
 	RendererDeInit(r);
 	return 0;
+
 	#endif 
 }
