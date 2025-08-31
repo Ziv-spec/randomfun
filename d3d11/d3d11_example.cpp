@@ -4114,6 +4114,33 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 
 #define EXPAND_ARRAY(arr) arr, ArrayLength(arr), sizeof(arr[0])
 	
+	/* 	
+		
+R_Sampler_Desc point_sampler_desc = {
+			
+		};
+		R_Sampler point_sampler = r_create_sampler();
+		
+R_Texture2D_Desc texture2d_desc = {
+.wdith; 
+.height;
+.miplevels;
+.arraysize; 
+.format; 
+.sampledesc.count;
+.usage; 
+.bind_flags; 
+
+.data; 
+.pitch; 
+
+};
+R_Texture2D tex = r_create_texture2d();
+		 
+*/
+	
+	
+	
 	float2 full_screen_verticies[] = {
 		-1,  1, 1,  1,
 		-1, -1, 1, -1,
@@ -4169,8 +4196,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			{ }        // ps_bindings
 		};
 		
-		//float color[4] = { 0, 1, 1, 1 }; 
-		//r_fill_texture(r, screen, color);
+		float color[4] = { 0, 1, 1, 1 }; 
+		r_fill_texture(r, screen, color);
 		r_switch_pipline(r, &pipline_desc);
 		//r_set_cull_mode(R_CULL_MODE_NULL); // cull back/front
 		//r_set_blend_mode(blend_something); // 3 blend modes
