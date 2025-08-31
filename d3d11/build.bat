@@ -1,4 +1,4 @@
-@echo off 
+@echo off
 REM The portion that calls the vswhere.exe and so on... I copied from our lord and savior martin's github
 
 setlocal enabledelayedexpansion
