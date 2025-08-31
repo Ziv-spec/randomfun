@@ -17,7 +17,6 @@ The book begins by searching for a certain quality the author believes to hold t
 
 This quality as we learn is without a name, and rightfully so. Looking at traditional homes 
 
-
 Alexander's theory is that there is a certain quality in buildings which emerges 
 The author believes that t here is some quality with out a name and we should search for it in buildings we build. 
 that exists in traditional homes which makes them 
@@ -26,25 +25,20 @@ that exists in traditional homes which makes them
 
 The quality is alive in that it make us feel alive in them, whole in that they don't contradict the vision of the man who made them, comfortable for they are made for real people who seek comfort which is not absolute, free in it's form to take any shape that we wish to impart it, and yet exact in that some structure must be upheld for some regular shape to take place instead of chaos; it must carry thoughtfulness which makes things work towards some benefit instead of just existing or even destroying.
 
-I for myself can say that I felt this quality in a wooden house up north where my family sometimes go on vacation. I remember entering this building mesmerized, looking at the scenery of mountains when looking outside, grapevines growing on the sides of the main walk way and the calmness which the environment had. The peace. How warm the house felt, with the green grass complimenting it's nature; the cozy old feel which is given by the slight screeching sounds of wood when walking. The fun we had as we all sat around the big table after cooking a meal, going to the pool, enjoying life, eating to our hearts content, laughing together. All these attributes contributed into making a kind of quality which I had not felt from any other house I had been to. It facilitated the place for our once in a year meet-ups that have were in great part a succeeded because of it.
 
-## Shaped By Events
+My family holds most of our meetings at each others houses but after many years of pretty much the same we yearned for something new. My sister then, suggested renting a nice place for our vacation; taken as inspiration from her boyfriend at the time a new tradition began. And so, it was decided, the family meeting was due September, up north on a small mountain. The preparations was not lacking to say the least. We bought everything we thought was necessary and needed, to avoid buying later. Whether meat, fruit, vegetable, dairy (bought near) and some home cooked food for a first meal, we made sure to leave the least amount of work while on our vacation.
+
+I remember before reaching, as we drove up the mountain we saw the beautiful nature, and while entering, mesmerized. Looking at the scenery of mountains, grapevines growing on the sides of the main walk-way and the calmness which the environment had. The peace. How warm the house felt, with the green grass complimenting it's nature; the cozy old feel which is given by the slight screeching sounds of wood when walking. The fun we had as we all sat around the big table after cooking a great meal, going to the pool and eating fruits, laughing together. All these moments contributed into making a kind of quality which I had not felt from any other house I had been to. It facilitated the place for our once in a year meet-ups that have were in great part a succeeded because of it.
 
 > "A building or a town is given it's character, essentially, by those events which keep on happening there most often." [pp 66]
 
-Alexander recognizes that the quality lies in the events that happen in a place more than the place itself; yet they can not be separated as they effect each other, for without the place there would be no events. The roads that we use to get around, the parks that we use to communicate with our friends, small areas of privacy that allow for intimacy, are places where events that take place in them are helped by the environment within which they occur in. Each part of a village in this way can contribute to the holistic dream that fits with our nature.
-
-We can see this clearly in my wooden house story. The place was the enabler for all the events which occurred in it. Whether playing around the pool or sitting in the Jacuzzi, cooking meat with the boys, sitting around a large table eating together, enjoying the mountain view, or playing games in the large living room space we had; all these good memories of the place are only enabled by it, and enacted by us. You could say we lived the dream behind the house, carefully arranged to make us enjoy getting closer and socializing, backed with it's pretty and appeasing appearance.
-
-But what about the counter example? What happens when the place is not an enabler for events?
-
-## Modernity
+Alexander recognizes that the quality lies in the events that happen in a place more than the place itself; yet they can not be separated as they effect each other. Without the place there would be no events, without the events there is no <i>nameless quality</i>. In the wooden house, the isolated nature, large warm space, cooking with boys, places to relax like a pool or a Jacoozy, and large table to sit around all are all parts of what made it so special to us. And if we look outside, the roads that we use to get around, the parks that we use to communicate with our friends, small areas of privacy that allow for intimacy, are all places where events that take place in them are helped by the environment within which they occur in. Each part of a village/city in this way can contribute to the holistic whole. All for the sake of the quality to emerge.
 
 After a couple of successful family gatherings, due to security reasons our family decided to go to a different place, this time Eilat. There we gathered in a narrow cramped street housing many homes of different likely rich people. The house itself had a weird layout and separation of rooms, a big pool, large modern kitchen, and lots of large windows. The view was of mostly other houses and to our right a bit of Jordan, and not a whole lot of vegetation. Look wise I can say it definitely was not the most comforting house. 
 
 Unfortunately for us, we were in a large city where many wanted to go shopping on their own. This caused early separation until we eventually all came back to eat. The table was a rectangular shape so hearing someone on the other side was difficult. At night some wanted to go out to a bar and some didn't which created a dispute. There were hardly any truly "quite" places so we hung couldn't really separate slightly if we wanted. And as you might have guessed we didn't really play with one another leading to a very disappointing trip. 
 
-This kind of experience is the author of the book disdains in modern building. He claims it is lifeless, boring almost, and so modular and reused that it lacks any character or beauty. They don't facilitate the events that people want and need for they are built not for the people's needs. Neighborhoods are created from several apartments copied around, A modern apartment building is usually built by creating the first flat and copying it for the next however many floors required. A flat is created by the first half and mirroring it. A half is created by the idea of several people who think of something which will satisfy the common buyer. I think you can see how this might be problematic.
+This kind of experience is the author of the book disdains in modern building. He claims it is lifeless, boring almost, and so modular and reused that it lacks any character or beauty. They don't facilitate the events that people want and need for they are built not for the people's needs. 
 
 ## Randomness
 
