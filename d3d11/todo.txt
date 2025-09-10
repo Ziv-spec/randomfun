@@ -126,8 +126,6 @@ TODO(ziv): figure out how to standardize handle creation, destruction and
 management. I don't want to have to copy around the same code this many times as 
 I have (for each new handle all new code which is mostly the same).
 
-
-
 TODO(ziv): At the end of the frame, be sure to unbind all resource channels (that is, stream sources, texture stages, and current indices). Doing so will ensure that dangling references to resources are removed before they cause the resource manager to keep resources resident that are actually no longer in use. 
 
 

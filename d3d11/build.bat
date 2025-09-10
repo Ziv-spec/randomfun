@@ -28,7 +28,7 @@ if %errorlevel% neq 0 (
 
 if "%1" equ "debug" (
   set CL_FLAGS=/MTd /EHa /D_DEBUG=1 /Od /Zi 
-  REM /fsanitize=address
+  REM/fsanitize=address
   set LINK_FLAGS= /DEBUG /subsystem:console 
   set FXC=/O0
 ) else (

@@ -10,7 +10,6 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -30,8 +29,10 @@ static int window_height = 600;
 #define MAX_SPRITES_COUNT 0x1000
 #define MAX_QUAD_COUNT    0x100
 
-#define WIDGETS_COUNT 0x100
+#define WIDGETS_COUNT     0x100
 #define MAX_WIDGET_STACK_SIZE 5
+
+// 
 
 #define Assert(expr) do { if (!(expr)) __debugbreak(); } while (0)
 #define AssertHR(hr) Assert(SUCCEEDED(hr))
@@ -41,8 +42,11 @@ static int window_height = 600;
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define ABS(a)    ((a) < (0) ? (-a) : (a))
 
-#define STR2(x) #x
-#define STR(x) STR2(x)
+#define AlignUpPow2(x, p) (((x) + (p) -1)& ~((p) -1))
+
+#define KB(x) (x*1024)
+#define MB(x) (x*1024*1024)
+#define GB(x) (x*1024*1024*1024)
 
 typedef int64_t s64;
 typedef int32_t s32;
@@ -411,40 +415,283 @@ get_model_view_matrix(float3 rotation, float3 translation, float3 scale) {
 #endif
 }
 
-//~
-// Memory Allocator
+// os_essentials.h
+
+//
+// Memory
 //
 
-typedef struct {
-	size_t size; 
-	size_t idx;
-	void *data;
-} Arena;
+static void *os_memory_reserve(u64 size)            { return VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE); }
+static void os_memory_commit(void *ptr, u64 size)   { VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE); }
+static void os_memory_decommit(void *ptr, u64 size) { VirtualFree(ptr, size, MEM_DECOMMIT);  }
+static void os_memory_release(void *ptr, u64 size)  { VirtualFree(ptr, size, MEM_RELEASE);  }
 
-static bool 
-MemArenaInit(Arena *arena, size_t size) {
-	void *data = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
-	arena->data = data;
-	arena->size = size; 
-	arena->idx = 0; 
-	
-	return data != NULL;
+//
+// Thread context
+//
+
+DWORD win32_thread_context_index; 
+
+static void 
+os_thread_context_init() {
+	if ((win32_thread_context_index = TlsAlloc()) == TLS_OUT_OF_INDEXES) {
+		FatalError("Couldn't allocated new thread_context index (TlsAlloc)");
+	}
+}
+
+static void 
+os_set_thread_context(void *data) { 
+	if (!TlsSetValue(win32_thread_context_index, data)) {
+		FatalError("Couldn't set thread context (TlsSetValue)");
+	}
 }
 
 static void *
-MemArenaAlloc(Arena *arena, size_t size) {
-	Assert(arena->idx < arena->size && arena->data); 
-	
-	size_t bytes_free = arena->size - arena->idx; 
-	if (bytes_free > size) {
-		void *result = (char *)arena->data + arena->idx;
-		arena->idx += size;
-		return result;   
-	}
-	return NULL;
+os_get_thread_context() { 
+	void *tctx = TlsGetValue(win32_thread_context_index);
+	if (tctx == NULL && GetLastError() != ERROR_SUCCESS)
+		FatalError("Couldn't get thread context (TlsGetValue)");
+	return tctx;
 }
 
-//~
+//
+// Time functions 
+//
+
+static double g_inv_freq; 
+
+static void 
+os_time_init() {
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	g_inv_freq = 1/(double)freq.QuadPart;
+}
+
+static double
+os_time() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return (double)time.QuadPart * g_inv_freq;
+}
+
+static s64
+TimeMicroseconds() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return time.QuadPart;
+}
+
+//
+// helpers.h
+//
+
+//
+// The central allocation mehcanism the os provides is 
+// reserve, commit, decommit, release. This is a nice 
+// wrapper around it.
+// 
+
+typedef void *M_ReserveFunc(void *ctx, u64 size);
+typedef void M_ChangeMemoryFunc(void *ctx, void *ptr, u64 size);
+
+typedef struct {
+	M_ReserveFunc *reserve;
+	M_ChangeMemoryFunc *commit; 
+	M_ChangeMemoryFunc *decommit;
+	M_ChangeMemoryFunc *release;
+	void *ctx;
+} M_BaseMemory;
+
+static M_BaseMemory *os_get_base_memory(void);
+
+//
+// Arena allocator
+// 
+
+typedef struct {
+	M_BaseMemory *base;
+	u8 *data;
+	u64 cap;
+	u64 pos; 
+	u64 commit_pos;
+} M_Arena;
+
+#define M_DEFAULT_RESERVE_BLOCK_SIZE GB(1)
+#define M_DEFAULT_COMMIT_BLOCK_SIZE  MB(64)
+
+// This allocator reserves by default 1Gb of memory and incrementally 
+// as needed commits 64Mb chunks of memory for use. When you push a 
+// value using m_arena_push, like a stack all it does is move the 
+// position of next allocation forwards. 
+
+static M_Arena m_make_arena_reserve(M_BaseMemory *m,
+									u64 reserve_size /* Adress space size you want to reserve */);
+static M_Arena m_make_arena(M_BaseMemory *m);
+
+static void m_arena_release(M_Arena *arena);         // release all memory at once
+
+static void *m_arena_push(M_Arena *arena, u64 size); // get pointer to commited memory you can write to
+static void m_arena_pop_to(M_Arena *arena, u64 pos); // return back to some allocation position to "free" memory
+
+#define push_array(allocator, type, size) (type *)m_arena_push((allocator), (size)*sizeof(type))
+
+// 
+// Global Thread Context - used to implement a thread scratch arena
+// 
+
+typedef struct {
+	M_BaseMemory *base; 
+	M_Arena arena_pool[2];
+} ThreadContext;
+
+static void m_thread_context_init(); // Must get called on each thread you use the thread context!
+
+// 
+// Scratch/Temporary Memory
+// 
+
+typedef struct {
+	M_Arena *arena; 
+	u64 pos;
+} M_Temp;
+
+// Usage code: 
+// M_Temp temp = m_temp_begin(0, 0); 
+//  ...
+// m_temp_end(temp);
+
+static M_Temp m_temp_begin(M_Arena **conflicts, /* arenas you don't want the temporary memory to conflict with */
+						   u64 count            /* conflicting arenas you provide count */);
+static void m_temp_end(M_Temp temp);
+
+static void os_init();
+
+//
+// Implementation
+//
+
+static void *os_memory_reserve_wrapped(void *ctx, u64 size) { return os_memory_reserve(size); }
+static void os_memory_commit_wrapped(void *ctx, void *ptr, u64 size) { os_memory_commit(ptr, size); }
+static void os_memory_decommit_wrapped(void *ctx, void *ptr, u64 size) { os_memory_decommit(ptr, size);  }
+static void os_memory_release_wrapped(void *ctx, void *ptr, u64 size) { os_memory_release(ptr, size); }
+
+static M_BaseMemory *os_get_base_memory(void) {
+	static M_BaseMemory memory; 
+	
+	if (memory.reserve == 0) {
+		memory.reserve = os_memory_reserve_wrapped; 
+		memory.commit = os_memory_commit_wrapped; 
+		memory.decommit = os_memory_decommit_wrapped; 
+		memory.release = os_memory_release_wrapped; 
+		memory.ctx = 0; 
+	}
+	return &memory;
+}
+
+static M_Arena m_make_arena_reserve(M_BaseMemory *m, u64 reserve_size) { M_Arena arena = { m, (u8 *)os_memory_reserve(reserve_size), reserve_size }; return arena; }
+static M_Arena m_make_arena(M_BaseMemory *m) { return m_make_arena_reserve(m, M_DEFAULT_RESERVE_BLOCK_SIZE); }
+static void m_arena_release(M_Arena *arena) { arena->base->release(arena->base->ctx, arena->data, arena->cap); }
+
+static void *
+m_arena_push(M_Arena *arena, u64 size) {
+	void *result = NULL;
+	
+	if (arena->pos + size <= arena->cap) {
+		result = arena->data + arena->pos;
+		arena->pos += size; 
+		
+		u64 p = arena->pos; 
+		u64 commit_p  = arena->commit_pos;
+		if (commit_p < p) {
+			
+			u64 aligned_p = AlignUpPow2(p, M_DEFAULT_COMMIT_BLOCK_SIZE); 
+			u64 next_commit_p = MIN(aligned_p, arena->cap); 
+			u64 commit_size = next_commit_p - commit_p;
+			
+			M_BaseMemory *base = arena->base;
+			base->commit(base->ctx, arena->data + commit_p, commit_size); 
+			arena->commit_pos = next_commit_p;
+		}
+	}
+	
+	return result;
+}
+
+static void 
+m_arena_pop_to(M_Arena *arena, u64 pos) {
+	
+	if (pos < arena->pos) {
+		arena->pos = pos; 
+		
+		u64 p = arena->pos; 
+		u64 aligned_p = AlignUpPow2(p, M_DEFAULT_COMMIT_BLOCK_SIZE); 
+		u64 next_commit_p = MIN(aligned_p, arena->cap); 
+		
+		u64 commit_p  = arena->commit_pos;
+		if (commit_p < p) {
+			u64 decommit_size = commit_p - next_commit_p;
+			M_BaseMemory *base = arena->base;
+			base->commit(base->ctx, arena->data + next_commit_p, decommit_size); 
+			arena->commit_pos = next_commit_p;
+		}
+	}
+}
+
+static void 
+m_thread_context_init() {
+	M_BaseMemory *base = os_get_base_memory(); 
+	M_Arena arena = m_make_arena(base); 
+	ThreadContext *tctx = push_array(&arena, ThreadContext, 1);
+	
+	tctx->arena_pool[0] = arena;
+	for (int i = 1; i < ArrayLength(tctx->arena_pool); i++) {
+		tctx->arena_pool[i] = m_make_arena(base);
+	}
+	os_set_thread_context(tctx);
+}
+
+static M_Temp
+m_temp_begin(M_Arena **conflicts, u64 count) {
+	ThreadContext *tctx = (ThreadContext *)os_get_thread_context(); 
+	
+	if (!conflicts) {
+		M_Arena *arena = &tctx->arena_pool[0];
+		return {arena, arena->pos};
+	}
+	
+	bool found_conflict = 0;
+	M_Arena *result_arena = NULL;
+	for (int i = 0; i < ArrayLength(tctx->arena_pool); i++) {
+		
+		found_conflict = 0;
+		for (int j = 0; j < count; j++) {
+			if (conflicts[j] == &tctx->arena_pool[i]) {
+				found_conflict = 1; 
+			}
+		}
+		if (!found_conflict) {
+			result_arena = &tctx->arena_pool[i];
+			break;
+		}
+		
+	}
+	
+	return { result_arena, result_arena->pos }; 
+}
+
+static void
+m_temp_end(M_Temp temp) {
+	m_arena_pop_to(temp.arena, temp.pos);  
+}
+
+static void 
+os_init() {
+	os_time_init();
+	os_thread_context_init();
+	
+}
+
+//
 // Linked List
 // 
 
@@ -486,12 +733,12 @@ Str8Lit(const char *str) {
 
 inline static String8
 Str8Copy(char *dest, String8 text) {
-	memcpy(dest, text.data, text.size); 
+	memcpy(dest, text.data, text.size);
 	String8 result = { text.size, dest };
 	return result;
 }
 
-inline static bool
+static bool
 Str8Compare(String8 s1, String8 s2) {
 	if (s1.size != s2.size) return 0; 
 	for (int i = 0; i < s1.size; i++) {
@@ -526,16 +773,16 @@ typedef struct {
 } String16;
 
 static String16
-Str8ToStr16(Arena *arena, String8 str) {
+Str8ToStr16(M_Arena *arena, String8 str) {
 	Assert(arena && str.data && str.size > 0); 
 	
-	size_t size = (str.size+1)*sizeof(wchar_t);
-	wchar_t *data  = (wchar_t *)MemArenaAlloc(arena, size); 
-	for (int i = 0; i < size; i++) {
+	wchar_t *data  = push_array(arena, wchar_t, str.size+1);
+	
+	for (int i = 0; i < str.size+1; i++) {
 		data[i] = str.data[i];
 	}
 	
-	String16 result = { size, data };
+	String16 result = { str.size+1, data };
 	return result;
 }
 
@@ -608,31 +855,31 @@ static LRESULT CALLBACK WinProc(HWND, UINT ,WPARAM ,LPARAM);
 static HWND g_window;
 
 static HWND
-Win32CreateWindow() { 
-
+Win32CreateWindow(char *app_title, char *app_name) { 
+	
 	HINSTANCE instance_handle = GetModuleHandleW(NULL);
-
+	
 	WNDCLASSEXA window_class = {0};
 	window_class.cbSize = sizeof(window_class);
 	window_class.lpfnWndProc = WinProc;
 	window_class.hInstance = instance_handle ;
 	window_class.hIcon = LoadIcon(instance_handle, MAKEINTRESOURCE(1));
 	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.lpszClassName = "d3d11 example";
-
+	window_class.lpszClassName = app_name;
+	
 	ATOM atom = RegisterClassExA(&window_class);
 	Assert(atom && "Could not register class");
-
+	
 	HWND window = CreateWindowExA(CS_VREDRAW | CS_HREDRAW,
-				  window_class.lpszClassName,
-				  APP_TITLE,
-				  WS_OVERLAPPEDWINDOW,
-				  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
-				  NULL, NULL, window_class.hInstance, NULL);
+								  window_class.lpszClassName,
+								  app_title,
+								  WS_OVERLAPPEDWINDOW,
+								  CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
+								  NULL, NULL, window_class.hInstance, NULL);
 	Assert(window && "Failed to create a window");
-
+	
 	g_window = window;
-
+	
 	return window;
 }
 
@@ -648,7 +895,7 @@ static  void
 Win32ToggleFullScreen(HWND window) {
 	// NOTE(ziv): Code taken from raymond chen blog post
 	// https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
-
+	
 	DWORD style = GetWindowLong(window, GWL_STYLE);
 	if (style & WS_OVERLAPPEDWINDOW) {
 		MONITORINFO monitor_info = { sizeof(monitor_info) };
@@ -656,17 +903,17 @@ Win32ToggleFullScreen(HWND window) {
 			GetMonitorInfo(MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY), &monitor_info)) {
 			SetWindowLong(window, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
 			SetWindowPos(window, HWND_TOP,
-				 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
-				 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-				 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-				 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+						 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+						 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+						 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+						 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 		}
 	} else {
 		SetWindowLong(window, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
 		SetWindowPlacement(window, &g_previous_window_placement);
 		SetWindowPos(window, NULL, 0, 0, 0, 0,
-			 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
-			 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+					 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 	}
 }
 
@@ -681,33 +928,6 @@ Win32GetLastFileWriteTime(const char *file_name) {
 }
 
 
-
-//~
-// Time
-//
-
-thread_local double g_inv_freq;
-
-static void
-TimeInit() {
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	g_inv_freq = 1/(double)freq.QuadPart;
-}
-
-static double
-Time() {
-	LARGE_INTEGER time;
-	QueryPerformanceCounter(&time);
-	return (double)time.QuadPart * g_inv_freq;
-}
-
-static s64
-TimeMicroseconds() {
-	LARGE_INTEGER time;
-	QueryPerformanceCounter(&time);
-	return time.QuadPart;
-}
 
 //~
 // Input
@@ -766,6 +986,9 @@ typedef struct {
 } Game_Input;
 
 static Game_Input g_raw_input_state;
+
+
+
 
 // Create a event thingy? 
 
@@ -863,10 +1086,10 @@ InputShutdown() {
 		Rid[0].hwndTarget = 0;
 		
 		Rid[1].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
-			Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
-			Rid[1].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
-			Rid[1].hwndTarget = 0;
-			
+		Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
+		Rid[1].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+		Rid[1].hwndTarget = 0;
+		
 		if (RegisterRawInputDevices(Rid, ArrayLength(Rid), sizeof(Rid[0])) == FALSE)
 		{
 			//registration failed. Call GetLastError for the cause of the error.
@@ -885,7 +1108,8 @@ InputUpdate(LPARAM lparam) {
 	UINT dwSize;
 	GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
 	
-	LPBYTE lpb = new BYTE[dwSize];
+	
+	BYTE lpb[128]; 
 	if (lpb == NULL) {
 		return 0;
 	}
@@ -898,33 +1122,31 @@ InputUpdate(LPARAM lparam) {
 	RAWINPUT* raw = (RAWINPUT*)lpb;
 	if (raw->header.dwType == RIM_TYPEMOUSE) {
 		
-		mouse_delta.x += raw->data.mouse.lLastX; 
-		mouse_delta.y += raw->data.mouse.lLastY; 
-		
-		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL) {
-			mouse_wheel_delta += raw->data.mouse.usButtonData;
-		}
-		
-		static int os_mouse_button[] = { MouseLeftButton, MouseRightButton, MouseMiddleButton };
-		static int raw_buttons[] = {
-			RI_MOUSE_BUTTON_1_DOWN,RI_MOUSE_BUTTON_1_UP,
-			RI_MOUSE_BUTTON_2_DOWN,RI_MOUSE_BUTTON_2_UP,
-			RI_MOUSE_BUTTON_3_DOWN,RI_MOUSE_BUTTON_3_UP
-		};
-		for (int i = 0; i < ArrayLength(raw_buttons); i++) {
-			if (raw->data.mouse.ulButtons & raw_buttons[i]) {
-				OS_Event button_event = {
-					(i & 1) ? OS_EVENT_KIND_MOUSE_BUTTON_UP : OS_EVENT_KIND_MOUSE_BUTTON_DOWN,
-					os_mouse_button[i/2]
-				};
-				
-				
-				OSEventPost(button_event);
+		g_raw_input_state.mouse.dx += raw->data.mouse.lLastX; 
+		g_raw_input_state.mouse.dy += raw->data.mouse.lLastY; 
+		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL)
+		g_raw_input_state.mouse.wy += raw->data.mouse.usButtonData; 
+		g_raw_input_state.mouse.buttons = (Mouse_Buttons)(((raw->data.mouse.ulButtons & RI_MOUSE_LEFT_BUTTON_UP)   >> 1) |
+		((raw->data.mouse.ulButtons & RI_MOUSE_RIGHT_BUTTON_UP)  >> 2) |
+										   ((raw->data.mouse.ulButtons & RI_MOUSE_MIDDLE_BUTTON_UP) >> 3));
 			}
-		}
+	else if (raw->header.dwType == RIM_TYPEKEYBOARD) 
+    {
 		
-	}
-	delete[] lpb;
+		
+		/* 
+						printf(" Kbd: make=%04x Flags:%04x Reserved:%04x ExtraInformation:%08x, msg=%04x VK=%04x \n", 
+							   raw->data.keyboard.MakeCode, 
+							   raw->data.keyboard.Flags, 
+							   raw->data.keyboard.Reserved, 
+							   raw->data.keyboard.ExtraInformation, 
+							   raw->data.keyboard.Message, 
+							   raw->data.keyboard.VKey);
+						 */
+
+    }
+	
+	//delete lpb;
 	
 	return 1;
 }
@@ -985,9 +1207,21 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			return 0;
 		} break;
 		
+		case WM_ACTIVATE: {
+			if (!wparam) {
+				g_raw_input_state.mouse = Mouse{0};
+			}
+		} break;
+		
+		case WM_MOUSEMOVE: {
+			POINTS p = MAKEPOINTS(lparam);
+			// mouse position inside the window
+			//OSEventPost({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
+		} break; 
+		
+/* 		
 		case WM_KEYDOWN:
 		{
-			
 			if ((char)wparam == 'W') { key_w = true; }
 			if ((char)wparam == 'S') { key_s = true; }
 			if ((char)wparam == 'A') { key_a = true; }
@@ -1033,18 +1267,8 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			}
 			
 		} break;
-		
-		case WM_ACTIVATE: {
-			if (!wparam) {
-				g_raw_input_state.mouse = Mouse{0};
-			}
-		} break;
-		
-		case WM_MOUSEMOVE: {
-			POINTS p = MAKEPOINTS(lparam);
-			OSEventPost({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
-		} break; 
-		
+		 */
+
 		//
 		// Rawinput
 		//
@@ -1064,19 +1288,23 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			
 			if (wparam == GIDC_ARRIVAL) {
 				if (device_info.dwType == RIM_TYPEMOUSE) {
-				printf("Added mouse device\n");
+					printf("Added mouse device\n");
 				}
 			}
-			else {
+			else if (wparam == GIDC_REMOVAL){
 				if (device_info.dwType == RIM_TYPEMOUSE) {
-				printf("Removed mouse device\n");
-			}
+					printf("Removed mouse device\n");
+				}
 			}
 			
 		} break; 
 		
+		default: {
+			return DefWindowProcA(window, message, wparam, lparam);
+		}
 	}
-	return DefWindowProcA(window, message, wparam, lparam);
+	
+	return 0;
 }
 
 //~
@@ -1100,12 +1328,6 @@ typedef struct R_SpriteInst {
 	float2 screen_pos, size; 
 	int2 atlas_pos;
 } R_SpriteInst;
-
-typedef struct { int val; } PSHandle;
-typedef struct { int val; } VSHandle;
-typedef struct { int val; } BFHandle;
-typedef struct { int val; } TEXHandle;
-
 
 #define FORMAT_TABLE \
 X(R_FORMAT_R16_UINT,            DXGI_FORMAT_R16_UINT),\
@@ -1132,168 +1354,6 @@ enum R_InputClassification {
 	R_INPUT_PER_VERTEX_DATA   = 0,
 	R_INPUT_PER_INSTANCE_DATA = 1
 };
-
-typedef struct {
-	char *semantic_name;
-	R_Format format;
-	u32 input_slot; 
-	u32 aligned_byte_offset;
-	R_InputClassification input_slot_class;
-} R_LayoutFormat; 
-
-typedef struct {
-	HWND window;
-	
-	Arena *arena; // permanent arena? (maybe should be perframe scratch buffer idk)
-	
-	ID3D11Device1 *device;
-	ID3D11DeviceContext1 *context;
-	IDXGISwapChain1 *swap_chain;
-	ID3D11RenderTargetView *frame_buffer_view;
-	
-	ID3D11DepthStencilState* depth_stencil_state;
-	ID3D11DepthStencilView *zbuffer;
-	ID3D11Texture2D *zbuffer_texture;
-	ID3D11RasterizerState1* rasterizer_cull_back;
-	ID3D11RasterizerState1* rasterizer_cull_front;
-	ID3D11SamplerState *point_sampler; 
-	ID3D11SamplerState *linear_sampler; 
-
-	
-	D3D11_VIEWPORT *viewport;
-	b32 dirty; // window size changed
-	
-	
-	// Book keeping for dynamic loading of shaders and buffers 
-	ID3D11VertexShader *vs_array[0x10]; 
-	ID3D11InputLayout *lay_array[0x10]; 
-	VSHandle vs_handles[0x10];
-	struct {
-		const char *file_name;
-		const char *entry_point;
-		FILETIME last_write_time;
-		R_LayoutFormat *format;
-		unsigned int format_size;
-	} vs_file_names_and_time[0x10];
-	int vs_idx;
-	
-	ID3D11PixelShader *ps_array[0x10]; 
-	PSHandle ps_handles[0x10];
-	struct {
-		const char *file_name;
-		const char *entry_point;
-		FILETIME last_write_time;
-	} ps_file_names_and_time[0x10];
-	int ps_idx;
-	
-	ID3D11Buffer *buffer_array[0x10]; 
-	ID3D11ShaderResourceView *srv_array[0x10]; 
-	BFHandle buffer_handles[0x10];
-	
-	
-	int buffer_idx;
-	
-} R_D3D11Context;
-
-
-static void 
-RendererD3D11CreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
-							R_LayoutFormat format[], unsigned int format_size,
-							ID3D11VertexShader **vshader, ID3D11InputLayout  **layout) {
-	// Create Vertex Shader
-	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-	ID3DBlob *error  = NULL;
-	ID3DBlob *vblob;
-	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "vs_5_0", flags, 0, &vblob, &error))) {
-		const char *message = (const char *)error->GetBufferPointer();
-		OutputDebugStringA(message);
-		Assert(!"Failed to compile vertex shader!");
-	}
-	r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
-	
-	if (format && format_size > 0) {
-		// Vertex Shader Fromat Descriptor
-		D3D11_INPUT_ELEMENT_DESC *vs_format_desc = (D3D11_INPUT_ELEMENT_DESC *)malloc(format_size * sizeof(D3D11_INPUT_ELEMENT_DESC)); 
-		
-		for (unsigned int i = 0; i < format_size; i++) {
-			vs_format_desc[i].SemanticName = format[i].semantic_name; 
-			vs_format_desc[i].SemanticIndex = 0;
-			vs_format_desc[i].Format = g_renderer_to_dxgi_format[format[i].format];
-			vs_format_desc[i].InputSlot = format[i].input_slot;
-			vs_format_desc[i].AlignedByteOffset = format[i].aligned_byte_offset;
-			vs_format_desc[i].InputSlotClass = (D3D11_INPUT_CLASSIFICATION)format[i].input_slot_class;
-			vs_format_desc[i].InstanceDataStepRate = 0;
-		};
-		
-		r->device->CreateInputLayout(vs_format_desc, format_size, vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
-		free(vs_format_desc);
-	}
-	vblob->Release();
-}
-
-static void 
-RendererD3D11CreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point, ID3D11PixelShader **pshader) {
-	
-	{
-	// Create Pixel Shader 
-	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		ID3DBlob *error = NULL;
-	ID3DBlob *pblob;
-	if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(file)).data, NULL, NULL, entry_point, "ps_5_0", flags, 0, &pblob, &error))) {
-		const char *message = (const char *)error->GetBufferPointer();
-		OutputDebugStringA(message);
-		Assert(!"Failed to compile pixel shader!");
-	}
-	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
-	pblob->Release();
-	}
-	
-	
-}
-
-static VSHandle
-RendererCreateVSShader(R_D3D11Context *r, const char *file, const char *entry_point, 
-			R_LayoutFormat *format, unsigned int format_count) {
-	
-	VSHandle handle = { r->vs_idx };
-	r->vs_handles[r->vs_idx] = handle;
-	r->vs_file_names_and_time[r->vs_idx].file_name = file;
-	r->vs_file_names_and_time[r->vs_idx].entry_point= entry_point;
-	
-	
-	if (format) {
-		unsigned int format_size = sizeof(format[0])*format_count;
-		R_LayoutFormat *format_copy = (R_LayoutFormat *)MemArenaAlloc(r->arena, format_size);
-		memcpy(format_copy, format, format_size); 
-	r->vs_file_names_and_time[r->vs_idx].format = format_copy;
-	}
-	r->vs_file_names_and_time[r->vs_idx].format_size = format_count;
-	r->vs_idx++;
-	return handle;
-}
-
-static PSHandle
-RendererCreatePSShader(R_D3D11Context *r, const char *file, const char *entry_point) {
-	
-	
-	PSHandle handle = { r->ps_idx };
-	r->ps_handles[r->ps_idx] = handle;
-	r->ps_file_names_and_time[r->ps_idx].file_name= file;
-	r->ps_file_names_and_time[r->ps_idx].entry_point = entry_point;
-	r->ps_idx++;
-	
-	return handle;
-}
 
 // Buffer Creation Flags
 #define BUFFER_FLAGS_TABLE \
@@ -1329,180 +1389,6 @@ const static int g_renderer_to_d3d11_buffer_flags[] = {
 #define TYPE_CONSTANT_BUFFER        (2)
 #define TYPE_SHADER_RESOURCE_BUFFER (3)
 
-typedef struct {
-	u8 usage;
-	u8 cpu_access; 
-	 u8 misc; 
-} R_BufferInfo;
-
-static BFHandle
-RendererCreateBuffer(R_D3D11Context *r, void *data, u32 elem_size, u32 elem_count, u8 bind, R_BufferInfo info) {
-
-	ID3D11Buffer *buffer = NULL;
-	ID3D11ShaderResourceView* buffer_srv = NULL;
-	{
-		
-		D3D11_BUFFER_DESC desc = {0};
-
-		desc.ByteWidth = (elem_size * elem_count) + 0xf & 0xfffffff0;  // constant buffers must be aligned to 16 boundry
-		desc.Usage = info.usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[info.usage] : D3D11_USAGE_DEFAULT;
-		desc.BindFlags = g_renderer_to_d3d11_buffer_flags[bind];
-		desc.CPUAccessFlags = info.cpu_access ? g_renderer_to_d3d11_buffer_flags[info.cpu_access] : 0;
-		desc.MiscFlags = info.misc ? g_renderer_to_d3d11_buffer_flags[info.misc] : 0;
-		desc.StructureByteStride = elem_size;
-
-		D3D11_SUBRESOURCE_DATA subresource_data = {data};
-		r->device->CreateBuffer(&desc, data ? &subresource_data : NULL, &buffer);
-
-		if (info.misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
-			D3D11_SHADER_RESOURCE_VIEW_DESC rv_desc = {0};
-			rv_desc.Format = DXGI_FORMAT_UNKNOWN;
-			rv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-			rv_desc.Buffer.NumElements = elem_count;
-			r->device->CreateShaderResourceView(buffer, &rv_desc, &buffer_srv);
-		}
-		
-	}
-
-	// last 5 bits refer to the type of buffer it is
-	BFHandle handle = { r->buffer_idx | (bind << (32-5)) };
-	r->buffer_array[r->buffer_idx] = buffer;
-	r->srv_array[r->buffer_idx] = buffer_srv;
-	r->buffer_handles[r->buffer_idx] = handle;
-	r->buffer_idx++; 
-
-	return handle;
-}
-
-static void
-RendererUpdateBuffer(R_D3D11Context *r, BFHandle handle, void *data, unsigned int size) {
-	Assert(r && data); 
-	
-	int idx = handle.val & ((1 << (32-5))-1);
-	ID3D11Resource *buff = r->buffer_array[idx];
-	Assert(buff);
-	
-	
-		D3D11_MAPPED_SUBRESOURCE mapped;
-		r->context->Map(buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, data, size);
-		r->context->Unmap(buff, 0);
-}
-
-static void
-RendererPSSetShader(R_D3D11Context *r, PSHandle handle) {
-	if (handle.val == r->ps_handles[handle.val].val)  r->context->PSSetShader(r->ps_array[handle.val], NULL, 0);
-}
-static void
-RendererVSSetShader(R_D3D11Context *r, VSHandle handle) {
-	if (handle.val != r->vs_handles[handle.val].val)  return;
-		
-		r->context->VSSetShader(r->vs_array[handle.val], NULL, 0);
-	r->context->IASetInputLayout(r->lay_array[handle.val]);
-}
-
-static void
-RendererVSSetBuffer(R_D3D11Context *r, BFHandle handle) {
-	int idx = handle.val & ((1 << (32-5))-1);
-	if (handle.val!= r->buffer_handles[idx].val) return;
-	
-	int last_5_bits = handle.val >> (32-5);
-	if (last_5_bits == TYPE_CONSTANT_BUFFER) {
-		// TODO(ziv): start slot, amount of buffers, buffers
-		r->context->VSSetConstantBuffers(0, 1, &r->buffer_array[idx]);
-	}
-	else if (last_5_bits == TYPE_SHADER_RESOURCE_BUFFER) {
-		r->context->VSSetShaderResources(0, 1, &r->srv_array[idx]);
-	}
-	else {
-		char buff[100]; 
-		sprintf(buff, "Unimplemented Renderer Buffer Type (%d)", __LINE__); 
-		FatalError(buff); 
-	}
-	
-}
-
-static void
-RendererPSSetBuffer(R_D3D11Context *r, BFHandle handle) {
-	int idx = handle.val & ((1 << (32-5))-1);
-	if (handle.val!= r->buffer_handles[idx].val) return;
-	
-	int last_5_bits = handle.val >> (32-5);
-	if (last_5_bits == TYPE_CONSTANT_BUFFER) {
-		// TODO(ziv): start slot, amount of buffers, buffers
-		r->context->PSSetConstantBuffers(0, 1, &r->buffer_array[idx]);
-	}
-	else if (last_5_bits == TYPE_SHADER_RESOURCE_BUFFER) {
-		r->context->PSSetShaderResources(0, 1, &r->srv_array[idx]);
-	}
-	else {
-		char buff[100]; 
-		sprintf(buff, "Unimplemented Renderer Buffer Type (%d)", __LINE__); 
-		FatalError(buff); 
-	}
-	
-}
-
-static void
-RendererDrawInstanced(R_D3D11Context *r, unsigned int vertex_count_per_instance, unsigned int instance_count, 
-					  unsigned int start_vertex_location, unsigned int start_instance_location) {
-	// TODO(ziv): add support for more topologies
-	
-	r->context->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
-}
-
-
-static void
-RendererD3D11GetShaders(R_D3D11Context *r,
-						ID3D11VertexShader **vshader, wchar_t *vs_file,
-						ID3D11PixelShader **pshader, wchar_t *ps_file,
-						ID3D11InputLayout **layout, 
-						const D3D11_INPUT_ELEMENT_DESC vs_format_desc[], 
-						unsigned int format_desc_length) {
-	
-	HRESULT hr;
-	// Create Vertex And Pixel Shaders
-	UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-	ID3DBlob *error;
-	ID3DBlob *vblob;
-	hr = D3DCompileFromFile(vs_file, NULL, NULL, "vs_main", "vs_5_0", flags, 0, &vblob, &error);
-	if (FAILED(hr)) {
-		const char *message = (const char *)error->GetBufferPointer();
-		OutputDebugStringA(message);
-		Assert(!"Failed to compile vertex shader!");
-	}
-	r->device->CreateVertexShader(vblob->GetBufferPointer(), vblob->GetBufferSize(), NULL, vshader);
-	
-	if (vs_format_desc && format_desc_length > 0) {
-		r->device->CreateInputLayout(vs_format_desc, format_desc_length,
-									 vblob->GetBufferPointer(), vblob->GetBufferSize(), layout);
-	}
-	
-	ID3DBlob *pblob;
-	hr = D3DCompileFromFile(ps_file, NULL, NULL, "ps_main", "ps_5_0", flags, 0, &pblob, &error);
-	if (FAILED(hr)) {
-		const char *message = (const char *)error->GetBufferPointer();
-		OutputDebugStringA(message);
-		Assert(!"Failed to compile pixel shader!");
-	}
-	r->device->CreatePixelShader(pblob->GetBufferPointer(), pblob->GetBufferSize(), NULL, pshader);
-	
-	vblob->Release();
-	pblob->Release();
-}
-
-static ID3D11Buffer **
-RendererBFToPointer(R_D3D11Context *r, BFHandle handle) {
-	int idx = handle.val & ((1 << (32-5))-1);
-	if (handle.val != r->buffer_handles[idx].val) return NULL;
-	return &r->buffer_array[idx]; 
-}
-
 enum R_Topology {
 	R_TOPOLOGY_TRIANGLESTRIP = 0, 
 	R_TOPOLOGY_TRIANGLELIST,
@@ -1514,14 +1400,194 @@ static D3D11_PRIMITIVE_TOPOLOGY r_topology_to_d3d11_topology[] = {
 	D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, 
 };
 
+//~ renderer.h
+
+typedef struct {
+	char name[0x10]; 
+	R_Format format;
+	int offset;
+} R_Layout;
+
+typedef struct {
+	const char *vs; 
+	const char *vs_ep; // entry point
+	const char *ps; 
+	const char *ps_ep; // entry point
+	R_Layout layout[0x10];
+} R_Shader_Desc;
+
+typedef struct {
+	ID3D11VertexShader *vshader; 
+	ID3D11InputLayout  *layout;
+	ID3D11PixelShader *pshader;
+} R_Shader; 
+
+typedef struct {
+	void *data;
+	int element_count;
+	int element_size;
+	
+	int usage;            // how will the buffer get used (default, immutable, dynamic, staging) 
+	int bind_flags;       // type of buffer: constant, vertex, index ...
+	int cpu_access_flags; // access the cpu has to the buffer
+	int misc;             // additional buffer types and things idk
+} R_Buffer_Desc;
+
+typedef struct {
+	ID3D11Buffer *buffer;
+	ID3D11ShaderResourceView* buffer_srv;
+	R_Buffer_Desc *desc; 
+} R_Buffer;  
+
+typedef struct {
+	void *data; 
+	int width; 
+	int height;
+	int format;
+	int bind_flags; // RenderTargetView/ShaderResourceView
+	int cpu_access_flags; 
+	int usage;
+	int miplevels;
+	// TODO(ziv): consider adding mmsa information 
+} R_Texture2D_Desc;
+
+typedef struct { 
+	ID3D11ShaderResourceView* srv; // shader input
+	ID3D11RenderTargetView *rtv; // shader ouptut
+} R_Texture2D; 
+
+enum R_Filter { 
+	R_FILTER_MIN_MAG_MIP_POINT,
+	R_FILTER_MIN_MAG_POINT_MIP_LINEAR,
+	R_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT,
+	R_FILTER_MIN_POINT_MAG_MIP_LINEAR,
+	R_FILTER_MIN_LINEAR_MAG_MIP_POINT,
+	R_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+	R_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+	R_FILTER_MIN_MAG_MIP_LINEAR,
+	R_FILTER_ANISOTROPIC,
+};
+
+static D3D11_FILTER renderer_filter_to_d3d11_filter[] = {
+	D3D11_FILTER_MIN_MAG_MIP_POINT,
+	D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR,
+	D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT,
+	D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR,
+	D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT,
+	D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+	D3D11_FILTER_ANISOTROPIC,
+};
+
+enum R_Texture_Adress_Mode {
+	R_TEXTURE_ADDRESS_WRAP,
+	R_TEXTURE_ADDRESS_MIRROR,
+	R_TEXTURE_ADDRESS_CLAMP,
+	R_TEXTURE_ADDRESS_BORDER,
+	R_TEXTURE_ADDRESS_MIRROR_ONCE,
+};
+
+static D3D11_TEXTURE_ADDRESS_MODE renderer_address_mode_to_d3d11_address_mode[] = {
+	D3D11_TEXTURE_ADDRESS_WRAP,
+	D3D11_TEXTURE_ADDRESS_MIRROR,
+	D3D11_TEXTURE_ADDRESS_CLAMP,
+	D3D11_TEXTURE_ADDRESS_BORDER,
+	D3D11_TEXTURE_ADDRESS_MIRROR_ONCE,
+};
+
+enum R_Comparison_Func {
+	R_COMPARISON_NEVER,
+	R_COMPARISON_LESS,
+	R_COMPARISON_EQUAL,
+	R_COMPARISON_LESS_EQUAL,
+	R_COMPARISON_GREATER,
+	R_COMPARISON_NOT_EQUAL,
+	R_COMPARISON_GREATER_EQUAL,
+	R_COMPARISON_ALWAYS,
+};
+
+static D3D11_COMPARISON_FUNC renderer_comparison_func_to_d3d11_comparison_func[] = {
+	D3D11_COMPARISON_NEVER,
+	D3D11_COMPARISON_LESS,
+	D3D11_COMPARISON_EQUAL,
+	D3D11_COMPARISON_LESS_EQUAL,
+	D3D11_COMPARISON_GREATER,
+	D3D11_COMPARISON_NOT_EQUAL,
+	D3D11_COMPARISON_GREATER_EQUAL,
+	D3D11_COMPARISON_ALWAYS,
+};
+
+typedef struct {
+	R_Filter filter;
+	R_Texture_Adress_Mode address_u;
+	R_Texture_Adress_Mode address_v;
+	R_Texture_Adress_Mode address_w;
+	float mip_lod_bias;
+	unsigned int max_anisotropy;
+	R_Comparison_Func comparison_func;
+	float border_color[ 4 ];
+	float min_lod;
+	float max_lod;
+} R_Sampler_Desc;
+
+typedef struct {
+	ID3D11SamplerState *sampler;
+} R_Sampler;
+
+typedef struct {
+	float x, y, width, height;
+	float min_depth, max_depth; // depth of image (usually 0-1)
+} R_Viewport;
+
+typedef struct {
+	ID3D11BlendState1 *blend;
+} R_BlendState;
+
+enum R_Cull_Mode_Flags { 
+	R_CULL_MODE_NULL = 0, // remove culling
+	R_CULL_MODE_BACK, 
+	R_CULL_MODE_FRONT,
+};
+
+typedef struct {
+	R_Topology topo; 
+	R_Shader shaders; 
+	R_Buffer vs_bindings[0x10]; 
+	R_Buffer ps_bindings[0x10]; 
+	R_Texture2D textures[0x10]; // these are inputs into the ps
+	R_Sampler  samplers[0x10];
+} R_Pipline_Desc;
+
+typedef struct {
+	HWND window;
+	
+	M_Arena arena; // permanent arena
+	
+	ID3D11Device1 *device;
+	ID3D11DeviceContext1 *context;
+	IDXGISwapChain1 *swap_chain;
+	ID3D11RenderTargetView *frame_buffer_view;
+	
+	ID3D11DepthStencilState* depth_stencil_state;
+	ID3D11DepthStencilView *zbuffer;
+	ID3D11Texture2D *zbuffer_texture;
+	ID3D11RasterizerState1* rasterizer_cull_back;
+	ID3D11RasterizerState1* rasterizer_cull_front;
+	
+	D3D11_VIEWPORT viewport;
+	R_Texture2D *screen;
+	
+	b32 dirty; // window size changed
+} R_D3D11Context;
+
 static void
 RendererInit(R_D3D11Context *r, HWND window) {
 	
 	// NOTE(ziv): if this fails you have failed to add a memeber to the 'r_topology_to_d3d11_topology' array and you are required to do so
 	Assert(ArrayLength(r_topology_to_d3d11_topology) == R_TOPOLOGY_COUNT);
 	
-	r->arena = (Arena *)malloc(sizeof(Arena));
-	MemArenaInit(r->arena, 0x1000); 
+	r->arena = m_make_arena(os_get_base_memory());
 	
 	//
 	// Create D3D11 Device used for resource creation and Device Context for pipline setup and rendering
@@ -1583,93 +1649,6 @@ RendererInit(R_D3D11Context *r, HWND window) {
     // debugger will break on errors anyway
 #endif
 	
-	// Create D3D11 Swap Chain
-	IDXGISwapChain1* swap_chain;
-	{
-		
-		IDXGIDevice1* dxgiDevice;
-		device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
-		
-		IDXGIAdapter* dxgiAdapter;
-		dxgiDevice->GetAdapter(&dxgiAdapter);
-		dxgiDevice->Release();
-		
-		IDXGIFactory2* dxgiFactory;
-		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
-		dxgiAdapter->Release();
-		
-		//
-		
-		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
-		swap_chain_desc.Width              = 0; // use window width
-		swap_chain_desc.Height             = 0; // use window height
-		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-		swap_chain_desc.Stereo             = FALSE;
-		swap_chain_desc.SampleDesc.Count   = 1;
-		swap_chain_desc.SampleDesc.Quality = 0;
-		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swap_chain_desc.BufferCount        = 2;
-		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
-		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
-		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swap_chain_desc.Flags              = 0;
-		
-		dxgiFactory->CreateSwapChainForHwnd(device, window, &swap_chain_desc, NULL, NULL, &swap_chain);
-		dxgiFactory->Release();
-	}
-	
-	// Create a Target View
-	ID3D11RenderTargetView *frame_buffer_view;
-	{
-		ID3D11Texture2D* frame_buffer;
-		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
-		
-		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
-		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
-		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-		
-		device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
-		frame_buffer->Release();
-	}
-	
-	//
-	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
-	//
-	
-	// Create Depth Sentcil
-	ID3D11DepthStencilState* depth_stencil_state;
-	{
-		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
-		depth_stencil_desc.DepthEnable    = TRUE;
-		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
-		
-		device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
-	}
-	
-	// Create Z-Buffer
-	ID3D11DepthStencilView *zbuffer;
-	ID3D11Texture2D *zbuffer_texture;
-	{
-		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
-		
-		depth_buffer_desc.Width = window_height;
-		depth_buffer_desc.Height = window_width;
-		depth_buffer_desc.MipLevels = 1;
-		depth_buffer_desc.ArraySize = 1;
-		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_buffer_desc.SampleDesc.Count = 1;
-		depth_buffer_desc.SampleDesc.Quality = 0;
-		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
-		
-		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
-		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
-		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		depth_stencil_view_desc.Texture2D.MipSlice = 0;
-		device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
-	}
 	
 	// Create a Rasterizer
 	ID3D11RasterizerState1* rasterizer_cull_back;
@@ -1690,48 +1669,23 @@ RendererInit(R_D3D11Context *r, HWND window) {
 		
 		device->CreateRasterizerState1(&rasterizer_desc, &rasterizer_cull_front);
 	}
-
-	// Create Default Point Sampler
-	ID3D11SamplerState* point_sampler;
-	{
-		D3D11_SAMPLER_DESC sampler_desc = {};
-		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-		device->CreateSamplerState(&sampler_desc, &point_sampler);
-	}
-	// Create Default Linear Sampler
-	ID3D11SamplerState* linear_sampler;
-	{
-		D3D11_SAMPLER_DESC sampler_desc = {};
-		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-		device->CreateSamplerState(&sampler_desc, &linear_sampler);
-	}
-		
+	
 	// Set all information into the context
 	{
-	r->window = window; 
-	r->device = device; 
-	r->context = context;
-	r->swap_chain = swap_chain;
-	r->frame_buffer_view = frame_buffer_view;
-	r->depth_stencil_state = depth_stencil_state;
-	r->zbuffer = zbuffer;
-	r->zbuffer_texture = zbuffer_texture;
-	r->rasterizer_cull_back = rasterizer_cull_back;
-	r->rasterizer_cull_front = rasterizer_cull_front;
-	r->point_sampler = point_sampler; 
-	r->linear_sampler = linear_sampler;
+		r->window = window; 
+		r->device = device; 
+		r->context = context;
+		r->rasterizer_cull_back = rasterizer_cull_back;
+		r->rasterizer_cull_front = rasterizer_cull_front;
+		
+		
+		D3D11_VIEWPORT viewport = {0};
+		viewport.Width = (FLOAT)window_width;
+		viewport.Height = (FLOAT)window_height;
+		viewport.MaxDepth = 1;
+		r->viewport = viewport;
+		
 	}
-	
 }
 static void
 RendererDeInit(R_D3D11Context *r) {
@@ -1743,22 +1697,6 @@ RendererDeInit(R_D3D11Context *r) {
 	r->zbuffer->Release();
 	r->zbuffer_texture->Release();
 	r->rasterizer_cull_back->Release();
-	
-	
-	for (int i = 0; i < r->vs_idx; i++) {
-		if (r->vs_array[i]) r->vs_array[i]->Release(); 
-		if (r->lay_array[i]) r->lay_array[i]->Release(); 
-		
-	}
-	
-	for (int i = 0; i < r->ps_idx; i++) {
-		if (r->ps_array[i]) r->ps_array[i]->Release(); 
-	}
-	
-	for (int i = 0; i < r->buffer_idx; i++) {
-		if (r->buffer_array[i]) r->buffer_array[i]->Release(); 
-		if (r->srv_array[i]) r->srv_array[i]->Release(); 
-	}
 	
 }
 
@@ -1809,127 +1747,9 @@ RendererD3D11Resize(R_D3D11Context *r, UINT width, UINT height) {
 	}
 	
 	r->dirty = 1;
-	r->viewport->Width = (FLOAT)width;
-	r->viewport->Height = (FLOAT)height;
+	r->viewport.Width = (FLOAT)width;
+	r->viewport.Height = (FLOAT)height;
 }
-
-static void
-RendererD3D11UpdateBuffer(R_D3D11Context *r, ID3D11Buffer *buff, void *data, unsigned int data_size) {
-	Assert(r && buff && data); 
-	if (data_size > 0) {
-		D3D11_MAPPED_SUBRESOURCE mapped;
-		r->context->Map((ID3D11Resource *)buff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, data, data_size);
-		r->context->Unmap((ID3D11Resource *)buff, 0);
-	}
-}
-
-static void
-RendererD3D11Present(R_D3D11Context *r) { 
-	
-	// present the backbuffer to the screen
-	bool vsync = TRUE; 
-	HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
-	if (hr == DXGI_STATUS_OCCLUDED)
-	{
-		// window is minimized, cannot vsync - instead sleep a bit
-		if (vsync)
-		{
-			Sleep(10);
-		}
-	}
-	else if (FAILED(hr))
-	{
-		FatalError("Failed to present swap chain! Device lost?");
-	}
-}
-
-//~ renderer.h
-
-typedef struct {
-	char name[0x10]; 
-	R_Format format;
-	int offset;
-} R_Layout;
-
-typedef struct {
-	const char *vs; 
-	const char *vs_ep; // entry point
-	const char *ps; 
-	const char *ps_ep; // entry point
-	R_Layout layout[0x10];
-} R_Shader_Desc;
-
-typedef struct {
-	ID3D11VertexShader *vshader; 
-	ID3D11InputLayout  *layout;
-	ID3D11PixelShader *pshader;
-} R_Shader; 
-
-typedef struct {
-	void *data;
-	int element_count;
-	int element_size;
-	
-	int usage;            // how will the buffer get used (default, immutable, dynamic, staging) 
-	int bind_flags;       // type of buffer: constant, vertex, index ...
-	int cpu_access_flags; // access the cpu has to the buffer
-	int misc;             // additional buffer types and things idk
-} R_Buffer_Desc;
-
-typedef struct {
-	ID3D11Buffer *buffer;
-	ID3D11ShaderResourceView* buffer_srv;
-	R_Buffer_Desc *desc; 
-} R_Buffer;  
-
-enum R_Sampler_Flag {
-	R_SAMPLER_POINT,  // point sampler 
-	R_SAMPLER_LINEAR, // linear interpolation sampler
-};
-
-typedef struct {
-	void *data; 
-	int width; 
-	int height;
-	int format;
-	int bind_flags; // RenderTargetView/ShaderResourceView
-	int cpu_access_flags; 
-	int usage;
-	int miplevels;
-	// TODO(ziv): consider adding mmsa information 
-} R_Texture2D_Desc;
-
-typedef struct { 
-	ID3D11ShaderResourceView* srv; // shader input
-	ID3D11RenderTargetView *rtv; // shader ouptut
-} R_Texture2D; 
-
-typedef struct {
-	R_Topology topo; 
-	R_Shader shaders; 
-	R_Buffer vs_bindings[0x10]; 
-	R_Buffer ps_bindings[0x10]; 
-	R_Texture2D textures[0x10]; // these are inputs into the ps
-	R_Sampler_Flag samplers[0x10];
-} R_Pipline_Desc;
-
-typedef struct {
-	float x, y, width, height;
-	float min_depth, max_depth; // depth of image (usually 0-1)
-} R_Viewport;
-
-typedef struct {
-	ID3D11BlendState1 *blend;
-} R_BlendState;
-
-enum R_Cull_Mode_Flags { 
-	R_CULL_MODE_NULL = 0, // remove culling
-	R_CULL_MODE_BACK, 
-	R_CULL_MODE_FRONT,
-};
-
-
 
 static R_Buffer
 r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
@@ -1940,7 +1760,13 @@ r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
 		
 		D3D11_BUFFER_DESC d3d11_desc = {0};
 		
+		if (desc->misc == R_RESOURCE_MISC_BUFFER_STRUCTURED) {
+			d3d11_desc.ByteWidth = (desc->element_size * desc->element_count);
+		}
+		else {
 		d3d11_desc.ByteWidth = (desc->element_size * desc->element_count) + 0xf & 0xfffffff0; // constant buffers must be aligned to 16 boundry
+		}
+		
 		d3d11_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
 		d3d11_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
 		d3d11_desc.CPUAccessFlags = desc->cpu_access_flags ? g_renderer_to_d3d11_buffer_flags[desc->cpu_access_flags] : 0;
@@ -1969,49 +1795,73 @@ r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
 
 static R_Texture2D
 r_create_texture2d(R_D3D11Context *r, R_Texture2D_Desc *desc) {
-
-		D3D11_TEXTURE2D_DESC d3d_desc = {};
-		d3d_desc.Width = (UINT)desc->width;
-		d3d_desc.Height = (UINT)desc->height;
-		d3d_desc.MipLevels = desc->miplevels;
-		d3d_desc.ArraySize = 1;
-		d3d_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO(ziv): CHANGE THIS!
-		d3d_desc.SampleDesc.Count = 1;
-		d3d_desc.SampleDesc.Quality = 0;
-		d3d_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
-		d3d_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
-
-		D3D11_SUBRESOURCE_DATA data = {};
-		data.pSysMem     = desc->data;
-		data.SysMemPitch = (UINT)desc->width * sizeof(UINT); // TOOD(ziv): change this to format size
-
-		ID3D11Texture2D* texture2d;
-		r->device->CreateTexture2D(&d3d_desc, &data, &texture2d);
-
-		ID3D11ShaderResourceView* texture_resource_view = NULL;
-		ID3D11RenderTargetView *texture_render_target_view = NULL;
-		if (d3d_desc.BindFlags == D3D11_BIND_SHADER_RESOURCE)
-			r->device->CreateShaderResourceView(texture2d, NULL, &texture_resource_view);
+	
+	D3D11_TEXTURE2D_DESC d3d_desc = {};
+	d3d_desc.Width = (UINT)desc->width;
+	d3d_desc.Height = (UINT)desc->height;
+	d3d_desc.MipLevels = desc->miplevels;
+	d3d_desc.ArraySize = 1;
+	d3d_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO(ziv): CHANGE THIS!
+	d3d_desc.SampleDesc.Count = 1;
+	d3d_desc.SampleDesc.Quality = 0;
+	d3d_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
+	d3d_desc.BindFlags = g_renderer_to_d3d11_buffer_flags[desc->bind_flags];
+	
+	D3D11_SUBRESOURCE_DATA data = {};
+	data.pSysMem     = desc->data;
+	data.SysMemPitch = (UINT)desc->width * sizeof(UINT); // TOOD(ziv): change this to format size
+	
+	ID3D11Texture2D* texture2d;
+	r->device->CreateTexture2D(&d3d_desc, &data, &texture2d);
+	
+	ID3D11ShaderResourceView* texture_resource_view = NULL;
+	ID3D11RenderTargetView *texture_render_target_view = NULL;
+	if (d3d_desc.BindFlags == D3D11_BIND_SHADER_RESOURCE)
+		r->device->CreateShaderResourceView(texture2d, NULL, &texture_resource_view);
 	if (d3d_desc.BindFlags == D3D11_BIND_RENDER_TARGET)
-			r->device->CreateRenderTargetView(texture2d, NULL, &texture_render_target_view);
-		texture2d->Release();
-
-		R_Texture2D result = {
-			texture_resource_view, texture_render_target_view
-		}; 
-		return result;
+		r->device->CreateRenderTargetView(texture2d, NULL, &texture_render_target_view);
+	texture2d->Release();
+	
+	R_Texture2D result = {
+		texture_resource_view, texture_render_target_view
+	}; 
+	return result;
 }
 
-
+static R_Sampler
+r_create_sampler(R_D3D11Context *r, R_Sampler_Desc *desc) {
+	
+	ID3D11SamplerState* sampler_state;
+	{
+		D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter = renderer_filter_to_d3d11_filter[desc->filter]; 
+		sampler_desc.AddressU = renderer_address_mode_to_d3d11_address_mode[desc->address_u];
+		sampler_desc.AddressV = renderer_address_mode_to_d3d11_address_mode[desc->address_v];
+		sampler_desc.AddressW = renderer_address_mode_to_d3d11_address_mode[desc->address_w];
+		sampler_desc.MipLODBias = desc->mip_lod_bias;
+		sampler_desc.MaxAnisotropy = desc->max_anisotropy;
+		sampler_desc.ComparisonFunc = renderer_comparison_func_to_d3d11_comparison_func[desc->comparison_func];
+		memcpy(sampler_desc.BorderColor, desc->border_color, sizeof(float)*4);
+		sampler_desc.MinLOD = desc->min_lod;
+		sampler_desc.MaxLOD = desc->max_lod;
+		
+		r->device->CreateSamplerState(&sampler_desc, &sampler_state);
+	}
+	
+	R_Sampler sampler = {
+		sampler_state
+	};
+	return sampler;
+}
 
 static R_Shader
 r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
+	M_Temp temp = m_temp_begin(0, 0);
 	
 	
 	ID3D11VertexShader *vshader; 
 	ID3D11InputLayout  *layout;
-	
-		// Create Vertex Shader
+	// Create Vertex Shader
 	{
 		UINT flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 #ifdef _DEBUG
@@ -2021,7 +1871,7 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 #endif
 		ID3DBlob *error  = NULL;
 		ID3DBlob *vblob;
-		if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(desc->vs)).data, NULL, NULL, desc->vs_ep, "vs_5_0", flags, 0, &vblob, &error))) {
+		if (FAILED(D3DCompileFromFile(Str8ToStr16(temp.arena, Str8Lit(desc->vs)).data, NULL, NULL, desc->vs_ep, "vs_5_0", flags, 0, &vblob, &error))) {
 			const char *message = (const char *)error->GetBufferPointer();
 			OutputDebugStringA(message);
 			Assert(!"Failed to compile vertex shader!");
@@ -2059,7 +1909,7 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 #endif
 		ID3DBlob *error = NULL;
 		ID3DBlob *pblob;
-		if (FAILED(D3DCompileFromFile(Str8ToStr16(r->arena, Str8Lit(desc->ps)).data, NULL, NULL, desc->ps_ep, "ps_5_0", flags, 0, &pblob, &error))) {
+		if (FAILED(D3DCompileFromFile(Str8ToStr16(temp.arena, Str8Lit(desc->ps)).data, NULL, NULL, desc->ps_ep, "ps_5_0", flags, 0, &pblob, &error))) {
 			const char *message = (const char *)error->GetBufferPointer();
 			OutputDebugStringA(message);
 			Assert(!"Failed to compile pixel shader!");
@@ -2074,33 +1924,39 @@ r_create_shaders(R_D3D11Context *r,  R_Shader_Desc *desc) {
 		pshader
 	};
 	
+	m_temp_end(temp);
 	return result;
 }
 
 static void
 r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
+	M_Temp temp = m_temp_begin(0, 0); 
 	
 	r->context->IASetPrimitiveTopology(r_topology_to_d3d11_topology[desc->topo]);
 	r->context->IASetInputLayout(desc->shaders.layout);
 	r->context->VSSetShader(desc->shaders.vshader, NULL, 0);
 	r->context->PSSetShader(desc->shaders.pshader, NULL, 0);
-	r->context->RSSetViewports(1,r->viewport);
+	r->context->RSSetViewports(1,&r->viewport);
 	
 	
-	 int slot = 0;
+	int slot = 0;
 	
-		// bind all vs bindings
+	// bind all vs bindings
 	for (int i = 0; i < 0x10 && desc->vs_bindings[i].buffer != NULL; i++) {
 		Assert(desc->vs_bindings[i].desc);  // must be set by 'r_create_buffer'
 		
 		switch (desc->vs_bindings[i].desc->bind_flags) 
 		{
 			case R_BIND_VERTEX_BUFFER: {
-				// vertex buffer
 				const UINT stride = desc->vs_bindings[i].desc->element_size;
 				const UINT offset = 0; // this can change and I might have uses for it
 				// TODO(ziv): Think of ways to integrate this nicely into my API
 				r->context->IASetVertexBuffers(0, 1, &desc->vs_bindings[0].buffer, &stride, &offset);
+			} break; 
+			
+			case R_BIND_INDEX_BUFFER: {
+				r->context->IASetIndexBuffer(desc->vs_bindings[i].buffer, DXGI_FORMAT_R16_UINT, 0);
+				
 			} break; 
 			
 			case R_BIND_CONSTANT_BUFFER: {
@@ -2115,11 +1971,6 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 				
 			} break; 
 			
-			case R_BIND_INDEX_BUFFER: {
-				r->context->IASetIndexBuffer(desc->vs_bindings[i].buffer, DXGI_FORMAT_R16_UINT, 0);
-				
-			} break; 
-			
 			case R_BIND_SHADER_RESOURCE: {
 				r->context->VSSetShaderResources(0, 1, &desc->vs_bindings[i].buffer_srv);
 			} break;
@@ -2130,10 +1981,10 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 			} break; 
 		}
 		
-		}
+	}
 	
-		// bind all the ps bindings
-		for (int i = 0; i < 0x10 && desc->ps_bindings[i].buffer != NULL; i++) {
+	// bind all the ps bindings
+	for (int i = 0; i < 0x10 && desc->ps_bindings[i].buffer != NULL; i++) {
 		Assert(desc->ps_bindings[i].desc);  // must be set by 'r_create_buffer'
 		
 		switch(desc->ps_bindings[i].desc->bind_flags) {
@@ -2154,39 +2005,63 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 	}
 	
 	
-	// TODO(ziv): make this dynamic!!!!!
-	
 	// set samplers 
-	r->context->PSSetSamplers(0, 1, &r->point_sampler);
+	int sampler_count = 0;
+	for (int i = 0; i < 10; i++) {
+		if (!desc->samplers[i].sampler) break; 
+		sampler_count++;
+	}
+	
+	if (sampler_count) {
+	
+		ID3D11SamplerState **samplers_to_bind = push_array(temp.arena, ID3D11SamplerState *, sampler_count);
+	for (int i = 0; i < sampler_count; i++)
+		samplers_to_bind[i] = desc->samplers[i].sampler;
+	r->context->PSSetSamplers(0, sampler_count, samplers_to_bind);
+}
+	
+	int texture_count = 0;
+	for (int i = 0; i < 0x10; i++) {
+		if (!desc->textures[i].srv) break; 
+		texture_count++;
+	}
 	
 	// set textures
-	r->context->PSSetShaderResources(0, 1, &desc->textures[0].srv);
+	if (texture_count) {
+	
+		ID3D11ShaderResourceView **textures_to_bind = push_array(temp.arena, ID3D11ShaderResourceView *, texture_count);
+	for (int i = 0; i < texture_count; i++)
+		textures_to_bind[i] = desc->textures[i].srv;
+	r->context->PSSetShaderResources(0, texture_count, textures_to_bind);
+	}
+	
+	m_temp_end(temp);
 }
 
 static void 
-r_draw(R_D3D11Context *r, R_Texture2D target, int vertex_count, int start_vertex_position) {
-	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+r_draw(R_D3D11Context *r, R_Texture2D *target, int vertex_count, int start_vertex_position) {
+	r->context->OMSetRenderTargets(1, &target->rtv, NULL);
 	r->context->Draw(vertex_count, start_vertex_position);
 }
 
 static void 
-r_draw_indexed(R_D3D11Context *r, R_Texture2D target, int index_count, 
+r_draw_indexed(R_D3D11Context *r, R_Texture2D *target, int index_count, 
 			   int start_index_position, int start_vertex_position) {
-	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+	r->context->OMSetRenderTargets(1, &target->rtv, NULL);
 	r->context->DrawIndexed(index_count, start_index_position, start_vertex_position);
 }
 
 static void 
-r_draw_instanced(R_D3D11Context *r, R_Texture2D target, 
+r_draw_instanced(R_D3D11Context *r, R_Texture2D *target, 
 				 int vertex_count_per_instance, int instance_count, 
 				 int start_vertex_position, int start_instance_position) {
-	r->context->OMSetRenderTargets(1, &target.rtv, NULL);
+	r->context->OMSetRenderTargets(1, &target->rtv, NULL);
 	r->context->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_position, start_instance_position);
 }
 
 static void
-r_fill_texture(R_D3D11Context *r, R_Texture2D texture, float color[4]) {
-	r->context->ClearRenderTargetView(texture.rtv, color);
+r_fill_texture(R_D3D11Context *r, R_Texture2D *texture, float color[4]) {
+	r->context->ClearRenderTargetView(texture->rtv, color);
 }
 
 static void
@@ -2220,231 +2095,146 @@ r_update_gpu_buffer(R_D3D11Context *r, R_Buffer buffer, void *data, int size) {
 	r->context->Unmap(buffer.buffer, 0);
 }
 
+static R_Texture2D *
+r_get_display(R_D3D11Context *r, int width, int height) {
 
 
+	// Create D3D11 Swap Chain
+	IDXGISwapChain1* swap_chain;
+	{
 
-//~ 
-// Draw
-// 
+		IDXGIDevice1* dxgiDevice;
+		r->device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
 
-typedef struct {
-	R_D3D11Context *r;
+		IDXGIAdapter* dxgiAdapter;
+		dxgiDevice->GetAdapter(&dxgiAdapter);
+		dxgiDevice->Release();
 
-	matrix *proj; 
-	matrix *view;
+		IDXGIFactory2* dxgiFactory;
+		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
+		dxgiAdapter->Release();
 
-	// widgets
-	struct {
-		ID3D11BlendState1* blend_state_use_alpha;
-		R_QuadInst data[MAX_QUAD_COUNT];
-		int idx;
-	} quads;
+		//
 
-	// Font rendering
-	struct {
-		ID3D11ShaderResourceView *srv[2];
-		ID3D11SamplerState* sampler; 
-		R_SpriteInst data[MAX_SPRITES_COUNT];
-		int idx;
-	} font;
+		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
+		swap_chain_desc.Width              = 0; // use window width
+		swap_chain_desc.Height             = 0; // use window height
+		swap_chain_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+		swap_chain_desc.Stereo             = FALSE;
+		swap_chain_desc.SampleDesc.Count   = 1;
+		swap_chain_desc.SampleDesc.Quality = 0;
+		swap_chain_desc.BufferUsage        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc.BufferCount        = 2;
+		swap_chain_desc.Scaling            = DXGI_SCALING_STRETCH;
+		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
+		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
+		swap_chain_desc.Flags              = 0;
 
-	struct { 
-		float3 data[2*MAX_QUAD_COUNT]; 
-		int idx; 
-	} lines; 
+		dxgiFactory->CreateSwapChainForHwnd(r->device, r->window, &swap_chain_desc, NULL, NULL, &swap_chain);
+		dxgiFactory->Release();
+	}
 
-	// font information
-	PSHandle font_pshader;
-	VSHandle font_vshader;
-	BFHandle font_constant_buffer;
-	BFHandle font_sprite_buffer; 
+	// Create a Target View
+	ID3D11RenderTargetView *frame_buffer_view;
+	{
+		ID3D11Texture2D* frame_buffer;
+		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
 
-	// widgets information
-	PSHandle widgets_pshader;
-	VSHandle widgets_vshader;
-	BFHandle widgets_cbuffer;
-	BFHandle widgets_quads_buffer; 
+		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
+		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
+		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-	// lines information 
-	PSHandle lines_pshader;
-	VSHandle lines_vshader;
-	BFHandle lines_vbuffer;
-	BFHandle lines_cbuffer;
-	BFHandle lines_structured_buffer;
-} D_Context;
+		r->device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
+		frame_buffer->Release();
+	}
+
+	//
+	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
+	//
+
+	// Create Depth Sentcil
+	ID3D11DepthStencilState* depth_stencil_state;
+	{
+		D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {};
+		depth_stencil_desc.DepthEnable    = TRUE;
+		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
+
+		r->device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+	}
+
+	// Create Z-Buffer
+	ID3D11DepthStencilView *zbuffer;
+	ID3D11Texture2D *zbuffer_texture;
+	{
+		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+
+		depth_buffer_desc.Width = window_height;
+		depth_buffer_desc.Height = window_width;
+		depth_buffer_desc.MipLevels = 1;
+		depth_buffer_desc.ArraySize = 1;
+		depth_buffer_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_buffer_desc.SampleDesc.Count = 1;
+		depth_buffer_desc.SampleDesc.Quality = 0;
+		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		r->device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
+
+		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
+		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
+		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depth_stencil_view_desc.Texture2D.MipSlice = 0;
+		r->device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
+	}
+
+	r->swap_chain = swap_chain;
+	r->frame_buffer_view = frame_buffer_view;
+	r->depth_stencil_state = depth_stencil_state;
+	r->zbuffer = zbuffer;
+	r->zbuffer_texture = zbuffer_texture;
+	
+	// TODO(ziv): I don't have to allocate using malloc here
+	R_Texture2D *screen = (R_Texture2D *)malloc(sizeof(R_Texture2D)); 
+	screen->rtv = frame_buffer_view;
+	screen->srv = NULL;
+	r->screen = screen; // make sure to save to later book keeping 
+	
+	return screen;
+}
 
 static void
-DrawInit(D_Context *d) {
-	Assert(d);
-	if (!d->r) FatalError("Couldn't initialize drawing since renderer was not passed");
+r_begin(R_D3D11Context *r) {
 
-	// font information
-	d->font_vshader = RendererCreateVSShader(d->r, "../font.hlsl", "vs_main", NULL, 0);
-	d->font_pshader = RendererCreatePSShader(d->r, "../font.hlsl", "ps_main");
-
-	// one-time calc here to make it easier for the shader later (float2 rn_screensize, r_atlassize)
-	float font_constant_data[4] = {
-		2.0f / window_width,
-		-2.0f / window_height,
-		1.0f / ATLAS_WIDTH,
-		1.0f / ATLAS_HEIGHT
-	};
-
-	d->font_constant_buffer = RendererCreateBuffer(d->r, font_constant_data, sizeof(float), ArrayLength(font_constant_data), 
-			R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
-	d->font_sprite_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_SpriteInst), MAX_SPRITES_COUNT, R_BIND_SHADER_RESOURCE, 
-			   { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED});
-
-	// widgets information
-	d->widgets_vshader = RendererCreateVSShader(d->r, "../widgets.hlsl", "vs_main", NULL, 0);
-	d->widgets_pshader = RendererCreatePSShader(d->r, "../widgets.hlsl", "ps_main");
-
-	float widgets_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-	d->widgets_cbuffer = RendererCreateBuffer(d->r, widgets_constants, sizeof(float), ArrayLength(widgets_constants), 
-			R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC,  R_CPU_ACCESS_WRITE });
-
-	d->widgets_quads_buffer = RendererCreateBuffer(d->r, NULL, sizeof(R_QuadInst), MAX_QUAD_COUNT, 
-			R_BIND_SHADER_RESOURCE, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE, R_RESOURCE_MISC_BUFFER_STRUCTURED });
-
-
-	R_LayoutFormat line_format[] = {
-		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA }, 
-	}; 
-
-	d->lines_vshader = RendererCreateVSShader(d->r, "../lines.hlsl", "vs", line_format, ArrayLength(line_format));
-	d->lines_pshader = RendererCreatePSShader(d->r, "../lines.hlsl", "ps");
-
-
-	d->lines_cbuffer = RendererCreateBuffer(d->r, NULL, sizeof(matrix), 1,
-					 R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
-	d->lines_structured_buffer = 
-		RendererCreateBuffer(d->r, NULL, 2*sizeof(float3), MAX_QUAD_COUNT,
-													  R_BIND_SHADER_RESOURCE, { 
-														  R_USAGE_DYNAMIC, 
-														  R_CPU_ACCESS_WRITE, 
-														  R_RESOURCE_MISC_BUFFER_STRUCTURED 
-													  });
-}
-
-static void 
-DrawQuad(D_Context *d, Rect rect, Color color, float radius, float border) {
-	Assert(d->quads.idx < MAX_QUAD_COUNT);
-	
-	if (0 <= rect.maxx && rect.minx <= d->r->viewport->Width && 
-		0 <= rect.maxy && rect.miny <= d->r->viewport->Height) {
-		d->quads.data[d->quads.idx].rect = rect;
-		d->quads.data[d->quads.idx].color = color;
-		d->quads.data[d->quads.idx].radius = radius;
-		d->quads.data[d->quads.idx].border = border;
-		d->quads.idx++;
+	// Handle window resize
+	RECT rect;
+	GetClientRect(r->window, &rect);
+	LONG width = rect.right - rect.left;
+	LONG height = rect.bottom - rect.top;
+	if (width != window_width || height != window_height) {
+		window_width = width; window_height = height;
+		RendererD3D11Resize(r, width, height);
+		r->screen->rtv = r->frame_buffer_view;
 	}
-	
-}
 
-static void 
-DrawLines(D_Context *d, float3 *lines, int line_count) {
-	
-	for (int i = 0; i < line_count*2; i++) { 
-		d->lines.data[d->lines.idx++] = lines[i]; 
-	}
-}
-
-static void 
-DrawLine(D_Context *d, float3 p0, float3 p1) {
-	float3 line[] = { p0, p1 }; 
-	DrawLines(d, line, 1);
-}
-
-static void 
-DrawDefaultText(D_Context *d, const char *text, size_t len,  float x, float  y) {
-	R_SpriteInst sprite = { (float)x, (float)y, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
-	for (size_t i = 0; i < len; i++) {
-		sprite.atlas_pos.x = (text[i] - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
-		d->font.data[d->font.idx++] = sprite;
-		sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
-	}
 
 }
 
 static void
-DrawSubmitRenderCommands(D_Context *d) {
-	R_D3D11Context *r = d->r;
-
-	// Draw Lines
-	if (0){
-		const UINT stride = sizeof(float3);
-		const UINT offset = 0;
-
-		// Input Assembler
-		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-		//RendererUpdateBuffer(r, d->lines_vbuffer, d->lines.data, d->lines.idx*2*sizeof(float3));
-
-		matrix transform = d->view[0] * d->proj[0];
-		RendererUpdateBuffer(r, d->lines_cbuffer, &transform , sizeof(transform));
-		RendererUpdateBuffer(r, d->lines_structured_buffer, d->lines.data, d->lines.idx*2*sizeof(float3));
-
-		RendererVSSetBuffer(r, d->lines_cbuffer);
-		RendererVSSetBuffer(r, d->lines_structured_buffer);
-		RendererVSSetShader(r, d->lines_vshader);
-
-		r->context->RSSetViewports(1, r->viewport);
-		RendererPSSetShader(r, d->lines_pshader);
-		r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-		RendererDrawInstanced(r, 2, d->lines.idx, 0, 0);
-	}
-
-	// Draw Quads
+r_end(R_D3D11Context *r) { 
+	// present the backbuffer to the screen
+	bool vsync = TRUE; 
+	HRESULT hr = r->swap_chain->Present(vsync, 0); // Using here VSYNC
+	if (hr == DXGI_STATUS_OCCLUDED)
 	{
-	
-		// TODO(ziv): make sure that if graph has not changed from last time
-		// there is no need to upload different data to the gpu. 
-		// which would reduce the data transfers to the gpu. 
-		if (d->quads.idx > 0) {
-
-			// update buffers
-			float quads_constants[4] = {2.f/(float)window_width,-2.f/(float)window_height,(float)window_height*1.f };
-			RendererUpdateBuffer(r, d->widgets_quads_buffer, d->quads.data, d->quads.idx*sizeof(d->quads.data[0]));
-			RendererUpdateBuffer(r, d->widgets_cbuffer, quads_constants, sizeof(quads_constants));
-			// render the quads
-			RendererVSSetShader(r, d->widgets_vshader); 
-			RendererVSSetBuffer(r, d->widgets_cbuffer);
-			RendererVSSetBuffer(r, d->widgets_quads_buffer);
-
-			// TODO(ziv): Figure out how to control the viewport and render-targets
-			r->context->RSSetViewports(1, r->viewport);
-			RendererPSSetShader(r, d->widgets_pshader); 
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-
-			UINT sampleMask   = 0xffffffff;
-			r->context->OMSetBlendState(d->quads.blend_state_use_alpha, NULL, sampleMask);
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			RendererDrawInstanced(r, 4, d->quads.idx, 0, 0);
-
+		// window is minimized, cannot vsync - instead sleep a bit
+		if (vsync)
+		{
+			Sleep(10);
 		}
 	}
-
-	// Draw Font
+	else if (FAILED(hr))
 	{
-
-		if (r->dirty) {
-			// update constants buffer
-			float font_constant_data[4] = {2.0f / window_width,-2.0f / window_height,1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT };
-			RendererUpdateBuffer(r, d->font_constant_buffer, font_constant_data, sizeof(font_constant_data));
-		}
-		RendererUpdateBuffer(r, d->font_sprite_buffer, d->font.data, d->font.idx*sizeof(d->font.data[0])); 
-
-
-		RendererVSSetShader(r, d->font_vshader);
-		RendererVSSetBuffer(r, d->font_constant_buffer);
-		RendererVSSetBuffer(r, d->font_sprite_buffer);
-
-		r->context->RSSetViewports(1, r->viewport);
-		RendererPSSetShader(r, d->font_pshader);
-		r->context->PSSetShaderResources(1, 1, &d->font.srv[1]);
-		r->context->PSSetSamplers(0, 1, &d->font.sampler);
-		r->context->OMSetRenderTargets(1,&r->frame_buffer_view, NULL);
-		r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		RendererDrawInstanced(r, 4, d->font.idx, 0, 0);
+		FatalError("Failed to present swap chain! Device lost?");
 	}
 }
 
@@ -2557,9 +2347,6 @@ typedef struct {
 	OS_Event *events_to_eat[5];
 	
 	R_D3D11Context *r;
-	D_Context *d;
-	
-	Arena arena;
 	
 	b32 used_press;
 	float mouse_pos[2];
@@ -2580,6 +2367,18 @@ typedef struct {
 	float equip_child_radius;
 	float equip_child_border;
 	
+	// widgets
+	struct {
+		ID3D11BlendState1* blend_state_use_alpha;
+		R_QuadInst data[WIDGETS_COUNT];
+		int idx;
+	} quads;
+	
+	// Font rendering
+	struct {
+		R_SpriteInst data[MAX_SPRITES_COUNT];
+		int idx;
+	} font;
 	
 } UI_Context;
 
@@ -2587,12 +2386,12 @@ static UI_Context *ui = NULL;
 
 static void
 UICorePruneDeadWidgets(UI_Widget *head) {
-
+	
 	if (!head) return; 
-
+	
 	if (!head->id.alive) { // dead
-
-
+		
+		
 		// remove from graph
 		
 		if (head->last) {
@@ -2681,7 +2480,7 @@ UICoreLayoutPreOrderUpwardDependednt(UI_Widget *widget, int axis) {
 			}
 			else {
 				widget->computed_size[axis] = widget->parent->computed_size[axis];
-		}
+			}
 		} break;
 	}
 	
@@ -2778,7 +2577,7 @@ UICoreLayoutRelPos(UI_Widget *widget, int axis) {
 					// great now we can add it 
 					// if we are not on that axis
 					// bad. don't do shit
-
+					
 					if (widget->parent->axis == axis) {
 						widget->computed_rel_pos[axis] = temp->last->computed_rel_pos[axis] + temp->last->computed_size[axis];
 					}
@@ -2798,11 +2597,11 @@ UICoreLayoutRelPos(UI_Widget *widget, int axis) {
 			}
 		}
 		else {
-		// this is the last widget that doesn't have floating x and y 
-		// so I take the parent's size 
+			// this is the last widget that doesn't have floating x and y 
+			// so I take the parent's size 
 			widget->computed_rel_pos[axis] = temp->parent->computed_rel_pos[axis];
 		}
-			
+		
 	}
 	else if (widget->parent) {
 		widget->computed_rel_pos[axis] = widget->parent->computed_rel_pos[axis];
@@ -2890,8 +2689,8 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 						
 						UI_Widget *child = temp->child; 
 						while (child) {
-						if (child->semantic_size[axis].kind == UI_SIZEKIND_PERCENTOFPARENT) {
-							child->computed_size[axis] = temp->computed_size[axis]*child->semantic_size[axis].value; 
+							if (child->semantic_size[axis].kind == UI_SIZEKIND_PERCENTOFPARENT) {
+								child->computed_size[axis] = temp->computed_size[axis]*child->semantic_size[axis].value; 
 							}
 							child = child->next; 
 						}
@@ -2900,10 +2699,10 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 					
 					overflow -= amount_to_apply;
 					children_amount--;
-						temp = temp->next; 
+					temp = temp->next; 
 				}
 			}
-				
+			
 		}
 		
 	}
@@ -2921,7 +2720,7 @@ UICoreLayoutResolveConstraints(UI_Widget *widget, int axis) {
 		UICoreLayoutResolveConstraints(child, axis);
 	}
 }
-  
+
 static void
 UICoreLayout(UI_Widget *widget, int axis) {
 	
@@ -2935,28 +2734,28 @@ UICoreLayout(UI_Widget *widget, int axis) {
 static void
 UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 	if (!head) return;
-
+	
     for (; head; head = head->next) {
 		// Compute final rects for all widgets
 		head->rect.minx = head->computed_rel_pos[0];
 		head->rect.miny = head->computed_rel_pos[1];
 		head->rect.maxx = head->rect.minx + head->computed_size[0];
 		head->rect.maxy = head->rect.miny + head->computed_size[1];
-
+		
 		//
 		// Render widgets
 		//
-
+		
 		if (head->flags & UI_DRAWBOX) {
-
+			
 			// update hot/active time
 			float dt = 1.f/60.f; // TODO(ziv): move/remove this?
 			head->hot_t = lerp(head->hot_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			if (!(head->flags & UI_SLIDERABLE)) {
 				head->active_t = lerp(head->active_t, (head == ui->hot), 1-powf(2.f, -4.f * dt));
 			}
-
-
+			
+			
 #define GRAY       Color{ 130.f/255.f, 130.f/255.f, 130.f/255.f, 255.f/255.f}
 			// get final color 
 			Color background = { 0.05f, 0.1f, .2f, 1}; 
@@ -2981,19 +2780,38 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 				final.b = lerp(background.b, hot.b, head->hot_t);
 				final.a = 1;
 			}
-
+							
+			
+			
 			// draw the quad to the screen
-			DrawQuad(ui->d, head->rect, final, head->radius, head->border); 
+			//DrawQuad(ui->d, head->rect, final, head->radius, head->border); 
+			
+			Assert(ui->quads.idx < WIDGETS_COUNT);
+			Rect rect = head->rect;
+			float radius = head->radius; 
+			float border = head->border;
+			Color color = final; 
+			
+			if (0 <= rect.maxx && rect.minx <= ui->r->viewport.Width && 
+				0 <= rect.maxy && rect.miny <= ui->r->viewport.Height) {
+				ui->quads.data[ui->quads.idx].rect = rect;
+				ui->quads.data[ui->quads.idx].color = color;
+				ui->quads.data[ui->quads.idx].radius = radius;
+				ui->quads.data[ui->quads.idx].border = border;
+				ui->quads.idx++;
+			}
+			
+			
 		}
-
+		
 		if (head->flags & UI_DRAWTEXT) {
 			float pad = 5; 
 			String8 txt = head->text;
-
+			
 			float rect_width = head->rect.maxx - head->rect.minx - 2 * pad; 
 			float amount_to_show =  rect_width / DefaultTextWidth(txt);
 			int display_size = (int)((float)txt.size *  MIN(amount_to_show, 1));
-
+			
 			const char *display_txt = txt.data;
 			char dest[0x100]; 
 			if (amount_to_show < 1.f) {
@@ -3002,12 +2820,21 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 				dest[display_size-2] = '.';
 				display_txt = dest;
 			}
-
-			DrawDefaultText(ui->d, display_txt, display_size, 
-							head->rect.minx+pad, head->rect.miny+pad); 
+			
+			const char *text = display_txt; 
+			size_t len = display_size; 
+			float x = head->rect.minx+pad; 
+			float y = head->rect.miny+pad;
+			
+			R_SpriteInst sprite = { (float)x, (float)y, (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE }; // screen_pos, size
+			for (size_t i = 0; i < len; i++) {
+				sprite.atlas_pos.x = (text[i] - ' ') * (int)(ATLAS_WIDTH/CHARACTER_COUNT) ;
+				ui->font.data[ui->font.idx++] = sprite;
+				sprite.screen_pos.x += sprite.size.x+ 1*FAT_PIXEL_SIZE;
+			}
 		}
-
-
+		
+		
 		if (head->child) {
 			UICoreLayoutFinalRect(ui, head->child);
 		}
@@ -3018,24 +2845,18 @@ static void UIPushParent(UI_Widget *parent);
 static inline UI_Widget *UIPopParent();
 
 static void
-UIInit(UI_Context *ctx, D_Context *d, OS_Events *events) {
+UIInit(UI_Context *ctx, R_D3D11Context *r, OS_Events *events) {
 	
 	memset(ctx, 0, sizeof(UI_Context));
 	ctx->events = events;
-		ctx->r = d->r;
-		ctx->d = d;
-	
+	ctx->r = r; 
 	ctx->window = &ctx->widgets[WIDGETS_COUNT-1];
 	ctx->window->id = { WIDGETS_COUNT-1, 1, { 0, "main_window###0001" } };
 	ctx->window->computed_size[UI_AXIS2_X] = (float)window_width;
 	ctx->window->computed_size[UI_AXIS2_Y] = (float)window_height;
 	
-	
-	MemArenaInit(&ctx->arena, 0x1000); // allocate page size
-	
-	
 	ui = ctx;
-	}
+}
 
 
 static void
@@ -3087,7 +2908,7 @@ UIBegin(UI_Context *ui, b32 dirty) {
 			if (mouse_button_pressed & (1 << i)) {
 				OS_Event e = {  
 					OS_EVENT_KIND_MOUSE_BUTTON_PRESSED, 
-					 1 << i, 0
+					1 << i, 0
 				};
 				ui->events->list[ui->events->idx++] = e;
 				
@@ -3105,20 +2926,20 @@ static void
 UIEnd(UI_Context *ui) {
 	Assert(ui);
 	UIPopParent(); // pop window
-
+	
 	// prune out all widgets that don't participate in hierarchy
 	{
 		ui->window->id.alive = 1;
 		UICorePruneDeadWidgets(ui->window);
 	}
-
+	
 	// layout
 	{
 		for (int axis = 0; axis < UI_AXIS2_COUNT; axis++) { 
 			UICoreLayout(ui->window, axis); 
 		}
 	}
-
+	
 	// draw
 	{
 		// kind of this is where I draw 
@@ -3144,7 +2965,7 @@ UIEnd(UI_Context *ui) {
 
 static void
 UIPushParent(UI_Widget *parent) {
-
+	
 	if (ui->stack_idx < MAX_WIDGET_STACK_SIZE) {
 		ui->stack[ui->stack_idx++] = parent;
 	}
@@ -3177,18 +2998,18 @@ UICompareKey(UIID k1, UIID k2) {
 
 static UI_Widget *
 UIMakeWidget(String8 text, u32 flags) {
-
+	
 	//
 	// Get entry from hashmap if exists
 	//
-
+	
 	String8 strid = text;
 	s32 mask = (WIDGETS_COUNT-1);
 	s32 key = (s32)Str8GetHash(strid, 234982374) & mask;
 	UIID id = { key, 0,  strid };
-
+	
 	UI_Widget *entry = ui->hashmap[key];
-
+	
 	for (; entry; entry = entry->hash_next) {
 		if (UICompareKey(entry->id, id))  break;
 	}
@@ -3197,30 +3018,30 @@ UIMakeWidget(String8 text, u32 flags) {
 		ui->equip_child = 0;
 		return entry;
 	}
-
+	
     //
     // Create and add the widget to the graph
     //
-
+	
     UI_Widget *parent = UITopParent();
 	UI_Widget *widget = &ui->widgets[ui->widgets_idx++];
-
+	
 	// add to hashmap
 	UI_Widget *temp = ui->hashmap[key];
 	if (temp) {
-	while (temp->hash_next) temp = temp->hash_next;
+		while (temp->hash_next) temp = temp->hash_next;
 		temp->hash_next = widget;
 		widget->hash_last = temp;
 	}
 	else {
 		ui->hashmap[key] = widget;
 	}
-
+	
 	// TODO(ziv): This should not be allocated in this arena thingy. should actually have 
 	// something to manage these strings since the way they are allocated and things is 
 	// more malloc/free style (which maybe I should use malloc/free idk). 
 	//String8 id_string_copy = Str8Copy((char *)MemArenaAlloc(&ui->arena, strid.size), strid);
-
+	
 	// TODO(ziv): REPLACE MALLOC!!! 
 	// OR USE FREE IDK JUST FREE MAN
 	String8 id_string_copy = Str8Copy((char *)malloc(strid.size), strid);
@@ -3238,7 +3059,7 @@ UIMakeWidget(String8 text, u32 flags) {
 	if (ui->equip_child) {
 		widget->radius = ui->equip_child_radius; 
 		widget->border = ui->equip_child_border; 
-			ui->equip_child = 0;
+		ui->equip_child = 0;
 	}
 	else {
 		widget->radius = 0; 
@@ -3260,12 +3081,12 @@ UIMakeWidget(String8 text, u32 flags) {
 			// but never frees it.
 			//char *data = (char *)MemArenaAlloc(&ui->arena, i+1);
 			char *data = (char *)malloc(i+1);
-				memcpy(data, strid.data, i); data[i] = '\0';
-				
-				display_text.data = data; 
-				display_text.size = (size_t)i; 
-				break;
-			}
+			memcpy(data, strid.data, i); data[i] = '\0';
+			
+			display_text.data = data; 
+			display_text.size = (size_t)i; 
+			break;
+		}
 	}
 	
 	widget->text = display_text;
@@ -3292,40 +3113,40 @@ UIMakeWidget(String8 text, u32 flags) {
 					// only child 
 					parent->child = widget;
 				}
-
+				
 				widget->last = temp->last; 
 				widget->next = temp->next; 
-
+				
 				if (widget->last) widget->last->next = widget; 
 				if (widget->next) widget->next->last = widget; 
 			}
 			else { // If not, just add it after last alive node
 				// TODO(ziv): Make sure that when parent->child is the only 
 				// child and it is not alive, correct behavior ensues
-
+				
 				UI_Widget *last_alive = parent->child;
 				while (last_alive->next && last_alive->next->id.alive) { 
 					last_alive = last_alive->next;
 				}
-
+				
 				widget->last = last_alive;
 				widget->next = last_alive->next;
 				if (widget->next) widget->next->last = widget; 
 				last_alive->next = widget; 
 			}
-
+			
         }
         else {
             widget->last = NULL;
             parent->child = widget;
         }
-
+		
     }
     else {
 		Assert(ui->window);
         FatalError("You pop way too much for sure");
     }
-
+	
     return widget;
 }
 
@@ -3354,15 +3175,15 @@ UIInteractWidget(UI_Widget *widget) {
 		used_press = true;
 	}
     else if (rect.minx <= ui->mouse_pos[0] &&
-		ui->mouse_pos[0] <= rect.maxx &&
-		rect.miny <= ui->mouse_pos[1] &&
-		ui->mouse_pos[1] <= rect.maxy) {
-
+			 ui->mouse_pos[0] <= rect.maxx &&
+			 rect.miny <= ui->mouse_pos[1] &&
+			 ui->mouse_pos[1] <= rect.maxy) {
+		
 		ui->hot = widget;
-
+		
         // widget is active?
         if ((widget->flags & UI_CLICKABLE &&
-				 left_mouse_button_pressed )) {
+			 left_mouse_button_pressed )) {
             ui->active = widget;
 			used_press = true;
             output.activated = 1;
@@ -3373,8 +3194,8 @@ UIInteractWidget(UI_Widget *widget) {
 				ui->active = NULL;
 			}
 		}
-
-
+		
+		
     }
     else if ((ui->hot == widget || ui->active == widget) && 
 			 !(widget->flags & (UI_SLIDERABLE|UI_DRAGGABLE))) {
@@ -3382,8 +3203,8 @@ UIInteractWidget(UI_Widget *widget) {
         ui->active = NULL;
 		used_press = true;
 	}
-
-
+	
+	
 	if (widget->flags & UI_SLIDERABLE  && ui->hot == widget) {
 		if (left_mouse_button_pressed) {
 			float width = rect.maxx - rect.minx; 
@@ -3401,7 +3222,7 @@ UIInteractWidget(UI_Widget *widget) {
 	
 	output.slider_value = widget->active_t;
 	output.widget = widget;
-
+	
 	return output;
 	
 }
@@ -3431,7 +3252,7 @@ UICreateRect(UI_Size width, UI_Size height, int x, int y, const char *text, u32 
 	UI_Widget *widget = UIMakeWidget(Str8Lit(text), flags);
 	widget->semantic_size[0] = width;
 	widget->semantic_size[1] = height;
-
+	
 	widget->computed_rel_pos[UI_AXIS2_X] = (float)x;
 	widget->computed_rel_pos[UI_AXIS2_Y] = (float)y;
 	return widget;
@@ -3581,6 +3402,26 @@ typedef struct {
 	float3 up, down;
 	float3 forward, backward;
 } Camera;
+
+// Core camera functions
+
+static void CameraInit(Camera *c); // NOTE: You need to provide `In` values
+static void CameraBuild(Camera *c); // Builds the camera from values given
+static void CameraMove(Camera *c, float x, float y, float z);
+
+// Helpers
+
+static void CameraScreenToWorld(Camera *c, 
+								float width, float height,      /* screen size */
+								float3 *res,                    /* [Out] resulting direction */
+								float screen_x, float screen_y, /* Mouse x,y */
+								float camera_z);
+static void CameraPickingRay(Camera *c, 
+							 float w, float h, /* screen size */
+							 float mouse_x, float mouse_y, 
+							 float3 *orig, /* [Out] camera origin point */
+							 float3 *dir   /* [Out] direction mouse is looking */);
+
 
 static void
 CameraInit(Camera *c) {
@@ -3841,24 +3682,24 @@ static b32
 CollideRayTriangle(float3 orig, float3 dir, float3 *trig) {
 	// NOTE(ziv): This is a naive implementation.
 	// A performant should be done in the future
-
+	
 	// The Möller–Trumbore intersection algorithm should be a 
 	// better solution (along with simd for performance) 
 	// That said I don't have the time to implement it so 
 	// I will make due with this naive solution: 
 	// https://www.cs.cornell.edu/courses/cs465/2003fa/homeworks/raytri.pdf
-
+	
 	// find intersection with plane
 	float3 norm = f3cross(trig[1]-trig[0], trig[2]-trig[0]); 
 	float t = -f3dot(norm, orig-trig[0]) / f3dot(norm, dir); 
 	float3 intersection = orig + t*dir;
-
+	
 	// find whether it is inside triangle
 	b32 result = 
 		f3dot(f3cross((trig[1] - trig[0]), (intersection - trig[0])), norm) > 0 && 
 		f3dot(f3cross((trig[2] - trig[1]), (intersection - trig[1])), norm) > 0 && 
 		f3dot(f3cross((trig[0] - trig[2]), (intersection - trig[2])), norm) > 0; 
-
+	
 	return result; 
 }
 
@@ -3869,16 +3710,16 @@ CollideRayTriangle(float3 orig, float3 dir, float3 *trig) {
 static float ObjParseFloat(char* str, size_t *length) {
 	float num = 0.0, mul = 1.0;
 	int len = 0, dec = 0;
-
+	
 	while (str[len] == ' ' || str[len] == '\n') len++;
-
+	
 	if (str[len] == '-') len++;
 	while (str[len] && (('0' <= str[len] && str[len] <= '9') ||  str[len] == '.')) if (str[len++] == '.') dec = 1;
-
+	
 	for (int idx = len - 1; idx >= 0; idx--)
 	{
 		char chr = str[idx] - '0';
-
+		
 		if      (chr == '-' - '0') num = -num;
 		else if (chr == '.' - '0') dec = 0;
 		else if (dec) {
@@ -3890,7 +3731,7 @@ static float ObjParseFloat(char* str, size_t *length) {
 		    mul *= 10.0;
 		}
 	}
-
+	
 	*length = len;
 	return num;
 }
@@ -4051,8 +3892,7 @@ static bool ObjLoadFile(char *path, Vertex *vdest, size_t *v_cnt, unsigned short
 	return true;
 }
 
-
-
+//~
 
 #ifdef _DEBUG
 int main()
@@ -4060,24 +3900,172 @@ int main()
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int ShowCmd)
 #endif
 {
+	os_init();
+	m_thread_context_init();
 
-	#if 1
-	// TODO(ziv): make sure that win32createwindow takes in a name parameter and so on...
-	HWND window = Win32CreateWindow();
-
+	HWND window = Win32CreateWindow(APP_TITLE, "d3d11 example!!!");
+	
+	
+	// Rawinput API
+	{
+		
+		RAWINPUTDEVICE Rid[2];
+        Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+        Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+        Rid[0].dwFlags = RIDEV_DEVNOTIFY;    // adds mouse and also ignores legacy mouse messages
+        Rid[0].hwndTarget = window;
+		
+		Rid[1].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
+		Rid[1].dwFlags = RIDEV_DEVNOTIFY;   // adds mouse and also ignores legacy mouse messages
+		Rid[1].hwndTarget = window;
+		
+        if (RegisterRawInputDevices(Rid, ArrayLength(Rid), sizeof(Rid[0])) == FALSE) {
+			if (GetLastError() != ERROR_SUCCESS) {
+            FatalError("Rawinput couldn't register\n");
+			}
+		}
+		
+	}
+	
+	Win32ShowWindow(window);
+	
+	while (running) {
+	
+	MSG msg;
+	while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&msg);
+		DispatchMessageA(&msg);
+		}
+		
+		if (g_raw_input_state.mouse.buttons & MouseLeftButton) {
+			printf("Left Button Pressed\n");
+		}
+		
+		if (g_raw_input_state.mouse.buttons & MouseRightButton) {
+			printf("Right Button Pressed\n");
+		}
+		
+		if (g_raw_input_state.mouse.buttons & MouseMiddleButton) {
+			printf("Middle Button Pressed\n");
+		}
+		
+		ZeroMemory(&g_raw_input_state, sizeof(g_raw_input_state));
+		}
+	
+	
+	// Rawinput
+	{
+		RAWINPUTDEVICE Rid[2];
+		Rid[0].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+		Rid[0].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+		Rid[0].hwndTarget = 0;
+		
+		Rid[1].usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+		Rid[1].usUsage = 0x6;               // HID_USAGE_GENERIC_KEYBOARD
+		Rid[1].dwFlags = RIDEV_REMOVE;      // adds mouse and also ignores legacy mouse messages
+		Rid[1].hwndTarget = 0;
+		
+		if (RegisterRawInputDevices(Rid, ArrayLength(Rid), sizeof(Rid[0])) == FALSE) {
+			if (GetLastError() != ERROR_SUCCESS) 
+				FatalError("Rawinput couldn't register a mouse\n");
+		}
+	}
+	
+	
+	
+	
+	return 0; 
+	
 	InputInitialize(window);
-
+	
 	R_D3D11Context renderer = {0}, *r = &renderer; 
 	RendererInit(&renderer, window);
-
-	D3D11_VIEWPORT viewport = {0};
-	viewport.Width = (FLOAT)window_width;
-	viewport.Height = (FLOAT)window_height;
-	viewport.MaxDepth = 1;
-	r->viewport = &viewport;
-
-#define EXPAND_ARRAY(arr) arr, ArrayLength(arr), sizeof(arr[0])
-
+	
+	// TODO(ziv): r_get_display does not do anything with window_width, window_height as of right now
+	R_Texture2D *screen = r_get_display(r, window_width, window_height); 
+	
+	// 
+	// Data Initialization
+	//
+	
+	R_Sampler point_sampler; 
+	{
+		R_Sampler_Desc desc = {};
+		desc.filter = R_FILTER_MIN_MAG_MIP_POINT,
+		desc.address_u = R_TEXTURE_ADDRESS_CLAMP,
+		desc.address_v = R_TEXTURE_ADDRESS_CLAMP,
+		desc.address_w = R_TEXTURE_ADDRESS_CLAMP,
+		desc.comparison_func = R_COMPARISON_NEVER;
+		
+		point_sampler = r_create_sampler(r, &desc);
+	}
+	
+	// font data
+	
+	R_Shader font_shader;
+	R_Texture2D atlas_texture; 
+	R_Buffer sprite_buffer, screen_info_constant_buffer; 
+	{
+		R_Buffer_Desc sprite_buffer_desc = {
+			NULL, MAX_SPRITES_COUNT, sizeof(R_SpriteInst), 
+			R_USAGE_DYNAMIC, 
+			R_BIND_SHADER_RESOURCE, 
+			R_CPU_ACCESS_WRITE, 
+			R_RESOURCE_MISC_BUFFER_STRUCTURED
+		};
+		sprite_buffer = r_create_buffer(r, &sprite_buffer_desc);
+		
+		R_Buffer_Desc constant_buffer_desc = {
+			NULL, 4, sizeof(float), 
+			R_USAGE_DYNAMIC, 
+			R_BIND_CONSTANT_BUFFER, 
+			R_CPU_ACCESS_WRITE, 
+		};
+		screen_info_constant_buffer = r_create_buffer(r, &constant_buffer_desc);
+	
+		R_Texture2D_Desc atlas_desc = {
+			(void *)atlas, ATLAS_WIDTH, ATLAS_HEIGHT, 
+			R_FORMAT_B8G8R8A8_UNORM_SRGB, 
+			R_BIND_SHADER_RESOURCE, 
+			0, 
+			R_USAGE_IMMUTABLE, 
+			1
+		}; 
+		atlas_texture = r_create_texture2d(r, &atlas_desc); 
+		
+		R_Shader_Desc shdr_desc = {
+			"../font.hlsl", "vs_main", 
+			"../font.hlsl", "ps_main", 
+		}; 
+		font_shader = r_create_shaders(r, &shdr_desc); 
+	}
+	
+	// widgets data
+	
+	R_Buffer widgets_buffer;
+	R_Shader widgets_shader; 
+	{
+		R_Buffer_Desc widgets_desc = {
+			NULL, WIDGETS_COUNT, sizeof(R_QuadInst), 
+			R_USAGE_DYNAMIC, 
+			R_BIND_SHADER_RESOURCE,
+			R_CPU_ACCESS_WRITE, 
+			R_RESOURCE_MISC_BUFFER_STRUCTURED
+		}; 
+		widgets_buffer = r_create_buffer(r, &widgets_desc); 
+		
+		R_Shader_Desc shdr_desc = {
+			"../widgets.hlsl", "vs_main",
+			"../widgets.hlsl", "ps_main",
+		};
+		widgets_shader = r_create_shaders(r, &shdr_desc);
+	}
+	
+	
+	
+	
 	// Create model vertex buffer
 	size_t verticies_count, indicies_count;
 	R_Buffer cube_vbuf, cube_ibuf;
@@ -4101,6 +4089,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			R_USAGE_IMMUTABLE, R_BIND_INDEX_BUFFER,
 		};
 		cube_ibuf = r_create_buffer(r, &idesc); 
+
+		free(verticies); free(indicies); 
 	}
 
 	struct VSConstantBuffer {
@@ -4136,8 +4126,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		int tex_w, tex_h, tex_num_channels;
 		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
 		Assert(bytes);
-		int pitch = 4 * tex_w;
-
+		
 		R_Texture2D_Desc desc = {
 			bytes, tex_w, tex_h,
 			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
@@ -4147,7 +4136,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		image = r_create_texture2d(r, &desc);
 		free(bytes);
 	}
-
+	
 	// Create Shaders For Cube Model
 	R_Shader cube_shdr;
 	{
@@ -4163,151 +4152,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		cube_shdr = r_create_shaders(r, &desc);
 	}
 
-	R_Texture2D screen = { 0, r->frame_buffer_view };
-
 	Win32ShowWindow(window);
-
-	//~ Game State
-
-	Camera c = {0};
-	CameraInit(&c);
-	c.aspect_ratio = (float)window_width/(float)window_height;
-	c.pos.z -= 5;
-	c.yaw = 3.14f/2;
-	c.off = {0, 0, 0}; 
-
-	// projection matrix variables
-	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
-	float3 model_scale       = { 1, 1, 1 }; // { 1.5f, 1.5f, 1.5f };
-	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-
-	// global directional light
-	float3 sun_direction = { 0, 0, 1 };
-	// point light
-	float3 lightposition = {  0, 0, 2 };
-
-	TimeInit(); 
 	
-	// more things that I need I guess...
-	double start_frame = Time(), end_frame;
-	float dt = 1/60;
-
-	while (running) {
-
-		// Handle input
-		MSG msg;
-		while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
-			TranslateMessage(&msg);
-			DispatchMessageA(&msg);
-		}
-
-		// Handle window resize
-		RECT rect;
-		GetClientRect(window, &rect);
-		LONG width = rect.right - rect.left;
-		LONG height = rect.bottom - rect.top;
-		if (width != window_width || height != window_height) {
-			window_width = width; window_height = height;
-			RendererD3D11Resize(r, width, height);
-		screen.rtv = r->frame_buffer_view;
-		}
-		
-		float speed = 10*dt;
-		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
-		CameraBuild(&c);
-		
-		
-		// NOTE(ziv): if texture is a render target view as it should be 
-		// then I will just use the fill render target view function 
-		// provided by the d3d11 lib 
-
-
-		// Draw Model
-		{
-			float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
-			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
-			
-			// update data in the cpu
-			VSConstantBuffer vs_cbuf;
-			vs_cbuf.transform        = model_view_matrix;
-			vs_cbuf.projection       = c.proj;
-			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-			
-			PSConstantBuffer ps_cbuf;
-			ps_cbuf.point_light_position = lightposition - translate_vector;
-			ps_cbuf.sun_light_direction = sun_direction;
-			
-			// update gpu data
-			r_update_gpu_buffer(r, vs_constant_buffer, &vs_cbuf, sizeof(vs_cbuf));
-			r_update_gpu_buffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf));
-			
-			R_Pipline_Desc pipline_desc = {
-				R_TOPOLOGY_TRIANGLELIST,
-				cube_shdr,// shaders
-				{ cube_vbuf, cube_ibuf, vs_constant_buffer }, // vs_bindings 
-				{ ps_constant_buffer }, // ps_bindings
-				{ image },
-				{ } // still need sampler
-			};
-
-			float color[4] = { 0, 1, 1, 1 }; 
-			r_fill_texture(r, screen, color);
-			r_switch_pipline(r, &pipline_desc);
-			r_set_cull_mode(r, R_CULL_MODE_BACK); // cull back/front
-			r_draw_indexed(r, screen, (int)indicies_count, 0, 0);
-		}
-		
-		
-
-		RendererD3D11Present(r);
-		end_frame = Time();
-		dt = (float)(end_frame - start_frame);
-		start_frame = end_frame; // update time for dt calc
-	}
-	//release_resources: 
-
-	return 0; 
-	
-	
-	
-	
-	
-	
-	
-#endif 
-
-
-	#if 0
-	//printf("%f %f\n", (float)(ATLAS_WIDTH / CHARACTER_COUNT)*FAT_PIXEL_SIZE, (float)ATLAS_HEIGHT*FAT_PIXEL_SIZE );
-	HWND window = Win32CreateWindow(); 
-	InputInitialize(window);
-
-	R_D3D11Context renderer = {0}; 
-	R_D3D11Context *r = &renderer; 
-	RendererInit(&renderer, window);
-
-	D_Context draw = {r}; 
-	D_Context *d = &draw;
-	DrawInit(d); 
-
-	OS_Events events;
-	UI_Context ui_context;
-	UIInit(&ui_context, d, &events);
-
-	Arena arena;
-	if (!MemArenaInit(&arena, 0x1000)) {
-		FatalError("Couldn't Allocated Memory");
-	}
-
-	TimeInit();
-
-	//~
-
-
-	// 
-	// Quad
-	//
-
+#if 0 
 	
 	ID3D11BlendState1 *blend_state_use_alpha = NULL;
 	{
@@ -4324,302 +4171,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		blend_state.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 		r->device->CreateBlendState1(&blend_state, &blend_state_use_alpha);
 	}
-
-	d->quads.blend_state_use_alpha = blend_state_use_alpha;
-	//
-	// Font
-	//
-
-	// Texture Atlas
-	ID3D11ShaderResourceView* atlas_resource_view;
-	{
-		D3D11_TEXTURE2D_DESC texture_atlas_desc = {};
-		texture_atlas_desc.Width             = ATLAS_WIDTH;
-		texture_atlas_desc.Height            = ATLAS_HEIGHT;
-		texture_atlas_desc.MipLevels         = 1;
-		texture_atlas_desc.ArraySize         = 1;
-		texture_atlas_desc.Format            = DXGI_FORMAT_B8G8R8A8_UNORM;
-		texture_atlas_desc.SampleDesc.Count  = 1;
-		texture_atlas_desc.Usage             = D3D11_USAGE_IMMUTABLE;
-		texture_atlas_desc.BindFlags         = D3D11_BIND_SHADER_RESOURCE;
-		
-		D3D11_SUBRESOURCE_DATA atlas_data = {};
-		atlas_data.pSysMem     = atlas;
-		atlas_data.SysMemPitch = ATLAS_WIDTH * sizeof(UINT);
-		
-		ID3D11Texture2D* atlas_texture;
-		r->device->CreateTexture2D(&texture_atlas_desc, &atlas_data, &atlas_texture);
-		r->device->CreateShaderResourceView(atlas_texture, NULL, &atlas_resource_view);
-		atlas_texture->Release();
-	}
-
-
-	// Point Sampler
-	ID3D11SamplerState* font_sampler;
-	{
-		D3D11_SAMPLER_DESC font_sampler_desc = {};
-		font_sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-		font_sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
-		font_sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-		r->device->CreateSamplerState(&font_sampler_desc, &font_sampler);
-	}
-
-	d->font.sampler = font_sampler;
-	d->font.srv[1] = atlas_resource_view;
-
-
-	//~
-	// Model Data
-	//
-
-	char model_path[] = "../resources/cube.obj";
-
-	size_t verticies_count, indicies_count;
-	bool success = ObjLoadFile(model_path,NULL, &verticies_count, NULL, &indicies_count);
-	Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
-
-	Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex));
-	unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
-	success = ObjLoadFile(model_path, verticies, &verticies_count, indicies, &indicies_count);
-	Assert(success && "Failed extracting model data");
-
-	BFHandle vertex_buffer = RendererCreateBuffer(r, verticies, sizeof(Vertex), (unsigned int)verticies_count, R_BIND_VERTEX_BUFFER, { R_USAGE_DEFAULT} ); 
-	BFHandle index_buffer = RendererCreateBuffer(r, indicies, sizeof(u16), (unsigned int)indicies_count, R_BIND_INDEX_BUFFER, { R_USAGE_DEFAULT });
 	
-	R_LayoutFormat format[] = {
-		{ "Position", R_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, pos), R_INPUT_PER_VERTEX_DATA }, 
-		{ "Normal",   R_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, norm), R_INPUT_PER_VERTEX_DATA }, 
-		{ "Texture",  R_FORMAT_R32G32_FLOAT, 0, offsetof(struct Vertex, uv), R_INPUT_PER_VERTEX_DATA }
-	};
-
-	VSHandle vshader = RendererCreateVSShader(r, "../shaders.hlsl", "vs_main", format, ArrayLength(format));
-	PSHandle pshader = RendererCreatePSShader(r, "../shaders.hlsl", "ps_main");
-
-	struct VSConstantBuffer {
-		matrix transform;
-		matrix projection;
-		matrix normal_transform;
-		float3 lightposition;
-	};
-
-	struct PSConstantBuffer {
-		float3 point_light_position;
-		float3 sun_light_direction;
-	};
-
-	BFHandle cbuffer = RendererCreateBuffer(r, NULL, sizeof(VSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
-	BFHandle ps_constant_buffer = RendererCreateBuffer(r, NULL, sizeof(PSConstantBuffer), 1, R_BIND_CONSTANT_BUFFER, { R_USAGE_DYNAMIC, R_CPU_ACCESS_WRITE });
-	
-	// Create Sampler State
-	ID3D11SamplerState* sampler_state;
-	{
-		D3D11_SAMPLER_DESC sampler_desc = {};
-		sampler_desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_POINT;
-		sampler_desc.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
-		sampler_desc.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
-		sampler_desc.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
-		sampler_desc.BorderColor[0] = 1.0f;
-		sampler_desc.BorderColor[1] = 1.0f;
-		sampler_desc.BorderColor[2] = 1.0f;
-		sampler_desc.BorderColor[3] = 1.0f;
-		sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		
-		r->device->CreateSamplerState(&sampler_desc, &sampler_state);
-	}
-
-	// Texture
-	ID3D11ShaderResourceView *texture_view;
-	{
-		// Load Image
-		int tex_w, tex_h, tex_num_channels;
-		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
-		Assert(bytes);
-		int pitch = 4 * tex_w;
-
-		D3D11_TEXTURE2D_DESC texture_desc = {};
-		texture_desc.Width              = tex_w;
-		texture_desc.Height             = tex_h;
-		texture_desc.MipLevels          = 1;
-		texture_desc.ArraySize          = 1;
-		texture_desc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		texture_desc.SampleDesc.Count   = 1;
-		texture_desc.Usage              = D3D11_USAGE_IMMUTABLE;
-		texture_desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-
-		D3D11_SUBRESOURCE_DATA texture_data = {};
-		texture_data.pSysMem = bytes;
-		texture_data.SysMemPitch = pitch;
-
-		ID3D11Texture2D* texture;
-		r->device->CreateTexture2D(&texture_desc, &texture_data, &texture);
-		r->device->CreateShaderResourceView(texture, NULL, &texture_view);
-
-		texture->Release();
-		free(bytes);
-	}
-	
-	
-	//~ JFA
-	ID3D11ShaderResourceView *jfa_mask_resource;
-	ID3D11RenderTargetView *jfa_mask_render_target;
-	{
-		D3D11_TEXTURE2D_DESC texture_desc = {};
-		texture_desc.Width              = window_width;
-		texture_desc.Height             = window_height;
-		texture_desc.MipLevels          =1;
-		texture_desc.ArraySize          = 1;
-		texture_desc.Format             = DXGI_FORMAT_R8_UNORM;
-		texture_desc.SampleDesc.Count   = 1;
-		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-		
-		ID3D11Texture2D* texture;
-		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-		r->device->CreateShaderResourceView(texture, NULL, &jfa_mask_resource);
-		r->device->CreateRenderTargetView(texture, NULL, &jfa_mask_render_target);
-		
-		texture->Release();
-	}
-	
-	VSHandle jfa_mask_vshader = RendererCreateVSShader(r, "../jfa_mask.hlsl", "vs", format, ArrayLength(format));
-	PSHandle jfa_mask_pshader = RendererCreatePSShader(r, "../jfa_mask.hlsl", "ps"); 
-	BFHandle jfa_vs_cbuffer = RendererCreateBuffer(r, 
-												   NULL, 
-												   sizeof(matrix)*2, 
-												   1,
-												   R_BIND_CONSTANT_BUFFER, 
-												   { 
-													   R_USAGE_DYNAMIC, 
-													   R_CPU_ACCESS_WRITE, 
-												   } );
-	
-	BFHandle inv_size_cbuffer = RendererCreateBuffer(r, 
-												   NULL, 
-												   sizeof(float)*2, 
-												   1,
-												   R_BIND_CONSTANT_BUFFER, 
-												   {
-													   R_USAGE_DYNAMIC, 
-													   R_CPU_ACCESS_WRITE, 
-												   } );
+#endif 
 	
 	
 	
-	// INIT
-	ID3D11ShaderResourceView *jfa_init_resource;
-	ID3D11RenderTargetView *jfa_init_render_target;
-	{
-		D3D11_TEXTURE2D_DESC texture_desc = {};
-		texture_desc.Width              = window_width;
-		texture_desc.Height             = window_height;
-		texture_desc.MipLevels          = 1;
-		texture_desc.ArraySize          = 1;
-		texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
-		texture_desc.SampleDesc.Count   = 1;
-		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-		
-		ID3D11Texture2D* texture;
-		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-		r->device->CreateShaderResourceView(texture, NULL, &jfa_init_resource);
-		r->device->CreateRenderTargetView(texture, NULL, &jfa_init_render_target);
-		
-		texture->Release();
-	}
-	
-	
-	// JFA
-	ID3D11RenderTargetView *jfa_mask0_render_target;
-	ID3D11ShaderResourceView *jfa_mask0_resource_view;
-	{
-		D3D11_TEXTURE2D_DESC texture_desc = {};
-		texture_desc.Width              = window_width;
-		texture_desc.Height             = window_height;
-		texture_desc.MipLevels          = 1;
-		texture_desc.ArraySize          = 1;
-		texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
-		texture_desc.SampleDesc.Count   = 1;
-		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-		
-		ID3D11Texture2D* texture;
-		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-		r->device->CreateRenderTargetView(texture, NULL, &jfa_mask0_render_target);
-		r->device->CreateShaderResourceView(texture, NULL, &jfa_mask0_resource_view);
-		
-		texture->Release();
-	}
-	
-	VSHandle jfa_init_vshader = RendererCreateVSShader(r, "../jfa_init.hlsl", "vs", NULL, 0);
-	PSHandle jfa_init_pshader = RendererCreatePSShader(r, "../jfa_init.hlsl", "ps"); 
-	
-	VSHandle jfa_vshader = RendererCreateVSShader(r, "../jfa.hlsl", "vs", NULL, 0);
-	PSHandle jfa_pshader = RendererCreatePSShader(r, "../jfa.hlsl", "ps"); 
-	
-	VSHandle jfa_solid_vshader = RendererCreateVSShader(r, "../jfa_solid.hlsl", "vs", NULL, 0);
-	PSHandle jfa_solid_pshader = RendererCreatePSShader(r, "../jfa_solid.hlsl", "ps"); 
-	
-	int down_sample_multiplier = 1;
-	
-	// down-sampled buffer
-	ID3D11ShaderResourceView *down_sampled_resource;
-	ID3D11RenderTargetView *down_sampled_rtv;
-	{
-		D3D11_TEXTURE2D_DESC texture_desc = {};
-		texture_desc.Width              = window_width  / down_sample_multiplier;
-		texture_desc.Height             = window_height / down_sample_multiplier;
-		texture_desc.MipLevels          = 1;
-		texture_desc.ArraySize          = 1;
-		texture_desc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-		texture_desc.SampleDesc.Count   = 1;
-		texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-		texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-		
-		ID3D11Texture2D* texture;
-		r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-		r->device->CreateRenderTargetView(texture, NULL, &down_sampled_rtv);
-		r->device->CreateShaderResourceView(texture, NULL, &down_sampled_resource);
-		
-		texture->Release();
-	}
-	
-	float full_screen_verticies[] = {
-		-1,  1, 
-		 1,   1, 
-		-1, -1, 
-		1,  -1,
-	};
-	BFHandle full_screen_vertex_buffer = RendererCreateBuffer(r, full_screen_verticies, sizeof(float)*2, 4, R_BIND_VERTEX_BUFFER, { R_USAGE_DEFAULT } ); 
-	R_LayoutFormat downsample_format[] = {
-		{ "Position", R_FORMAT_R32G32_FLOAT, 0, 0, R_INPUT_PER_VERTEX_DATA },
-	};
-	VSHandle downsample_vshader = RendererCreateVSShader(r, "../downsample.hlsl", "vs", downsample_format, 1);
-	PSHandle downsample_pshader = RendererCreatePSShader(r, "../downsample.hlsl", "ps"); 
-	
-	
-	
-	D3D11_VIEWPORT viewport = {0};
-	viewport.Width = (FLOAT)window_width;
-	viewport.Height = (FLOAT)window_height;
-	viewport.MaxDepth = 1;
-	r->viewport = &viewport;
+	// Game State
 
-	// TODO(ziv): MOVE THIS CODE!!!
-	RECT rc_clip;           // new area for ClipCursor
-	RECT rc_old_clip;        // previous area for ClipCursor
-	GetClipCursor(&rc_old_clip);
-	GetWindowRect(window, &rc_clip);
-
-	//~
-	// Main Game Loop
-	//
+	Camera c = {0};
+	CameraInit(&c);
+	c.aspect_ratio = (float)window_width/(float)window_height;
+	c.pos.z -= 5;
+	c.yaw = 3.14f/2;
+	c.off = {0, 0, 0}; 
 
 	// projection matrix variables
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
@@ -4631,110 +4195,49 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// point light
 	float3 lightposition = {  0, 0, 2 };
 
-
 	// more things that I need I guess...
-	double start_frame = Time(), end_frame;
+	float start_frame, end_frame, dt;
+	start_frame = (float)os_time();
+	dt = 1/60; // some first value 
+	
+	// TODO(ziv): 
+	// * Make blending creation methods and binding to the pipline
+	// * make sure input handling is good? 
+	// * make sure ui handling is good!
+	// * make bindings to pipline faster using BIND(...) macro
+	
+	OS_Events events;
+	UI_Context ui_context = {}; 
+	UIInit(&ui_context, r, &events);
+	
+	
+	// TODO(ziv): MOVE THIS CODE!!!
+	RECT rc_clip;           // new area for ClipCursor
+	RECT rc_old_clip;        // previous area for ClipCursor
+	GetClipCursor(&rc_old_clip);
+	GetWindowRect(window, &rc_clip);
+	
+	//~ 
+	// Game Loop
+	// 
+	
+	while (running) {
 
-	// Camera
-
-	Camera c = {0};
-	CameraInit(&c);
-	c.aspect_ratio = (float)window_width/(float)window_height;
-	c.pos.z -= 5;
-	c.yaw = 3.14f/2;
-	c.off = {0, 0, 0}; 
-
-	d->proj = &c.proj;
-	d->view = &c.view; 
-
-	//~
-	float dt = 1/60;
-	ShowWindow(window, SW_SHOW);
-
-
-	// main loop
-	for (;;) {
-		start_frame = Time();
-
+		// Handle input
 		// event loop
 		events = OSProcessEvents();
-		for (int i = 0; i < events.idx; i++) {
-			OS_Event e = events.list[i];
-			if (e.kind == OS_EVENT_KIND_QUIT) {
-				goto release_resources;
-			}
-		}
-
-		r->dirty = 0;
-		d->quads.idx = 0; 
-		d->font.idx = 0 ;
-
-		// Handle window resize
-		RECT rect;
-		GetClientRect(window, &rect);
-		LONG width = rect.right - rect.left;
-		LONG height = rect.bottom - rect.top;
-		if (width != window_width || height != window_height) {
-			window_width = width; window_height = height;
-			RendererD3D11Resize(r, width, height);
-			c.aspect_ratio = (float)width/(float)height;
-		}
+		if (!running) break;
 		
-		// Don't render when minimized
-		if (width == 0 && height == 0) {
-			Sleep(15); continue;
-		}
-	
-
-
-		//
-		// Update pixel and vertex shaders when changed
-		//
-		{
-			for (int i = 0; i < r->vs_idx; i++) {
-				FILETIME last_write_time = Win32GetLastFileWriteTime(r->vs_file_names_and_time[i].file_name);
-				Assert(last_write_time.dwLowDateTime != 0 && last_write_time.dwHighDateTime !=0);
-				
-				
-				if (CompareFileTime(&last_write_time,&r->vs_file_names_and_time[i].last_write_time) != 0) {
-					r->vs_file_names_and_time[i].last_write_time = last_write_time;
-					ID3D11InputLayout  *layout = NULL;
-					ID3D11VertexShader *vshader = NULL;
-					RendererD3D11CreateVSShader(r, r->vs_file_names_and_time[i].file_name, r->vs_file_names_and_time[i].entry_point, 
-												r->vs_file_names_and_time[i].format, 
-												r->vs_file_names_and_time[i].format_size, 
-												&vshader, &layout);
-					if (r->vs_array[i]) r->vs_array[i]->Release();
-					r->vs_array[i] = vshader;
-					r->lay_array[i] = layout;
-																			
-				}
-			}
-
-			for (int i = 0; i < r->ps_idx; i++) {
-				FILETIME last_write_time = Win32GetLastFileWriteTime(r->ps_file_names_and_time[i].file_name);
-				if (CompareFileTime(&last_write_time,&r->ps_file_names_and_time[i].last_write_time) != 0) {
-					r->ps_file_names_and_time[i].last_write_time = last_write_time;
-					ID3D11PixelShader *pshader = NULL;
-					RendererD3D11CreatePSShader(r, r->ps_file_names_and_time[i].file_name, r->ps_file_names_and_time[i].entry_point, 
-												&pshader);
-					if (r->ps_array[i]) r->ps_array[i]->Release();
-					r->ps_array[i] = pshader;
-				}
-			}
-		}
-
-
-
+		
 		//
 		// Enable/Disable Free Camera Mode
 		//
-
+		
 		// Update Mouse Clip area
 		GetWindowRect(window, &rc_clip);
 		if (key_tab_pressed) {
 			show_free_camera = !show_free_camera;
-
+			
 			if (show_free_camera) {
 				// Confine the cursor to the application's window.
 				ClipCursor(&rc_clip);
@@ -4747,24 +4250,25 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			}
 		}
 		key_tab_pressed = false;
-
+		
 		if (show_free_camera) {
 			SetCursorPos(window_width/2, window_height/2);
 		}
-
-
+		
+		
 		//~
 		// UI
 		//
-
+		
+		
 		static float value = 0; 
-
-
+		
+		
 		UIBegin(ui, r->dirty);
-
+		
 		static b32 show_top_rectangle = 0; 
 		static int show_panel = 1;
-
+		
 		UIEquipChildRadius(5); UIEquipChildBorder(2);
 		UIPushParent(UICreateRect(UIPixels(200, 1), UIChildrenSum(1), 0,0, "top_rectangle", UI_DRAWBOX));
 		UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "top_layout"));
@@ -4774,41 +4278,41 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		if (show_top_rectangle) {
 			if (UIButton("Move Up").activated) { c.pos = c.pos + c.up * -0.1f; }
 			if (UIButton("Move Down").activated) { c.pos = c.pos + c.up * 0.1f; }
-
+			
 			UIPushParent(UILayout(UI_AXIS2_X, UIParentSize(1, 0), UITextContent(1), "whatever layout")); 
 			UIEquipWidth(UILabel("speed:").widget, UITextContent(1)); value = UISlider("MovementSpeed").slider_value; 
 			UIPopParent();
-
+			
 			if (UIButton("Show Panel").clicked) {
 				show_panel = 1;
 			}
-
+			
 		}
 		UIPopParent();
 		UIPopParent();
-
+		
 		static int x = 150;
 		static int y = 100;
 		static int relx = 0; 
 		static int rely = 0; 
 		static b32 collided_with_character = false; 
-
+		
 		if (show_panel) {
 			UIEquipChildRadius(10); 
 			UI_Widget *panel = UICreateRect(UIPixels(200, 1), UIChildrenSum(1), x, y, "floating_panel", UI_FLOAT_X | UI_FLOAT_Y | UI_DRAWBOX);
 			UIPushParent(panel);
 			UIPushParent(UILayout(UI_AXIS2_Y, UIPixels(200, 1), UITextContent(1), "floating panel layout"));
 			{
-
+				
 				static int show_inside_panel = 0;
 				UIPushParent(UILayout(UI_AXIS2_X, UITextContent(1), UITextContent(1), "panel_top_bar_layout"));
 				{
-
+					
 					UIEquipChildRadius(10); 
 					if (UIButton("v###1").clicked) {
 						show_inside_panel = !show_inside_panel;
 					}
-
+					
 					UI_Widget *rect1 = UICreateRect(UIParentSize(1, 0), UITextContent(1), x, y, "subpanel", UI_CLICKABLE | UI_DRAGGABLE);
 					UIInteractWidget(rect1);
 					// TODO(ziv): consider putting this logic in another place
@@ -4820,18 +4324,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 						relx = (int)ui->mouse_pos[0] - (int)panel->computed_rel_pos[0]; 
 						rely = (int)ui->mouse_pos[1] - (int)panel->computed_rel_pos[1]; 
 					}
-
+					
 					//UIPad(Str8Lit("padding"));
-
+					
 					UIEquipChildRadius(10); 
 					if (UIButton("X###1").clicked) {
 						show_panel = 0;
 					}
 				}
 				UIPopParent(); 
-
+				
 				if (show_inside_panel) {
-
+					
 					if (collided_with_character) {
 						UILabel(Str8Lit("Collided With Box"));
 					}
@@ -4845,7 +4349,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					if (UIButton("rotate z").activated) {
 						model_rotation.z += 0.1f;
 					}
-
+					
 					if (UIButton("scale x").activated) {
 						model_scale.x += 0.1f;
 					}
@@ -4855,34 +4359,29 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 					if (UIButton("scale z").activated) {
 						model_scale.z += 0.1f;
 					}
-
-
-
+					
+					
+					
 				}
 			}
 			UIPopParent(); 
 			UIPopParent(); 
 		}
-
+		
 		UIEnd(ui);
-
-
-
-
-		//~
-		// Update Game State
-		//
+		
+		
 		
 		static float3 orig, dir; 
 		for (int i = 0; i < events.idx; i++) {
 			OS_Event e = events.list[i]; 
-
+			
 			static float dx = 0, dy = 0;
 			if (e.kind == OS_EVENT_KIND_RAW_MOUSEMOVE) {
 				if (show_free_camera) { 
 					dx = (float)e.value[0];
 					dy = (float)-e.value[1];
-
+					
 					c.yaw   = fmodf(c.yaw - dx/(window_width+1)*2*3.14f, (float)(2*M_PI));
 					c.pitch = float_clamp(c.pitch + dy/(window_height+1), -(float)M_PI/2.f, (float)M_PI/2.f);
 				}
@@ -4890,21 +4389,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			else if (e.kind == OS_EVENT_KIND_MOUSE_BUTTON_PRESSED) {
 				if (e.value[0] & MouseLeftButton) {
 					CameraPickingRay(&c, (float)window_width ,(float)window_height, 
-					ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
+									 ui->mouse_pos[0], window_height-ui->mouse_pos[1], &orig, &dir); 
 				}
 			}
-
+			
 		}
-
-		float speed = (1+value*10)*dt;
+		
+		
+		// Camera
+		float speed = 10*dt;
 		CameraMove(&c, (key_d-key_a)*speed, 0, (key_w-key_s)*speed);
 		CameraBuild(&c);
-
-
+		
+		
 		// TODO(ziv): move this into another location
-		d->lines.idx = 0;
-		//DrawLine(d, orig+ float3{0, 0, .5}, 10*dir); 
-
+		#if 0
 		b32 intersecting = false;
 		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
 		for (int i = 0; i < indicies_count; i += 3) {
@@ -4921,319 +4420,102 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				break; 
 			}
 		}
-
+		
 		collided_with_character = intersecting;
-
-
-		float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
-
-		//~
-		// Render Game
+		#endif
+		
+		// 
+		// Drawing/Rendering
 		//
 		
-		// Update model-view matrix
+		// Draw Model
+		r_begin(r);
 		{
+			
+			// TODO(ziv): there is an calulation error somewhere (problem in data) 
+			// which makes light be weird, please fix this :)
+			
+			float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
 
-			// Vertex Contstant Buffer
+			// update data in the cpu
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-			RendererUpdateBuffer(r, cbuffer, &vs_cbuf, sizeof(vs_cbuf)); 
-			
-			float inv_size[] = { 1/(float)window_width, 1/(float)window_height};
-			RendererUpdateBuffer(r, inv_size_cbuffer, inv_size, 2*sizeof(float)); 
-			
-			RendererUpdateBuffer(r, jfa_vs_cbuffer, &vs_cbuf, sizeof(matrix)*2); 
-			
-			// Pixel Contstant Buffer
+
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
-			RendererUpdateBuffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf)); 
-											
-		}
-		
-		if (r->dirty) {
-			// MASK 
-			jfa_mask_resource->Release(); 
-			jfa_mask_render_target->Release(); 
-			jfa_mask_resource = NULL;
-			jfa_mask_render_target = NULL;
+
+			// upload to gpu
+			r_update_gpu_buffer(r, vs_constant_buffer, &vs_cbuf, sizeof(vs_cbuf));
+			r_update_gpu_buffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf));
 			
-			{
-				D3D11_TEXTURE2D_DESC texture_desc = {};
-				texture_desc.Width              = window_width;
-				texture_desc.Height             = window_height;
-				texture_desc.MipLevels          = 1;
-				texture_desc.ArraySize          = 1;
-				texture_desc.Format             = DXGI_FORMAT_R8_UNORM;
-				texture_desc.SampleDesc.Count   = 1;
-				texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-				texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-				texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-				
-				ID3D11Texture2D* texture;
-				r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-				r->device->CreateShaderResourceView(texture, NULL, &jfa_mask_resource);
-				r->device->CreateRenderTargetView(texture, NULL, &jfa_mask_render_target);
-				
-				texture->Release();
-			}
-			
-			
-			jfa_init_resource->Release(); 
-			jfa_init_render_target->Release(); 
-			jfa_init_resource = NULL; 
-			jfa_init_render_target = NULL;
-			
-				// INIT
-			{
-			D3D11_TEXTURE2D_DESC texture_desc = {};
-					texture_desc.Width              = window_width;
-					texture_desc.Height             = window_height;
-					texture_desc.MipLevels          = 1;
-					texture_desc.ArraySize          = 1;
-					texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
-					texture_desc.SampleDesc.Count   = 1;
-					texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-					texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-					texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-					
-					ID3D11Texture2D* texture;
-					r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-					r->device->CreateShaderResourceView(texture, NULL, &jfa_init_resource);
-					r->device->CreateRenderTargetView(texture, NULL, &jfa_init_render_target);
-					texture->Release();
-		}
-			
-			// JFA
-			jfa_mask0_render_target->Release();
-			jfa_mask0_resource_view->Release(); 
-			jfa_mask0_resource_view = NULL; 
-			jfa_mask0_render_target = NULL;
-			{
-				D3D11_TEXTURE2D_DESC texture_desc = {};
-				texture_desc.Width              = window_width;
-				texture_desc.Height             = window_height;
-				texture_desc.MipLevels          = 1;
-				texture_desc.ArraySize          = 1;
-				texture_desc.Format             = DXGI_FORMAT_R16G16_UNORM;
-				texture_desc.SampleDesc.Count   = 1;
-				texture_desc.Usage              = D3D11_USAGE_DEFAULT;
-				texture_desc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-				texture_desc.CPUAccessFlags     = D3D11_CPU_ACCESS_READ;
-				
-				ID3D11Texture2D* texture;
-				r->device->CreateTexture2D(&texture_desc, NULL, &texture);
-				r->device->CreateRenderTargetView(texture, NULL, &jfa_mask0_render_target);
-				r->device->CreateShaderResourceView(texture, NULL, &jfa_mask0_resource_view);
-				
-				texture->Release();
-			}
+			R_Pipline_Desc pipline_desc = {
+				R_TOPOLOGY_TRIANGLELIST,
+				cube_shdr,// shaders
+				{ cube_vbuf, cube_ibuf, vs_constant_buffer }, // vs_bindings 
+				{ ps_constant_buffer }, // ps_bindings
+				{ image },
+				{ point_sampler } 
+			};
+
+			float color[4] = { 0.025f, 0.025f, 0.025f, 1.0f }; 
+			r_fill_texture(r, screen, color);
+			r_switch_pipline(r, &pipline_desc);
+			r_set_cull_mode(r, R_CULL_MODE_BACK); // cull back/front
+			r_draw_indexed(r, screen, (int)indicies_count, 0, 0);
 		}
 		
 		
-		// clear background
-		FLOAT background_color[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
-		r->context->ClearRenderTargetView(r->frame_buffer_view, background_color);
 		
-		
-		// Draw outline
-			if (intersecting) { 
-			// TODO(ziv): Currently this is using too much of the GPU. 
-			// this is the case since I am working on the whole screen a couple of times 
-			// one after the other. I need to find how this can be made better. Since 
-			// Whether by using lower resolution screen first or any other solution. 
-			
-			// Create mask of the object
-			{
-				
-				float black[] = { 0, 0, 0, 0 };
-				r->context->ClearRenderTargetView(jfa_mask_render_target, black);
-				
-				r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-				const UINT stride = sizeof(Vertex);
-				const UINT offset = 0;
-				r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
-					r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
-				RendererVSSetShader(r, jfa_mask_vshader);
-				RendererVSSetBuffer(r, cbuffer);
-				
-				D3D11_VIEWPORT viewport = {0};
-				viewport.Width = (FLOAT)window_width;
-				viewport.Height = (FLOAT)window_height;
-				viewport.MaxDepth = 1;
-				r->viewport = &viewport;
-				
-				r->context->RSSetViewports(1, &viewport);
-				r->context->RSSetState(r->rasterizer_cull_back);
-				RendererPSSetShader(r, jfa_mask_pshader);
-				r->context->OMSetRenderTargets(1, &jfa_mask_render_target, NULL);
-				r->context->OMSetBlendState(NULL, NULL, 0xffffffff); // set default blend state
-				
-				r->context->DrawIndexed((UINT)indicies_count, 0, 0);
-			}
-			
-			// jfa init
-			{
-				ID3D11RenderTargetView* nullRTV = NULL;
-				r->context->OMSetRenderTargets(1, &nullRTV, NULL); // Unbind from slot 0 to bind the mask
-				
-				float black[] = { 0, 0, 0, 0 };
-				r->context->ClearRenderTargetView(jfa_init_render_target, black);
-				
-				r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-				RendererVSSetShader(r, jfa_init_vshader);
-				D3D11_VIEWPORT viewport = {0};
-				viewport.Width = (FLOAT)window_width;
-				viewport.Height = (FLOAT)window_height;
-				viewport.MaxDepth = 1;
-				r->viewport = &viewport;
-				r->context->RSSetViewports(1, &viewport);
-				r->context->PSSetShaderResources(0, 1, &jfa_mask_resource);
-				r->context->PSSetSamplers(0, 1, &sampler_state);
-				RendererPSSetShader(r, jfa_init_pshader);
-				RendererPSSetBuffer(r, inv_size_cbuffer);
-				r->context->RSSetState(NULL);
-				r->context->OMSetRenderTargets(1, &jfa_init_render_target, NULL);
-				r->context->DrawInstanced(4, 1, 0, 0);
-			}
-			
-			// jfa
-			{
-					ID3D11RenderTargetView* nullRTV = NULL;
-					r->context->OMSetRenderTargets(1, &nullRTV, NULL);
-				
-				float black[] = { 0, 0, 0, 0 };
-				r->context->ClearRenderTargetView(jfa_mask0_render_target, black);
-				
-					r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-					RendererVSSetShader(r, jfa_vshader);
-					D3D11_VIEWPORT viewport = {0};
-					viewport.Width = (FLOAT)window_width;
-					viewport.Height = (FLOAT)window_height;
-					viewport.MaxDepth = 1;
-					r->viewport = &viewport;
-					r->context->RSSetViewports(1, &viewport);
-					r->context->PSSetShaderResources(0, 1, &jfa_init_resource);
-					r->context->PSSetSamplers(0, 1, &sampler_state);
-					RendererPSSetShader(r, jfa_pshader);
-				RendererPSSetBuffer(r, inv_size_cbuffer);
-				r->context->OMSetRenderTargets(1, &jfa_mask0_render_target, NULL);
-					r->context->DrawInstanced(4, 1, 0, 0);
-			}
-			
-			r->context->ClearRenderTargetView(down_sampled_rtv, background_color);
-			// using the jfa rt along with the mask to create final image
-			{
-				
-				ID3D11RenderTargetView* nullRTV = NULL;
-				r->context->OMSetRenderTargets(1, &nullRTV, NULL);
-																			
-					r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-				RendererVSSetShader(r, jfa_solid_vshader);
-					D3D11_VIEWPORT viewport = {0};
-					viewport.Width = (FLOAT)window_width;
-					viewport.Height = (FLOAT)window_height;
-					viewport.MaxDepth = 1;
-					r->viewport = &viewport;
-					r->context->RSSetViewports(1, &viewport);
-					r->context->PSSetShaderResources(0, 1, &jfa_mask0_resource_view);
-					r->context->PSSetSamplers(0, 1, &sampler_state);
-				RendererPSSetShader(r, jfa_solid_pshader);
-				RendererPSSetBuffer(r, inv_size_cbuffer);
-				r->context->OMSetRenderTargets(1, &down_sampled_rtv, NULL);
-					r->context->DrawInstanced(4, 1, 0, 0);
-				}
-							
-			
-		}
-		
-		
-		// Draw Entity
 		{
+			float font_constant_data[4] = {
+				2.0f / window_width,-2.0f / window_height,
+				1.0f / ATLAS_WIDTH,1.0f / ATLAS_HEIGHT
+			};
+			r_update_gpu_buffer(r, screen_info_constant_buffer, font_constant_data, sizeof(font_constant_data)); 
+			r_update_gpu_buffer(r, widgets_buffer, ui->quads.data, ui->quads.idx*sizeof(R_QuadInst)); 
+			r_update_gpu_buffer(r, sprite_buffer, ui->font.data, ui->font.idx*sizeof(R_SpriteInst));
 			
-			
-			// Input Assembler
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			const UINT stride = sizeof(Vertex);
-			const UINT offset = 0;
-
-			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, vertex_buffer), &stride, &offset);
-			r->context->IASetIndexBuffer(*RendererBFToPointer(r, index_buffer),DXGI_FORMAT_R16_UINT, 0);
-
-			// Vertex Shader
-			RendererVSSetShader(r, vshader);
-			RendererVSSetBuffer(r, cbuffer);
-			
-			
-			D3D11_VIEWPORT viewport = {0};
-			viewport.Width = (FLOAT)window_width/(float)down_sample_multiplier;
-			viewport.Height = (FLOAT)window_height/(float)down_sample_multiplier ;
-			viewport.MaxDepth = 1;
-			
-			// Rasterizer Stage
-			r->context->RSSetViewports(1, &viewport);
-			r->context->RSSetState(r->rasterizer_cull_back);
-
-			// Pixel Shader
-			RendererPSSetShader(r, pshader);
-			RendererPSSetBuffer(r, ps_constant_buffer);
-			r->context->PSSetShaderResources(0, 1, &texture_view);
-			r->context->PSSetSamplers(0, 1, &sampler_state);
-
-			// Output Merger
-			r->context->OMSetRenderTargets(1, &down_sampled_rtv, NULL);
-
-			r->context->DrawIndexed((UINT)indicies_count, 0, 0);
+		// Draw Widgets
+			R_Pipline_Desc widget_pipline_desc = {
+				R_TOPOLOGY_TRIANGLESTRIP, 
+				widgets_shader, 
+				{ widgets_buffer, screen_info_constant_buffer },
+			};
+			r_switch_pipline(r, &widget_pipline_desc);
+			r_set_cull_mode(r, R_CULL_MODE_NULL);  
+			r_draw_instanced(r, screen, 4, ui->quads.idx, 0, 0); 
+			ui->quads.idx = 0;
+		
+		// Draw Font
+			R_Pipline_Desc font_pipline_desc = {
+				R_TOPOLOGY_TRIANGLESTRIP,
+				font_shader,// shaders
+				{ sprite_buffer, screen_info_constant_buffer}, // vs_bindings 
+				{  }, // ps_bindings
+				{ atlas_texture },
+				{ point_sampler } 
+			};
+			r_switch_pipline(r, &font_pipline_desc);
+			r_draw_instanced(r, screen, 4, ui->font.idx, 0, 0); 
+			ui->font.idx = 0;
 		}
 		
+		r_end(r);
 		
-		// draw downsampled texture onto the frame buffer
-		{
-			ID3D11RenderTargetView* nullRTV = NULL;
-			r->context->OMSetRenderTargets(1, &nullRTV, NULL);
-			
-			r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			const UINT stride = sizeof(float)*2;
-			const UINT offset = 0;
-			r->context->IASetVertexBuffers(0, 1, RendererBFToPointer(r, full_screen_vertex_buffer), &stride, &offset);
-			RendererVSSetShader(r, downsample_vshader);
-			
-			r->context->RSSetViewports(1,r->viewport);
-			RendererPSSetShader(r, downsample_pshader);
-			r->context->PSSetShaderResources(0, 1, &down_sampled_resource);
-			r->context->PSSetSamplers(0, 1, &sampler_state); // point sampler
-			
-			// Output Merger
-			r->context->OMSetRenderTargets(1, &r->frame_buffer_view, NULL);
-			r->context->Draw(4, 0);
-		}
-		
-		
-		
-		
-		
-		 DrawSubmitRenderCommands(d);
-		RendererD3D11Present(r); // present the resulting image to the screen
-		end_frame = Time(); 
-		dt = (float)(end_frame - start_frame);
+		dt = ((end_frame = (float)os_time()) - start_frame);
 		start_frame = end_frame; // update time for dt calc
 	}
-
-	release_resources:
-
+	
+	//release_resources:
+	
 	InputShutdown(); // rawinput
-	texture_view->Release();
-	sampler_state->Release();
-	// Draw DeInit
-	d->quads.blend_state_use_alpha->Release();
-	d->font.sampler->Release();
-	d->font.srv[1]->Release();
 	RendererDeInit(r);
-	return 0;
-
-	#endif 
+	
+	// more things to deinitialize ...
+	 // like buffers and textures and shaders and more.
+	return 0; 
 }

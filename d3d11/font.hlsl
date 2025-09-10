@@ -23,7 +23,7 @@ struct pixel
 //~
 
 StructuredBuffer<sprite> spritebuffer : register(t0);
-Texture2D<float4>        atlastexture : register(t1);
+Texture2D<float4>        atlastexture : register(t0);
 
 SamplerState             pointsampler : register(s0);
 
