@@ -2,7 +2,6 @@
 cbuffer vs_constants : register(b0) {
 	float inv_window_width; 
 	float inv_window_height;
-	float window_height;
 };
 
 struct widget { 
