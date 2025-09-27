@@ -21,6 +21,17 @@ Things to buy:
     - water filtering solution (one that you can squeeze
     - fleece or micro-fleece (check which one). Doesn't seem to matter all that much
     - head lamp
+        poncho
+
+https://www.traveltomtom.net/destinations/south-america/argentina/sim-card-argentina#claro
+
+
+Type of weather
+    Ushuaia     1C lows (probably not going to sleep here?)
+    O Trek      4C lows
+    El califate 4C lows
+
+Probalby taking a -1 or 0 comfort level sleeping bag is fine
 
 
 
