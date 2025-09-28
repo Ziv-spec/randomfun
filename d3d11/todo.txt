@@ -100,8 +100,8 @@ some blending options this might be possible
 TODO(ziv):
 ========================================================
  [ ] Implement high level abstraction for a pipline pass
-[ ] Make pixelated look 
-[ ] ECS for game objects (also hot reload everything?)
+ [ ] Make pixelated look 
+ [ ] ECS for game objects (also hot reload everything?)
 ========================================================
 
 

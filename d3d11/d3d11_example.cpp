@@ -979,6 +979,16 @@ typedef struct {
     float right_thumbstick_y;
 } Gamepad;
 
+/* 
+enum Key {
+	I_KEY_A,
+};
+
+typedef struct {
+	Key key; 
+} Keyboard;
+ */
+
 typedef struct {
 	//Keyboard keyboard;
 	Mouse mouse;
@@ -1133,17 +1143,13 @@ InputUpdate(LPARAM lparam) {
 	else if (raw->header.dwType == RIM_TYPEKEYBOARD) 
     {
 		
-		
-		/* 
 						printf(" Kbd: make=%04x Flags:%04x Reserved:%04x ExtraInformation:%08x, msg=%04x VK=%04x \n", 
-							   raw->data.keyboard.MakeCode, 
-							   raw->data.keyboard.Flags, 
+							   raw->data.keyboard.MakeCode, // ?
+							   raw->data.keyboard.Flags, // flags - up/down 
 							   raw->data.keyboard.Reserved, 
 							   raw->data.keyboard.ExtraInformation, 
 							   raw->data.keyboard.Message, 
-							   raw->data.keyboard.VKey);
-						 */
-
+			   raw->data.keyboard.VKey); // virtual key value
     }
 	
 	//delete lpb;
