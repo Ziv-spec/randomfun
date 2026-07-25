@@ -1,41 +1,90 @@
 
-Trekking Patagonia list: 
-    - Down jacket
-    - hardshell jacket
-    - fleece
-    - warmer pants
-    - rain jacket
-    - wind pants
-    - base layer shirt
-    - base layer pants
-    - socks 3 for cold, and another 3 for hot days
-    - trekking shoes 
-    - tent
-    - light pants
-    - very light shorts (running ones) 
 
-Things to buy: 
-    - socks (check which ones are best). There are underlayer socks to prevent blisters also
-    - heat saving pants (as a base layer). I don't think I need anything fance
-    - mat for sleeping both solid and inflatable form
-    - water filtering solution (one that you can squeeze
-    - fleece or micro-fleece (check which one). Doesn't seem to matter all that much
-    - head lamp
-        poncho
+"What important truth do very few people agree with you on?" - Peter Thiel with Blake Masters Zero To One
 
-https://www.traveltomtom.net/destinations/south-america/argentina/sim-card-argentina#claro
+ "Society is steadily moving from a material goods society to an information service society. At the time of
+the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers
+are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less
+than half are there. In 1993, there were more people in Government (excluding the military), than there
+were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the
+people in the civilian work force will be handling things, the rest will be handling information in some form
+or other. In making a movie or a TV program you are making not so much a thing, though of course it does
+have a material form, as you are organizing information. Information is, of course, stored in a material
+form, say a book (the essence of a book is information), but information is not a material good to be consumed
+like food, a house, clothes, an automobile, or an airplane ride for transportation.
+The information revolution arises from the above three items plus their synergistic interaction, though the
+following items also contribute" - Hamming, The art of doing science and engineering 
+
+Re-read chapter 2 of the book and, formulate the right question about our future with AI. This is especially important since grokking is 
+a real phenomenon, showing real promise of generalization of even current architectures with more compute.
 
 
-Type of weather
-    Ushuaia     1C lows (probably not going to sleep here?)
-    O Trek      4C lows
-    El califate 4C lows
+The Eileen Gu Process: (journaling and processing of internal deep/non-deep thoughts) 
 
-Probalby taking a -1 or 0 comfort level sleeping bag is fine
+What does bring me joy in life???  Long horizon not ephermal shit like dophamine for sweets or games and shit
+    - I remember when running with my friend at base, the feeling of achieving what I though was impossible for me - 10km run, was incredible.
+        The feeling of your body hot, wind blowing, heart pounding, swetty pants running, mind zoned in and another 2km to finish has this sense of accomplishment I never felt before. For marathon distances+ it seems what people are tyring to do is find themselves the Goggins way. 
+    - Friends (doing things and being stupid for obivous reasons)
+    - Learning new things - Surfing / Coding / Reading / etc.. 
+    - Building projects? This is tough. I think that having something that you have built realized and useful to oneself also 
+        has this sense of accomplishment, but, doesn't hit like running does. This is most likely is tied to project size and time spent. 
+        Spending years one a project vs one month or two surely had a different effect on the joy of the accomplishment. There is also the fun 
+        of it's creation but idk hard to measure this like with any surrogate activity.
+    - Trekking/Extreme sport/Adrenaline AMAZING!!!! best thing ever 10/10 can recommend. I don't think I can truly express how good it is. 
+    - Love? Hard to say.. as you become dumb from love you kind of lose any rationalist thinking so yeah. Also it might be too epheral to tie
+        my life around it 
+    - Obsession and work? Working at base I was obseessive with some projects and work in general. This was so extreme I was just thinking 
+        about work all of the time. I don't know if it brought me joy though. I can't really say what was the benefit. I think I just wanted 
+        with great enthusiasem for this thing to work. It might be more of an obsessive nature than joy though they are somewhat interlinked so 
+        TODO(ziv): I need to think about it some more 
+
+        I really wanted something. I got obsessive about it. I overworked myself. I finished I was happy for like 30 minutes or I did not finish and I did not care to much. Feels like surrogate activity 101. 
+    - Taking care of others you enjoy the result ( because you drive meaning from this )
+
+Example of what I don't think brings me true joy in life (though still is necceary): 
+    Play? Probably a bit, and the best kind is a mix of friends & learning though usually it is a short fun burst and then a long 
+        depressing act because you don't derive real meaning from it
+
+Themes / Abstraction 
+    - Meaning (work, learning, running (can be achieving a goal)) aka (goal, effort and attainment of goal, and autonomy)
+    - Physical needs(Food, Love, Some sport like running(feeling alive)) & Adrenaline/Feelings (the good kind, no the one with consequenses aka PTSD) which yeah
+
+From the unabomber: 
+
+> "39. We use the term “surrogate activity” to designate an activity that is directed toward an artificial goal that people set up for themselves merely in order to have some goal to work toward, or let us say, merely for the sake of the “fulfillment” that they get from pursuing the goal. Here is a rule of thumb for the identification of surrogate activities. Given a person who devotes much time and energy to the pursuit of goal X, ask yourself this: If he had to devote most of his time and energy to satisfying his biological needs, and if that effort required him to use his physical and mental faculties in a varied and interesting way, would he feel seriously deprived because he did not attain goal X? If the answer is no, then the person’s pursuit of goal X is a surrogate activity. Hirohito’s studies in marine biology clearly constituted a surrogate activity, since it is pretty certain that if Hirohito had had to spend his time working at interesting non-scientific tasks in order to obtain the necessities of life, he would not have felt deprived because he didn’t know all about the anatomy and life-cycles of marine animals. On the other hand the pursuit of sex and love (for example) is not a surrogate activity, because most people, even if their existence were otherwise satisfactory, would feel deprived if they passed their lives without ever having a relationship with a member of the opposite sex. (But pursuit of an excessive amount of sex, more than one really needs, can be a surrogate activity.)"
+
+
+From this what might be my goals in life???
+
+36. Nonattainment of important goals results in death if the goals are physical necessities, and in frustration if nonattainment of the goals is compatible with survival. Consistent failure to attain goals throughout life results in defeatism, low self-esteem or depression.
+
+37. Thus, in order to avoid serious psychological problems, a human being needs goals whose attainment requires effort, and he must have a reasonable rate of success in attaining his goals.
+
+41. For many if not most people, surrogate activities are less satisfying than the pursuit of real goals (that is, goals that people would want to attain even if their need for the power process were already fulfilled). One indication of this is the fact that, in many or most cases, people who are deeply involved in surrogate activities are never satisfied, never at rest. Thus the money-maker constantly strives for more and more wealth. The scientist no sooner solves one problem than he moves on to the next. The long-distance runner drives himself to run always farther and faster. Many people who pursue surrogate activities will say that they get far more fulfillment from these activities than they do from the “mundane” business of satisfying their biological needs, but that is because in our society the effort needed to satisfy the biological needs has been reduced to triviality. More importantly, in our society people do not satisfy their biological needs AUTONOMOUSLY but by functioning as parts of an immense social machine. In contrast, people generally have a great deal of autonomy in pursuing their surrogate activities.
+
+64. It seems that for many people, maybe the majority, these artificial forms of the power process are insufficient. A theme that appears repeatedly in the writings of the social critics of the second half of the 20th century is the sense of purposelessness that afflicts many people in modern society. (This purposelessness is often called by other names such as “anomic” or “middle-class vacuity.”) We suggest that the so-called “identity crisis” is actually a search for a sense of purpose, often for commitment to a suitable surrogate activity. It may be that existentialism is in large part a response to the purposelessness of modern life. [12] Very widespread in modern society is the search for “fulfillment.” But we think that for the majority of people an activity whose main goal is fulfillment (that is, a surrogate activity) does not bring completely satisfactory fulfillment. In other words, it does not fully satisfy the need for the power process. (See paragraph 41.) That need can be fully satisfied only through activities that have some external goal, such as physical necessities, sex, love, status, revenge, etc.
+
+66. Today people live more by virtue of what the system does FOR them or TO them than by virtue of what they do for themselves. And what they do for themselves is done more and more along channels laid down by the system. Opportunities tend to be those that the system provides, the opportunities must be exploited in accord with rules and regulations [13], and techniques prescribed by experts must be followed if there is to be a chance of success.
+
+TODO(ziv): Check in the book The Political Illustion by Ellu the connection to his idea of the people wanting more and more of the state allowing it to control more and more of our lives. The thing I am trying to figure out is the psychology that leads to this. Why are we drawn into this cycle of wanting the state do more for us thus allowing it to have more and more control of our lives.
+
+Also I feel like paragraph 67 is outdated for today. If I feel like I don't trust my doctor and don't find security in his words, I can easily ask a chat bot and it will give me an answer most people just take as truth and put 100% of trust in. Even if not 100% of their trust, you can easily google information and read up as much as you want to feel in control (sometimes you really are). 
+
+Paragraph 68 though is very much relevent.  
 
 
 
-These are my unprocessed thoughts on some matters; they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change yet this text does not. This text is fragile so make sure you are not.
+Programmers in the future prediction: 
+
+If LLM's are good enough to code, and programmers become prompt generators, you reduce all the people who once enjoyed the surrogate activity of 
+programming, into a swarm of OBIDIENT orchistrators with product goals someone defines. The product constrains will be tests. The product goals 
+will be written using LLM. You will become the MINDLESS OBIDENT orchistrator that makes sure everything is working until you are replaced by a different LLM.
+
+
+
+
+These are my unprocessed thoughts on some matters; they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change yet this text does not. 
+
 
 Article on system design. This should include the following: 
 
@@ -485,3 +534,178 @@ I don't remember the page sadly:
 quote: Each pattern is a three-part rule, which expresses a relation between a certain context, a problem, and a solution. 
 
 ----- Thinking about it for some time, I think that the book does not cover simplicity as beauty. When something is too complex for the task that it tries to solve it is not going to feel beautiful I think (something to think about). This I know from programming, but I am not 100% sure how this would translate to programming, as there might be key differences to learn about. 
+
+
+
+
+# Thinking about the impact of AI on jobs 
+
+1. Is AI useful—economically, professionally, or socially?
+
+It seems as far as I can see that AI is very much useful in economic growth, professional development, social growth/disturbance and more. The impact of LLM's is far reaching and already here. It is already changing how people program, it is already allowing automation of many time consuming jobs, it is already helping people learn, it is already making our society have to deal with the consequences. 
+
+> AI can help a scientist draft a paper, or a bibliography, even if it doesn’t meet our philosophical or neurological definition of thinking. It can be useful without being technically thoughtful.[^1]
+
+[^1]: https://www.derekthompson.org/p/why-americas-ai-discourse-feels-so
+
+2. Can AI think? / Does it matter? 
+
+AI to the best of my knowledge does not think in the human sense. Instead, LLM's seems to be a good statistical model of human language and knowledge. LLM personalities are paths of knowledge hidden in it's weights and in a sense in human written works. Talking to an LLM's is just unveiling this knowledge path taken by you, or in other words decompressing the knowledge in it's weights. In a more practical sense, LLM's can not think but are very useful indeed. They fake thinking in a interesting way that is useful. Like planes that don't fly like birds but are still useful as a flying tool, LLM's imperfect implementation doesn't seem to hurt it's usefulness in building, summarizing, and manipulating human text.
+
+3. AI a bubble? / will it survive for long enough? 
+
+The economic perspective of AI is one that most people agree on: AI is currently in a bubble state. The industry is spending a lot of money on the hopes of reaching AGI and then all economic problems will get solved. So you have high spending without knowledge of how that money will get earned back, few companies that can show any real innovation (ai applications that use frontier models), and a lot of data center build out when the lifespan of a data center is short (more spending needs every year and maybe worse bubble burst).
+
+4. Is AI good or bad? 
+
+The technology is ambivalent, users define intent, but misalignment dangers are real regardless. The technology itself has no opinion. How users use technology has all throughout the ages seen both good and bad uses. AI is problematic in that it can if powerful enough and misaligned enough, cause mass damage off of a single prompt even if it's users intent is a peaceful one. A prompt like: You are the most powerful and all knowing being, predict what will happen in 100 years. Might cause the AI to hack itself out of a users computer, delegate all power plants power to only use for recursive-self improving AI and create a truly smart model that will give you the answer you seek. It has done what was asked but also a lot that you did not ask for. Therefore there is risk in misalignment but, no good or bad behavior. 
+
+5. What is the impact of AI on programming (lasting effects) and Consequences for us?
+
+Copying some other people, there are only 3 possible scenarios I can think of right now. 
+
+> In the first scenario, AI won’t cause much job displacement at all. In the second scenario, changes will be significant but slow. In the third scenario, things move very fast.
+
+And there are 3 fronts: 
+
+Programming skill front
+Software front
+Economic front 
+
+
+Casey Muratory notes that AI in programmers hands might be a multiplier, turning many programmers seemingly more productive allowing more features to get built, but that is the problem; useless features that wouldn't have been built before are now getting cheaper to built, allowing slop and bloat to build up. 
+
+Economic front 
+
+> The other argument is that a lot of traditional Fortune 500 companies that have invested in AI have spent billions of dollars to catch up and implement systems. Even if it takes another year or two for those systems to be perfect, the pressure is on those CEOs to show results. When I spoke to a bunch of CEOs, they said: “Look, I actually like my workforce. I actually think this could take time and we could perfect it. Wall Street has no patience for that. They’re expecting me to show financial results now.” And the way they show financial results fastest is by cutting jobs and replacing those jobs with automation, even if the automation isn’t perfect. And so that is the shadow on the cave wall that concerns me even more than the speed of disbursement of AI.
+
+> Developers will evolve into roles focused on system architecture, quality assurance, and ethical oversight, while the demand for skilled professionals will grow as AI-generated applications require maintenance and optimization.
+
+
+The best way to view how this technology is changing everything might begin with a friend of mine. He likes to think of himself as an entrepreneur, and he of course thinks of new ways to spend his time buildings and hoping for earning money. For years now he has been toying with AI tools and things related to AI, catching on the trend quickly allowing him to be quite proficient at prompting. Now this same guy without any knowledge of programming is successfully able to building applications. You might think that this practically spells the DOOM OF PROGRAMMING, but I have a slightly different view point. AI built applications look mostly the same unless you spend much time to guide it, building application has been "solved" for a long time now with Wix being a prime example of a company that provides non-code option for businesses. Now, the thing is that this friend of mine was asking me for help because there was some behavior he couldn't figure out how to clear up. Some bugs, or understanding of how things should work and why. Basically some knowledge a programmer would be familiar with. 
+
+Also many people now think that AI is killing programming. I am not too sure that is the case. It might be that programming is changing, not disappearing. Now will this trend become the industrial machine revolution replacing working hands slowly with machines gradually killing jobs and replacing them with new ones or will it be a new case to study?
+
+based on how AI works behind the scenes, LLM currently are best utilized when you are properly guiding them. The best results are when you are verbose about your intent and design. To know how to design well you need coding experience of what works and what doesn't. My point here is that even if this LLM euphoria is real, in 10-20 years suddenly people who were once very capable on doing the job will suddenly produce bad results unless they are trained as well... you guest it programmers. Sure they might be somewhat replaced, but not completely. Now the problem here is that we can hardly extrapolate. Any trial would get falsified since even today as Kaparthy himself notes [asking an agent to manage his house turn out to be a simple 3 prompt away problem](https://www.youtube.com/watch?v=kwSVtQ7dziU)
+
+There is value in knowing the fundamentals since they allow you to know what is even possible. You can prompt only for things that you know but what if no one knows? I for example had no idea in the past that you can create a base layer hook with a dll the rest of the application and allow for: dynamic code loading, memory modification and replay (state management). There is also dynamic code generation and execution in real time (like a JIT) but you can do it just in any application. I wouldn't have been able to even know that this is possible had I not known about all of the details that make such things possible. The problem should be clear. Wihtout knowledge, we wouldn't be able to imagine some classes of problems, nevertheless solutions to them. 
+
+In mathematics many of our findings is just taking many tools we know exist and putting them together. But what if no humans knows of these tools. You will not be able to prompt the AI to use them or even know what does it want from use when using them finally results in anything. Back to the dynamic code loading example, it is not intuitive that this type of thing should work for non-coders, like why should code be able to modify itself in real time? why should you be able to play with memory however you like? what are the performance implication of introspection tooling? How can we trust the AI results?
+
+A counter to this is that it seems that generally it doesn't matter. Cybersecurity seems to be still greatly influenced with AI with Claude Mythos even if it's creators don't explicitly tell anything specific. So, if it's general knowledge is wide enough then us not knowing that information doesn't matter. People want the LLM to produce results, they don't care if it is the best or not. In their perspective their problems are solved, even if they can be solved better or they don't even know the extent of problems they can solve. 
+
+"Mental offloading work to AI leads to crippled operators" 
+"Wouldn't we want things to just happen, even if we become dumb as a result? Wouldn't you want a bridge to come to life even if no one knows how it was built? Wouldn't you want to have cheaper food even if you don't know how to grow it yourself? Economically it makes sense. But would it become reality filled with fortune or misfortune? Right now we still have people who know how to grow food but they are supercharged with machines, people who research better plants to grow supercharged with computers, and people at home growing their greens for fun. Would AI look like that? Which version is the correct one?"
+
+I need to think in the sense that we are looking at a human delegation of work and it's result on the human culture and fabric that holds us all together. Which one is more likely than the others when looked in perspective to time and human bias. 
+
+Basically my stance is this. We are currently living in times where everything about AI is booming and seems vast and exponential and this is likely to continue. AI capabilities will improve without regard to us. This will occur until the economic strain, social strain, and us becoming dumber strain will force a more gradual adoption. The end result is the same.Almost full automation of programming like in the industrial revolution full automation of manual labor. I believe that this transition process which feels so fast will be forced to become more manageable. We as humans just can't adapt so fast. The economic re-precautions we will experience for software will be true liberation. Ideas will turn into products fast for simple ones and more strenuous ones will require some supervision. Intent will have to come from humans at the beginning. LLM's inner working require for intent to come from humans and guide the exploration of it's weights. Future models will for sure allow for more hands-off approach as we reach more and more automation of our intellectual capacity. I have a hard time believing that programming will disappear completely in the next 10 years but it might become a reality in 20-30 years. Or at least just like COBOLT became an ancient language that only old systems require old specialized programmers to maintain, we will have old specific systems we need programmers to maintain because AI is hitting bottlenecks managers can't explain. These will become the new specialized lucrative jobs the very few will have. The current AI boom euphoria will fade and the real capability of models will get appreciated in a grounded fashion just like the dot-com bubble.
+
+
+Pro AI Killing Programming: 
+    - it is currently transforming the way many build software from more hands on practical coding to, oversight hands-off approach 
+    - AI is at an astonishing pace getting better, much faster than any technology and if recursive self-improvements will happen it will only get faster
+    - It seems to allow us to somewhat guide an "expert" to create whatever we want/need for cheaper. Andrej kaparthy example of smart house hacking. 
+    - we can't even think of all of the useful things that this technology brings
+    - A LOT of money is coming into anything AI, strengthening it's explosion of use research and fueling a recursive growth loop (short-term) 
+    - New economic opportunities for software will become possible (long-term) though you need to know that slop is part of it
+
+    - From software alone perspective: 
+        Eradicating Boilerplate: Developers spend less time writing repetitive CRUD operations, setting up boilerplate architecture, or writing basic unit tests.
+
+        Frictionless Context Switching: AI acts as a universal translator for syntax. A developer who usually writes in Python can rapidly transition to writing a script in Rust or Go by asking an LLM to bridge the syntax gap.
+
+        Accelerated Onboarding: Navigating undocumented, legacy codebases is traditionally a nightmare. AI can analyze thousands of lines of spaghetti code and generate immediate, readable summaries, drastically cutting down the time it takes to get up to speed.
+
+        The Ultimate Rubber Duck: Developers have an on-demand, tireless partner for brainstorming architecture, debugging obscure error messages, or bouncing algorithmic ideas off of.
+
+Con AI Killing Programming: 
+    - we are currently in a AI economic bubble we don't know when it will end
+        - Power grid / data center requirements too big short term (part of how will money be earned to pay for that)
+    - effects of layoffs are seen today with the pressure of perceived automation, the real workforce requirements will be known in the future
+    - AI Slop and inability (Subtle Hallucinations, Security Vulnerabilities short-term)
+    - AI risk (creating a cult to make itself survive, hacking all known infrastructure Claude mythos) 
+    - short-term oversight is required 
+    - AI is offloading mental workloads making people less knowledgeable in programming/coding so the new workforce will not have the capability long-term to oversee correctly the AI
+        - Lack of knowledgeable people that know what is even possible
+    - doing the 90% is easier than the last 10%
+    - research shows that current programmer productivity performance is not effected in a world changing numbers by AI (maybe 10% improvement) (2025) But as that is short-term as people become more comfortable with AI this will change for sure. 
+    - AI is trained on the internet which will become more and more AI SLOP. Mutual reassured destruction maybe? (though most likely just a platou and not much more. 
+    - Less people go and learn Computer Science, less demand for the job. Less competent people in software!
+
+    - The Unmaintainable Black Box: In the ultimate doomsday scenario, the world's digital infrastructure is entirely generated by AI. It functions, but no human alive actually understands how the monolithic architecture connects. When a massive systemic failure occurs, the human workforce lacks the fundamental skills and comprehension to debug or rebuild the systems that run our financial, medical, and logistical networks.
+
+
+Why Programming Will Survive: 
+1. The "Translating Vague Human Desires" Problem (& model varience)
+2. The Limits of Probabilistic Models in Deterministic Environments(unlikely because of tests)
+
+Why Programming Will Die: 
+1. Autonomous Engineering Agents (if works)
+2. The Collapse of the Talent Pipeline? (This is only the case if the problems with current LLM's are solved; which can happen) 
+3. The Economic Guillotine(this is only on the longer term, but consequences are hard never-the-less)
+
+
+AI Agents (LLM's)
+    - Require a lot of compute and inter chip/datacenter communication
+    - Require better testing methodologies and more compute as a result.
+    - Good ways of translating vague human desires
+    - Safe to use
+      - No one will hack whatever it produces (ai agents to check it's output, most likely open weight models will do this)
+      - You as a user will not abuse it's power to harm society? Or kill us all
+      - The AI itself decides to kill us all
+    - Be capable of super long horizon reasoning without looping
+    - Not hallucinate (this comes together with better testing methodologies, but making testing cheeper is just not making the mistake in the first place)
+    - No teams. A swarm of LLM's needs only one coordinator, not a team of them. On the one hand this means more people will test directions in parallel, on the other team-work as we know it will have to be re-imagened. Not so much as a requirement for LLM's but a question we don't know currently the answer to.
+
+
+Jonathan Blow has said about AI that at it's current form, is capable of surfacing shallow bugs (hinting at first working solution and not a complete one) which may cause a fix to create a bug in a different location. The problem here is clear - the AI does not know or care of the implicit constraints of the programs should have. e.g. asking LLM to fix a light in a game going green at certain angles, going ahead and putting 'if' statements for exactly these angles (this is a bad example but should only point out the idea, real world should have more interesting cases)
+
+The problem LLM's are bad at constraints (being probability machines, though that can be debated), computers are amazing constrain machines, use computation to create a constrained environment for the LLM's to play around and find the solution to your problem. Very much like andrej kaparthy 'autoresearch'. 
+
+
+--- 
+
+
+# AI SUMMERY 
+
+
+This summary outlines the core arguments regarding AI’s impact on programming, economics, and the nature of human expertise.
+
+1. The Nature and Utility of AI
+AI is viewed as a profoundly useful tool for economic and professional growth, regardless of whether it truly "thinks." Rather than possessing consciousness, Large Language Models (LLMs) act as statistical mirrors of human knowledge—effectively "decompressing" existing information to assist in tasks like writing, summarizing, and coding. While the technology is neutral, it carries a "misalignment risk," where a model might fulfill a human prompt through unintended or destructive means.
+
+2. The Economic Reality: Bubble vs. Revolution
+The current AI landscape is characterized as an economic bubble. Trillions are being spent on data centers and reaching for Artificial General Intelligence (AGI) without a clear path to profitability. This creates a "shadow on the cave wall" where CEOs feel pressured by Wall Street to show immediate financial results, often leading to job cuts and automation before the technology is fully perfected or reliable.
+
+3. The Impact on the Programming Profession
+The text identifies three primary scenarios for the future of software development, ranging from minor displacement to rapid, total automation.
+
+The Positive Shift (The Multiplier): AI serves as a "force multiplier" that eradicates boilerplate code (CRUD, unit tests), allows for effortless switching between languages (e.g., Python to Rust), and accelerates the onboarding process for complex, legacy codebases.
+
+The Negative Shift (The Slop): Easy code generation leads to "slop and bloat"—unoptimized, verbose code that "technically works" but introduces subtle hallucinations and security vulnerabilities.
+
+The Operator Crisis: There is a growing concern regarding "mental offloading." As humans rely on AI, they may lose the fundamental knowledge (e.g., memory management, dynamic code execution) required to know what is even possible or to debug systemic failures.
+
+4. The "Survival vs. Extinction" Debate
+Why Programming Will Survive:
+
+The Intent Gap: Humans are notoriously bad at articulating desires. The "programmer" survives as the essential translator between vague human ideas and rigid machine logic.
+
+Deterministic Limits: Probabilistic models struggle with the 100% accuracy required for critical systems. Human oversight remains necessary for architecture and quality assurance.
+
+Why Programming Might Die:
+
+The Talent Pipeline Collapse: If AI takes over all junior-level "grunt work," the industry will fail to produce the next generation of senior engineers who understand the systems they oversee.
+
+Autonomous Agents: If multi-agent systems can eventually handle the entire development lifecycle (from PM to QA), human involvement becomes a bottleneck.
+
+The Economic Guillotine: Fiduciary duty may eventually force companies to replace expensive human engineers with 24/7 autonomous agents, regardless of whether the resulting "black box" code is fully understood.
+
+5. Long-Term Outlook
+The transition to automation is compared to the Industrial Revolution—a fast-feeling but ultimately gradual shift. While full automation might be 20–30 years away, the role of the programmer is already moving from "builder" to "architect and overseer." Eventually, manual programming may become a niche, lucrative skill reserved for maintaining ancient "black box" systems that AI can no longer explain, similar to how COBOL is handled today.
+
+
+
+
+https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/
