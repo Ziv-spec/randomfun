@@ -1,57 +1,87 @@
 
+Goals: 
 
-"What important truth do very few people agree with you on?" - Peter Thiel with Blake Masters Zero To One
+    1. Find all places where there is not enough data to train an LLM (to 
+    exploit for work) or data is garbage which does not allow for grokking or 
+    some human element will prevent us from collecting the data for this thing 
+    (e.g. Lithography, politics, handyman, so on...)
 
- "Society is steadily moving from a material goods society to an information service society. At the time of
-the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers
-are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less
-than half are there. In 1993, there were more people in Government (excluding the military), than there
-were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the
-people in the civilian work force will be handling things, the rest will be handling information in some form
-or other. In making a movie or a TV program you are making not so much a thing, though of course it does
-have a material form, as you are organizing information. Information is, of course, stored in a material
-form, say a book (the essence of a book is information), but information is not a material good to be consumed
-like food, a house, clothes, an automobile, or an airplane ride for transportation.
-The information revolution arises from the above three items plus their synergistic interaction, though the
-following items also contribute" - Hamming, The art of doing science and engineering 
+    Even better are jobs where you don't have a clear goal you can try forever. 
+    Jobs where each action has very high stakes; standing in direct opposition 
+    of verifiable cheep to change software jobs.   
+
+    After you find them, think of a way to exploit this for work; making sure 
+    you don't become the obedient slave for others (for many reasons).
+
+    Answer(short): 
+     Lithography - closed industry with little data, hard problems, unclear how many varifiable rewards there are
+     Politics - People in power will find ways to stay in power, AI won't change that
+     Handyman - Hard for robotics to replace because of dynamic job type. Nobody wants to do this dirty job so high earners are more willing to hire even if they can do themselves with the help of AI (instructing)
+     Research - Problems are open ended. Knowing how to ask the right problems is very important, and that requires knowlege people study and work for their whole life. Solutions will be helped with AI and yet it does not remove humans from the job. The risk is different: will countries continue providing funding for research or will companies hire researchers to do what they do best.
+
+    2. Read the hardware lottery. And I believe there is a interesting 
+    connection and a thing to evaluate when looking at the insight Fabien gave 
+    while reviewing Nvidia GPU architecture changes over time to fit industry 
+    needs. 
+
+    "With the release of Turing in 2018, Nvidia operated its "biggest architectural leap forward in over a decade"[13]. Not only the "Turing SM" added A.I dedicated Tensor cores, they also gained Raytracing cores. This fragmented design reminds of the Pre-Tesla layered architecture, proving once again that history likes to repeat itself." - [Fabien](https://fabiensanglard.net/cuda/)
+
+    3. Find what might be a good way of going forward with life. 
+
+    4. Think about how to find a girlfriend. 
+
+    5. Ran a half marathon? (21km)
+
+    6. Read https://jsomers.net/blog/william-james-advice and after finishing the book "Thinking Fast Thinking Slow" re-review what is written here with the framework given in the book. See how does it hold up and the reasoning behind every persons opinions. 
+
+
+> "Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute" - Hamming, The art of doing science and engineering 
 
 Re-read chapter 2 of the book and, formulate the right question about our future with AI. This is especially important since grokking is 
 a real phenomenon, showing real promise of generalization of even current architectures with more compute.
 
 
-The Eileen Gu Process: (journaling and processing of internal deep/non-deep thoughts) 
+past religion : we are special because of we were made in gods image
+todays religion: we are special because we can think / do what machines can't do
+future religion: ????
 
-What does bring me joy in life???  Long horizon not ephermal shit like dophamine for sweets or games and shit
+Like what fiverr's ceo said in an interview: "actually dig deep down inside and rediscover our humanity and what makes us different" 
+this is exactly the need for a new religion
+His solution: "everything collapses into judgment, like like this is what we have." 
+what makes your story? what makes you you? 
+
+In other words: any information, any experience we have is what creates our judgment and that, most likely, is what we should believe in from a philosophical point of view. From a more practical one, 
+
+But like anything in life, the way the rich accumulate power is through their power and in the age of LLM's and AI this means companies burning money and compute to get specialized LLM's that give them an advantage over everyone else (since you don't have access to their resources). This is the way that as has always been true in history the rich will become richer, offer better things that allow themselves to differentiate from the masses. 
+
+
+The Eileen Gu Process: (Journaling and processing of internal deep/non-deep thoughts) 
+
+What does bring me joy in life???  Long horizon not ephemeral shit like dopamine for sweets or games and shit
     - I remember when running with my friend at base, the feeling of achieving what I though was impossible for me - 10km run, was incredible.
-        The feeling of your body hot, wind blowing, heart pounding, swetty pants running, mind zoned in and another 2km to finish has this sense of accomplishment I never felt before. For marathon distances+ it seems what people are tyring to do is find themselves the Goggins way. 
-    - Friends (doing things and being stupid for obivous reasons)
+        The feeling of your body hot, wind blowing, heart pounding, sweaty pants running, mind zoned in and another 2km to finish has this sense of accomplishment I never felt before. For marathon distances+ it seems what people are trying to do is find themselves the Goggins way. 
+    - Friends (doing things and being stupid for obvious reasons)
     - Learning new things - Surfing / Coding / Reading / etc.. 
     - Building projects? This is tough. I think that having something that you have built realized and useful to oneself also 
         has this sense of accomplishment, but, doesn't hit like running does. This is most likely is tied to project size and time spent. 
         Spending years one a project vs one month or two surely had a different effect on the joy of the accomplishment. There is also the fun 
         of it's creation but idk hard to measure this like with any surrogate activity.
     - Trekking/Extreme sport/Adrenaline AMAZING!!!! best thing ever 10/10 can recommend. I don't think I can truly express how good it is. 
-    - Love? Hard to say.. as you become dumb from love you kind of lose any rationalist thinking so yeah. Also it might be too epheral to tie
+    - Love? Hard to say.. as you become dumb from love you kind of lose any rationalist thinking so yeah. Also it might be too ephemeral to tie
         my life around it 
-    - Obsession and work? Working at base I was obseessive with some projects and work in general. This was so extreme I was just thinking 
+    - Obsession and work? Working at base I was obsessive with some projects and work in general. This was so extreme I was just thinking 
         about work all of the time. I don't know if it brought me joy though. I can't really say what was the benefit. I think I just wanted 
-        with great enthusiasem for this thing to work. It might be more of an obsessive nature than joy though they are somewhat interlinked so 
-        TODO(ziv): I need to think about it some more 
-
-        I really wanted something. I got obsessive about it. I overworked myself. I finished I was happy for like 30 minutes or I did not finish and I did not care to much. Feels like surrogate activity 101. 
+        with great enthusiasm for this thing to work. It might be more of an obsessive nature than joy though they are somewhat interlinked so 
+        I really wanted something. I got obsessive about it. I overworked myself. I finished I was happy for like 30 minutes or I did not finish and I did not care to much. Feels like surrogate activity 101 though, I can't say for sure. 
     - Taking care of others you enjoy the result ( because you drive meaning from this )
+    - Play - the learning or social with friends type or fun physical, not all consuming addiction type
 
-Example of what I don't think brings me true joy in life (though still is necceary): 
-    Play? Probably a bit, and the best kind is a mix of friends & learning though usually it is a short fun burst and then a long 
-        depressing act because you don't derive real meaning from it
 
 Themes / Abstraction 
     - Meaning (work, learning, running (can be achieving a goal)) aka (goal, effort and attainment of goal, and autonomy)
     - Physical needs(Food, Love, Some sport like running(feeling alive)) & Adrenaline/Feelings (the good kind, no the one with consequenses aka PTSD) which yeah
 
 From the unabomber: 
-
-> "39. We use the term “surrogate activity” to designate an activity that is directed toward an artificial goal that people set up for themselves merely in order to have some goal to work toward, or let us say, merely for the sake of the “fulfillment” that they get from pursuing the goal. Here is a rule of thumb for the identification of surrogate activities. Given a person who devotes much time and energy to the pursuit of goal X, ask yourself this: If he had to devote most of his time and energy to satisfying his biological needs, and if that effort required him to use his physical and mental faculties in a varied and interesting way, would he feel seriously deprived because he did not attain goal X? If the answer is no, then the person’s pursuit of goal X is a surrogate activity. Hirohito’s studies in marine biology clearly constituted a surrogate activity, since it is pretty certain that if Hirohito had had to spend his time working at interesting non-scientific tasks in order to obtain the necessities of life, he would not have felt deprived because he didn’t know all about the anatomy and life-cycles of marine animals. On the other hand the pursuit of sex and love (for example) is not a surrogate activity, because most people, even if their existence were otherwise satisfactory, would feel deprived if they passed their lives without ever having a relationship with a member of the opposite sex. (But pursuit of an excessive amount of sex, more than one really needs, can be a surrogate activity.)"
 
 
 From this what might be my goals in life???
@@ -60,30 +90,28 @@ From this what might be my goals in life???
 
 37. Thus, in order to avoid serious psychological problems, a human being needs goals whose attainment requires effort, and he must have a reasonable rate of success in attaining his goals.
 
+39. We use the term “surrogate activity” to designate an activity that is directed toward an artificial goal that people set up for themselves merely in order to have some goal to work toward, or let us say, merely for the sake of the “fulfillment” that they get from pursuing the goal. Here is a rule of thumb for the identification of surrogate activities. Given a person who devotes much time and energy to the pursuit of goal X, ask yourself this: If he had to devote most of his time and energy to satisfying his biological needs, and if that effort required him to use his physical and mental faculties in a varied and interesting way, would he feel seriously deprived because he did not attain goal X? If the answer is no, then the person’s pursuit of goal X is a surrogate activity. Hirohito’s studies in marine biology clearly constituted a surrogate activity, since it is pretty certain that if Hirohito had had to spend his time working at interesting non-scientific tasks in order to obtain the necessities of life, he would not have felt deprived because he didn’t know all about the anatomy and life-cycles of marine animals. On the other hand the pursuit of sex and love (for example) is not a surrogate activity, because most people, even if their existence were otherwise satisfactory, would feel deprived if they passed their lives without ever having a relationship with a member of the opposite sex. (But pursuit of an excessive amount of sex, more than one really needs, can be a surrogate activity.)
+
 41. For many if not most people, surrogate activities are less satisfying than the pursuit of real goals (that is, goals that people would want to attain even if their need for the power process were already fulfilled). One indication of this is the fact that, in many or most cases, people who are deeply involved in surrogate activities are never satisfied, never at rest. Thus the money-maker constantly strives for more and more wealth. The scientist no sooner solves one problem than he moves on to the next. The long-distance runner drives himself to run always farther and faster. Many people who pursue surrogate activities will say that they get far more fulfillment from these activities than they do from the “mundane” business of satisfying their biological needs, but that is because in our society the effort needed to satisfy the biological needs has been reduced to triviality. More importantly, in our society people do not satisfy their biological needs AUTONOMOUSLY but by functioning as parts of an immense social machine. In contrast, people generally have a great deal of autonomy in pursuing their surrogate activities.
+
+Paragraph 41 assumes that " surrogate activities are less satisfying than the pursuit of real goals " yes does not provide any evidence for this. The whole argument of the author hinges on this being true! Everyone should probably seek what is their answer if surrogate activities are truly less satisfying than real goals.
 
 64. It seems that for many people, maybe the majority, these artificial forms of the power process are insufficient. A theme that appears repeatedly in the writings of the social critics of the second half of the 20th century is the sense of purposelessness that afflicts many people in modern society. (This purposelessness is often called by other names such as “anomic” or “middle-class vacuity.”) We suggest that the so-called “identity crisis” is actually a search for a sense of purpose, often for commitment to a suitable surrogate activity. It may be that existentialism is in large part a response to the purposelessness of modern life. [12] Very widespread in modern society is the search for “fulfillment.” But we think that for the majority of people an activity whose main goal is fulfillment (that is, a surrogate activity) does not bring completely satisfactory fulfillment. In other words, it does not fully satisfy the need for the power process. (See paragraph 41.) That need can be fully satisfied only through activities that have some external goal, such as physical necessities, sex, love, status, revenge, etc.
 
 66. Today people live more by virtue of what the system does FOR them or TO them than by virtue of what they do for themselves. And what they do for themselves is done more and more along channels laid down by the system. Opportunities tend to be those that the system provides, the opportunities must be exploited in accord with rules and regulations [13], and techniques prescribed by experts must be followed if there is to be a chance of success.
 
-TODO(ziv): Check in the book The Political Illustion by Ellu the connection to his idea of the people wanting more and more of the state allowing it to control more and more of our lives. The thing I am trying to figure out is the psychology that leads to this. Why are we drawn into this cycle of wanting the state do more for us thus allowing it to have more and more control of our lives.
+TODO(ziv): Check in the book The Political Illusion by Ellu the connection to his idea of the people wanting more and more of the state allowing it to control more and more of our lives. The thing I am trying to figure out is the psychology that leads to this. Why are we drawn into this cycle of wanting the state do more for us thus allowing it to have more and more control of our lives.
 
 Also I feel like paragraph 67 is outdated for today. If I feel like I don't trust my doctor and don't find security in his words, I can easily ask a chat bot and it will give me an answer most people just take as truth and put 100% of trust in. Even if not 100% of their trust, you can easily google information and read up as much as you want to feel in control (sometimes you really are). 
 
-Paragraph 68 though is very much relevent.  
-
-
-
-Programmers in the future prediction: 
-
-If LLM's are good enough to code, and programmers become prompt generators, you reduce all the people who once enjoyed the surrogate activity of 
-programming, into a swarm of OBIDIENT orchistrators with product goals someone defines. The product constrains will be tests. The product goals 
-will be written using LLM. You will become the MINDLESS OBIDENT orchistrator that makes sure everything is working until you are replaced by a different LLM.
+Paragraph 68 though is very much relevant.
 
 
 
 
-These are my unprocessed thoughts on some matters; they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change yet this text does not. 
+
+
+These are my unprocessed thoughts on some matters, they are not well written; these are not meant to be well written, for they are the raw crystallization of my thoughts. If you do end up reading this, please note that my thoughts change constantly and yet, this text does not. It is fragile by nature so please think and review whatever you get from here.
 
 
 Article on system design. This should include the following: 
@@ -435,7 +463,7 @@ Not only creating urgency of work is important, I have also found that reflectin
 
 As I think about it some more, actually the idea of exploring justice is more enticing to me than ever. This is because it would set me up for good action when faced with situations where justice is of great importance. What is justice? How do I know whether the actions of another are in-fact just or not. Does it matter? Should I be just? Should I be with people who are good and just or not? Can such people change? 
 
-In Plato's Republic he notes that when comparing between ultimate justice and ultimate evil/in-justice we know that being the ultimate evil is more beneficial to the individual. The ultimate in-justice is fooling everybody that your control and benefit is good. A false king sitting on the throne benefiting, fooling everybody while not ever getting caught, is the ultimate evil. Since you never fact the consequences. Whereas ultimate just would be just to everybody but might get screwed by the evil king even if just. So ultimate evil no downside great upside, ultimate just has great downside (lost reputation/money/more) and no materialistic or spiritual upside.
+In Plato's Republic he notes that when comparing between ultimate justice and ultimate evil/in-justice we know that being the ultimate evil is more beneficial to the individual. The ultimate in-justice is fooling everybody that your control and benefit is good. A false king sitting on the throne benefiting, fooling everybody while not ever getting caught, is the ultimate evil. Since you never face the consequences. Whereas ultimate just would be just to everybody but might get screwed by the evil king even if just. So ultimate evil no downside great upside, ultimate just has great downside (lost reputation/money/more) and no materialistic or spiritual upside.
 
 When bringing the discussion to our daily lives: cheating is often seen as evil. And here again, we can go into the just/in-just argument with great tools to guide us. A cheater that doesn't get caught is the ultimate evil. While someone who doesn't cheat is just. So again why should anybody be just when then can be in-just and get away with it? The common solution to why you should be just then is that you will get caught. This is a reasonable response but doesn't really cover the whole spectrum. What about when you don't caught. Does it not bring more upside than downside if you are a really good manipulator. This is probably why many people cheat. It is because they see the upside and don't believe that there is a great enough downside to their behavior. I also think that not only that but you can also see that they truly don't see this as wrong. At least when they do it. 
 
@@ -709,3 +737,57 @@ The transition to automation is compared to the Industrial Revolution—a fast-f
 
 
 https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/
+
+
+
+
+
+
+
+# Quotes I Like
+
+
+He who has a why can bear with almost any how. Man does not seek happiness, only the Englishmen does. - Friederich Nietzsche, Twilight of the Idols
+
+What we need to do is set out on a boat on a new sea without knowing where we are going, we just know we don't want to be where we are. So, we get in the boat and just start sailing; and we see what we find. - [Robert Pippin, referencing Nitche](https://youtu.be/-oGqcvrGURc?t=2488)
+
+"What important truth do very few people agree with you on?" - Peter Thiel with Blake Masters, Zero To One
+
+I have not yet been able to answer this question. Which is the exact reason for this being a good question.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

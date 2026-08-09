@@ -1,0 +1,247 @@
+
+The Plan??? 
+TODO(ziv): Update Plan!!!
+
+The reality - ai bubble, energy needs, computation needs, people are worried their skills are dying (transformation) 
+The cope - how do we try to cope with reality by dismissing AI
+Why we cope - utility vs meaning the coming of a new religion (https://journal.stuffwithstuff.com/ , https://www.youtube.com/watch?v=5Jb8e89vB9Y , 
+A plausible solution (new religion) - judgment, story, added meaning, experience oriented, no data, private industry so on...
+What is likely to happen? 
+    rich will get richer
+    new skill will be needed
+    groups of people will become unhappy
+    new ideology's arrive
+    fighting will occur
+    we find some new way of coping or state collapses (most likely someone will find manipulation techniques to make sure everything is okay and the state maintains power)
+
+
+
+
+AI allows for larger human coordination, and maybe without our bias. The the modern army uses AI and other tools to coordinate all of the moving parts of a war machine e.g. fuel airplanes with fighterjets, tanks with soldiers and fighterjet assitance. Every single moving piece needs not only know about the others, but utilize them accordingly. Humans can't do that on a large enough scale and AI comes to the rescue. 
+
+From where does creativity come? if it is so valuable it seems wouldn't we want more? the answer is experiences.
+
+critical thinking 
+
+The more mainstream thinking which is correct but won't be for most and that is careers where AI won't be able to replace. Sure it will only change the work until it is almost none recognizable like coding is just prompting and in the future teaching is what? teaching is something a child can play around with AI more and find out more easily than teachers. so where is the value of teachers? only in helping develop style and guiding experience and providing a system for social development!!! This is going to be the most important thing. Helping children adapt to the new world (aka government stay in power) and new generation survive the new age. 
+ 
+
+
+Style and direction are what matters
+    - Gwern has talked about taking all his writing and it becomes his coupus agent where the value must there fore come from style 
+    - As AI product leader Hilary Gridley argues, “It’s never been faster to build, which means it’s never been easier to run 10 times faster in the wrong direction.” 
+    - As Chip Huyen, the author of the bestselling AI Engineering points out, “AI makes building easier, but the hardest part remains knowing what to build.”
+    - The skills marketplace of Claude is the marketplace of style and judgment!!! The prompt contains the style of a person that is why it is valuable!!! Otherwise this would not have existed 
+
+
+Is your product going to be used by AI? 
+
+Is your career AI proof?
+
+
+
+ 
+# From one person to another 
+
+Musings on our future with AI
+
+The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly. This post will mainly focus on one self-centered question -- What then, should I do in the future?
+
+My hope is that you, if you are asking yourself a similar question, will find the time to not only ask it, but to answer it fully. 
+
+## Motivation
+
+### Why care for the future?
+
+TODO(ziv): Make this better / more compelling or something
+But why should I care? The answer will depend on you. If you are someone who doesn't have a goal, yet strives for excellence, Hamming might provide you with a compelling reason: 
+
+> To illustrate the importance of this point of trying to foresee the future I often use a standard story. It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about sqrt(n) steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance sqrt(n). In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 6]
+
+You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but that would be missing the point. 
+
+> One of the main tasks of this course is to start you on the path of creating in some detail your vision of your future. If I fail in this I fail in the whole course. You will probably object that if you try to get a vision now it is likely to be wrong—and my reply is from observation I have seen the accuracy of the vision matters less than you might suppose, getting anywhere is better than drifting, there are potentially many paths to greatness for you, and just which path you go on, so long as it takes you to greatness, is none of my business. You must, as in the case of forging your personal style, find your vision of your future career, and then follow it as best you can. No vision, not much of a future. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 7]
+
+Now, if you are someone who does not believe in Hamming's way of life -- where you should have goals and strive for excellence, his reasoning might fail you. This post was not at all made with this motivation in mind. I believe the majority of people reading this will not concern themselves with any particular vision for their future beyond having a stable job and family, and I am not here to preach one. What is it then that concerns me and many others? 
+
+For me at least FEAR.
+
+Imagine the future with what you know. Ask yourself: "Do I like this future?" If you do, this section will be meaningless to you, for you are already adapting and have no need to cope with reality. For those who hate AI or fear it, those who feel this change is bad, thinking of the future can be a way of coping with your anger/fear. I am myself part of this group, filled with fear for AI capability and it's rapid improvement; writing this is my way of cope.
+
+when hearing of AI taking jobs and getting better at taking more and more jobs, you ask yourself "will it stop?" and the conclusion I have reached is "unlikely". Because of that I became afraid.
+
+As part of wanting to find a vision for my future, I have decided to compile a list of things that I enjoy and find valuable. As I was typing items, the ones that stood out were 'Learning' and 'Programming'. I had this intuitive  sense that 'Programming' was not a core item that I should include, and along-side it that AI as many now are saying, will remove the need for this skill.
+
+
+ mean, their point is clear: everyone uses LLM's to learn or work, and as we use them, we can't help but think: "Aren't we all just helping train the next AI to replace us?" the main point here is the fear for job security. many people become demoralized since their once relatively secure path turned dangerous. We are creating all the information a new version of X company AI needs to replace me, and sending it straight to their servers it can't be a good feeling. Hell, even if it is somewhat obviously wrong, and what they learn in collage doesn't directly translate to skills they need at work which should in theory make them safe, in practice everyone at work uses AI and helps train the next version to replace them. This is not a true or accurate model of what happens and yet, one can't help but drown under the pressure these thoughts bring. 
+
+
+# The problem
+
+Richard Feyman "Why?" question
+
+Meaning
+
+Why am I afraid of AI? 
+
+Because I see my programming skills become less useful in the future and potentially more skills
+
+Why? 
+
+Because AI systems seem more and more capable at programming 
+
+No, why do my skills become obsolete scares me? 
+
+Because I value them
+
+Why? 
+
+Because I put a lot of time into it (while others likely not)
+
+Why?
+
+Because I enjoyed coding and programming 
+
+Why? 
+
+Because I find it interesting
+
+Why? 
+
+I don't know. And I think this is a good place to stop.
+
+So, things that I find interesting and enjoy, put much time and effort into, I value in myself. Things I value, becomming obsolete scare me.
+
+But why? 
+
+Because it means all this effort was for nothing
+
+And here is my first axiom: 
+	I want my effort to be recognized. Whether for money or status or anything else.
+
+How do I know that? 
+
+As I said, I find programming interesting. I truly enjoy reading things about it, and actively utilizing this knowledge. I began learning programming after being introduced to the subject at school, and then doing small project independently in my free time. This had nothing to do with anyone but my own enjoyment. But now, this enjoyment has turned into something I put some pride into and maybe somewhat my future. This shift is probably the reason for my answer.
+
+So, to answer the question "Why am I afraid of AI?" It is because I want effort that I put into learning skills to eventually be recognized themselves or for monetary security.
+
+But let me put a bit more context into this.
+
+
+
+Utility
+
+Why AI can be good? (Why I am not afraid?)
+
+Because it might help with creating things while freeing us from boring tasks
+
+Why? 
+
+Because automation is speeding up processes and taking usually simpler tasks
+
+Why? 
+
+Because humans are slow and computers are fast
+
+Why? 
+
+Because we are biological creatures while computers are not, and we designed them to be fast at certain things
+
+Why? 
+
+I don't know
+
+So the good in AI that makes people hopeful is it's utility.
+
+
+Plato Writing Characters: 
+
+Idea: 
+	Ray        - R for right
+	Light      - L for left
+	M(Machine) - M for middle 
+
+	R represents a fear of AI (destruction of meaning)
+	L represents a like of AI (amplifier of utility) 
+	M represents the AI itself(simply exists)
+	
+	short representation of how these characters interact as people e.g. ray is fearful because of lacking jobs, destruction of meaning, change of his work. light is optimistic because he can now do more things then ever before, and machine just exists to do whatever one wishes, improving ever more regardless of what they wish. 
+
+Meaning
+
+Ray: Hi Light how have you been?
+Light: Great Ray, have you heard the news?
+Ray: Yes I have. It seems another week of hot summer welcomes us.
+Light: Oh yes, I can feel it working in the guarden this morning. I got all sweaty the moment I went outisde. But, have you heard the other news?
+Ray: Other news?
+Light: Yes, everyone seems to talk about M this and M that do you know anything about that?
+Ray: Well Light, as you may know, I have recently been struggeling finding a job. It so happened that I was laid off because of M.
+Light: *Gasp*
+Ray: My employer said M is faster, takes a lower salary, and doesn't sleep!!!
+Light: He certainly sounds like a perfect employee
+Ray: Yes, and it's not only him. Almost from no-where an army of M's appeared; now I am struggeling, everywhere I go all I see is M. It is like he is after me.
+Light: But how can this be?
+Ray: I don't know 
+Light: Is he after me? 
+Ray: He comes after everyone!
+Light: Hmmmm 
+Ray: ...
+Light: Did you ever try to hire M to do something for you? 
+Ray: I have, and it completed most tasks I gave it with high accuracy. Anything he did not complete, in a couple months he suddenly told me he can, and them completed. Tasks I once needed months to finish suddenly takes minutes.
+Light: Wow truly the best employee 
+Ray: Exactly 
+Light: But isn't this good? Aren't you able to do more with less time? 
+Ray: Well yes.
+Light: So why are you not happy?
+Ray: Because if M is so good, who needs me?
+
+
+What makes so confident AI will replace humans?
+They are already changing the way we work
+	For some programming looks nothing like it was. Art also is 
+	involving more and more diffusion models. Math is follwing 
+	suit. I can converse with an LLM about philosophical ideas, and 
+	other topics and it responds with meaningful comments. The 
+	point is, even if it stuck at it's current capabilities, it is 
+	already changing fields that were stuck for the longest of time.
+Scaling works 
+	as has been shown by the last 5 years, scaling works
+Grokking
+	it has been shown that with more compute and maybe data
+	the llm can truly learn to predict instead of just memorizing
+By using we are Training
+	data problem is being "solved" by just gathering more and more 
+	useful prompts and logs of real users doing real tasks
+Buying data
+	companies are putting cameras on people. you can buy data
+Useful even if does not replace 
+	Any domain that can be easily verified can be automated.
+	
+	Helping explore more mathematics with formal proovers,
+	automating performance programming using search and validation.
+	and so fourth.
+Already doing more than I could have predicted.	
+	This is not something that should be included here really but...
+	I am amazed at the progress, honestly amazed. LLM's are today 
+	doing more than I would have ever predicted at this time. And 
+	progress does not seem to slow down, which means that with so 
+	many people thinking about it there are bound to be improvements
+	unless some fundamental obstical is reached or  research will 
+	slow down for one reason or another, I don't see currently 
+	why some AI system will not be capable of replacing us 
+	completely (when all AI labs pursue only that aka agents).
+
+	My prediction for programmers has been that it is a low hanging
+	fruit machine. It will come for the easiest of all, and so 
+	only the simple things will get replaced while hard to do 
+	things will still be made by humans. But now I question -- How 	much hard stuff is there really? Just like farming, at some 		point you don't have enough people to justify saying only the 
+	strong will survive, you don't have anybody at this point; the 
+	job they do is also completely different, instead of doing 
+	things by hand you operate the machine. To some this is a 
+	completely different occupation, you are fundamentally are 
+	doing something completely different even if the job still is 
+	the same job (growing crops and harvesting them).
+
+
+
+
