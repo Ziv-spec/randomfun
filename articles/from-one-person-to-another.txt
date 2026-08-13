@@ -39,11 +39,68 @@ Is your product going to be used by AI?
 Is your career AI proof?
 
 
+Post structure 
+
+## Motivation
+### Hamming's lesson (need for excellence)
+### Fear of AI (need of meaning)
+		- unabomber does a great job at explaining and since modernity has taken all other options, we are left doing only the things that we derive meaning from, so we have to some degree get meaning from things that we do.
+### Fear of economic standing (need of job)
+		- we live in a society where we all play by the money game. Since this is the case everyone effected by this AI revolution economically is certainly going to be mad and in-need of a permanent solution.
+### Why AI will happen and this is not a temporary change
+	- the skeptics are just coping (history has shown us forward change will win)
+	- Chess & bitter lesson & search
+	- Programming & search 
+	- grokking 
+	- if we understand deep learning more, we will use this understanding to build maybe safer but much more capable models.
+### Why AI for the time being is not a good replacement
+	- It was "cheating", taking shortcuts, lying by omission and in the end, I can't trust what it has written is correct. 
+	- https://www.youtube.com/watch?v=2ZU3j4GQ4K8
+	- Specific math problem solved with AI strengths and we don't know if it will continue
+## Giving answers: 3 things we care about 
+### 1. Utility/Job
+		- The need for a fucking stable job!!!
+		- Continual specilization of society
+		- More jobs that are now enabled by lower costs and such (making medicine for something with only 100 people and so on...)
+		- Designing an experience like hotels, bars, parks, restaurants, competitions, socialization places, and so on..
+		- Counter to all of this is ( wealthy amassing wealth and so on...) 
+### 2. Meaning/Fulfillment
+		- Answering our fears
+			Farming
+			Chess
+			Go
+			Music and arts
+			Math [[]]
+			Programming
+		- Accepting a new religion? (We are not in the image of god, we are not thinking machines, we just are)
+		- Why is this so hard to accept? Thoughts are antifragile. My hope is this gives you something to cling onto if you feel all meaning in your job/field is lost.
+### 3. Social change/Pain/Revolution
+		- Society will not collapse easily (many people might just move to lower paying jobs like in China) 
+		- Adapting 
+			People will adapt to the situation as they have allways done. Now, because of the fast rate of change, the question is whether people will be capable of truly chaning fast enough for this age or will the pain make people act in more revoluting dissident ways?
+		- Need to escape society
+		- It might be painful, and pain leads to revolutions
+### The paths ahead of us and how to deal with them
+	- doom, euphoria, and the road ahead 
+		we might arrive at a doom scenario, but then we are all dead and we don't have to worry about our future at least
+	-  euphoria, we have abundence and at the very least the problem of meaning as I have shown, will not be the main problem, utility is solved, and only the social and economical models which we will obide to will be determening of how good of a future we have. Regardless this is once again a future we woudn't really have to worry about. The powerful will have the greatest say in that future nad it is unclear as to what even working means a such world? Is it a japan like future? where elderly are doing jobs we can automate but they are doing them just to do something? IDK. 
+	- the road ahead. 
+		Now this is where we are and where we have the most opportunity to actually do anything meaningful. Since AI will not just automate everything immediately, nor will it destroy all jost with a snap of a finger (even if tomorrow AGI is reached, diffusion across the economy will delay it's effect), what is the most likely argument is that ideas, experience, style and judgement will still play an important role in where value is created. Hard problems along with non-economical problems will get solved. So look in places where something doesn't make any sense before and now is. That is where the opportunity lays.
+
+people who already accept change don't need motivation? 
+
+
+
+
+
+
 
  
 # From one person to another 
 
 Musings on our future with AI
+
+> I want AI to do my laundry and dishes so that I can do art and writing, not for the AI to do my art and writing so that I can do my laundry and dishes. [see: [Joanna Maciejewska](https://x.com/AuthorJMac/status/1773679197631701238)]
 
 The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly. This post will mainly focus on one self-centered question -- What then, should I do in the future?
 
@@ -53,14 +110,20 @@ My hope is that you, if you are asking yourself a similar question, will find th
 
 ### Why care for the future?
 
+I believe that I need to motivate the reason for why should you care at all about what I have to say. I came up with three, a bit overlapping yet unique answers.
+
+1. Need of excellence 
+2. Need of meaning/fulfillment
+3. Need of a job 
+
 TODO(ziv): Make this better / more compelling or something
 But why should I care? The answer will depend on you. If you are someone who doesn't have a goal, yet strives for excellence, Hamming might provide you with a compelling reason: 
 
 > To illustrate the importance of this point of trying to foresee the future I often use a standard story. It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about sqrt(n) steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance sqrt(n). In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 6]
 
-You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but that would be missing the point. 
+You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but that would be missing the point. Any direction as argued by Hamming is better than no direction at all, or as he puts it: 
 
-> One of the main tasks of this course is to start you on the path of creating in some detail your vision of your future. If I fail in this I fail in the whole course. You will probably object that if you try to get a vision now it is likely to be wrong—and my reply is from observation I have seen the accuracy of the vision matters less than you might suppose, getting anywhere is better than drifting, there are potentially many paths to greatness for you, and just which path you go on, so long as it takes you to greatness, is none of my business. You must, as in the case of forging your personal style, find your vision of your future career, and then follow it as best you can. No vision, not much of a future. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 7]
+> No vision, not much of a future. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 7]
 
 Now, if you are someone who does not believe in Hamming's way of life -- where you should have goals and strive for excellence, his reasoning might fail you. This post was not at all made with this motivation in mind. I believe the majority of people reading this will not concern themselves with any particular vision for their future beyond having a stable job and family, and I am not here to preach one. What is it then that concerns me and many others? 
 
@@ -73,7 +136,7 @@ when hearing of AI taking jobs and getting better at taking more and more jobs, 
 As part of wanting to find a vision for my future, I have decided to compile a list of things that I enjoy and find valuable. As I was typing items, the ones that stood out were 'Learning' and 'Programming'. I had this intuitive  sense that 'Programming' was not a core item that I should include, and along-side it that AI as many now are saying, will remove the need for this skill.
 
 
- mean, their point is clear: everyone uses LLM's to learn or work, and as we use them, we can't help but think: "Aren't we all just helping train the next AI to replace us?" the main point here is the fear for job security. many people become demoralized since their once relatively secure path turned dangerous. We are creating all the information a new version of X company AI needs to replace me, and sending it straight to their servers it can't be a good feeling. Hell, even if it is somewhat obviously wrong, and what they learn in collage doesn't directly translate to skills they need at work which should in theory make them safe, in practice everyone at work uses AI and helps train the next version to replace them. This is not a true or accurate model of what happens and yet, one can't help but drown under the pressure these thoughts bring. 
+ mean, their point is clear: everyone uses LLM's to learn or work, and as we use them, we can't help but think: "Aren't we all just helping train the next AI to replace us?" the main point here is the fear for job security. many people become demoralized since their once relatively secure path turned dangerous. We are creating all the information a new version of X company AI needs to replace me, and sending it straight to their servers it can't be a good feeling. Hell, even if it is somewhat obviously wrong, and what they learn in collage doesn't directly translate to skills they need at work which should in theory make them safe, in practice everyone at work uses AI and helps train the next version to replace them. This is not a true or accurate model of what happens and yet, one can't help but drown under the pressure these thoughts bring. All of the edge cases where AI has not yet shown any form of competence, will suddenly gain access to data and.. poof you are suddenly obsolete.
 
 
 # The problem
@@ -234,7 +297,9 @@ Already doing more than I could have predicted.
 	My prediction for programmers has been that it is a low hanging
 	fruit machine. It will come for the easiest of all, and so 
 	only the simple things will get replaced while hard to do 
-	things will still be made by humans. But now I question -- How 	much hard stuff is there really? Just like farming, at some 		point you don't have enough people to justify saying only the 
+	things will still be made by humans. But now I question -- 
+	How much hard stuff is there really? Just like farming, at some
+	point you don't have enough people to justify saying only the
 	strong will survive, you don't have anybody at this point; the 
 	job they do is also completely different, instead of doing 
 	things by hand you operate the machine. To some this is a 

@@ -72,4 +72,3 @@ https://firstmonday.org/ojs/index.php/fm/article/download/10419/9404@inline=1.ht
 https://cdn.aaai.org/Symposia/Spring/1993/SS-93-07/SS93-07-005.pdf
 
 https://cseweb.ucsd.edu/~wgg/CSE210/ecoop93-patterns.pdf
-

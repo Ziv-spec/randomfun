@@ -24,7 +24,7 @@ Goals:
     while reviewing Nvidia GPU architecture changes over time to fit industry 
     needs. 
 
-    "With the release of Turing in 2018, Nvidia operated its "biggest architectural leap forward in over a decade"[13]. Not only the "Turing SM" added A.I dedicated Tensor cores, they also gained Raytracing cores. This fragmented design reminds of the Pre-Tesla layered architecture, proving once again that history likes to repeat itself." - [Fabien](https://fabiensanglard.net/cuda/)
+"With the release of Turing in 2018, Nvidia operated its "biggest architectural leap forward in over a decade"[13]. Not only the "Turing SM" added A.I dedicated Tensor cores, they also gained Raytracing cores. This fragmented design reminds of the Pre-Tesla layered architecture, proving once again that history likes to repeat itself." - [Fabien](https://fabiensanglard.net/cuda/)
 
     3. Find what might be a good way of going forward with life. 
 
