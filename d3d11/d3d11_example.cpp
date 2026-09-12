@@ -1135,11 +1135,11 @@ InputUpdate(LPARAM lparam) {
 		g_raw_input_state.mouse.dx += raw->data.mouse.lLastX; 
 		g_raw_input_state.mouse.dy += raw->data.mouse.lLastY; 
 		if (raw->data.mouse.usButtonFlags == RI_MOUSE_WHEEL)
-		g_raw_input_state.mouse.wy += raw->data.mouse.usButtonData; 
+            g_raw_input_state.mouse.wy += raw->data.mouse.usButtonData; 
 		g_raw_input_state.mouse.buttons = (Mouse_Buttons)(((raw->data.mouse.ulButtons & RI_MOUSE_LEFT_BUTTON_UP)   >> 1) |
-		((raw->data.mouse.ulButtons & RI_MOUSE_RIGHT_BUTTON_UP)  >> 2) |
-										   ((raw->data.mouse.ulButtons & RI_MOUSE_MIDDLE_BUTTON_UP) >> 3));
-			}
+                                                          ((raw->data.mouse.ulButtons & RI_MOUSE_RIGHT_BUTTON_UP)  >> 2) |
+                                                          ((raw->data.mouse.ulButtons & RI_MOUSE_MIDDLE_BUTTON_UP) >> 3));
+    }
 	else if (raw->header.dwType == RIM_TYPEKEYBOARD) 
     {
 		
@@ -1149,7 +1149,9 @@ InputUpdate(LPARAM lparam) {
 							   raw->data.keyboard.Reserved, 
 							   raw->data.keyboard.ExtraInformation, 
 							   raw->data.keyboard.Message, 
-			   raw->data.keyboard.VKey); // virtual key value
+							   raw->data.keyboard.VKey);
+						 */
+        
     }
 	
 	//delete lpb;
@@ -1225,56 +1227,56 @@ static LRESULT CALLBACK WinProc(HWND window, UINT message, WPARAM wparam, LPARAM
 			//OSEventPost({ OS_EVENT_KIND_MOUSEMOVE, p.x, p.y});
 		} break; 
 		
-/* 		
-		case WM_KEYDOWN:
-		{
-			if ((char)wparam == 'W') { key_w = true; }
-			if ((char)wparam == 'S') { key_s = true; }
-			if ((char)wparam == 'A') { key_a = true; }
-			if ((char)wparam == 'D') { key_d = true; }
-			
-			if ((char)wparam == VK_UP)    { key_up = true; }
-			if ((char)wparam == VK_DOWN)  { key_down = true; }
-			if ((char)wparam == VK_RIGHT) { key_right = true; }
-			if ((char)wparam == VK_LEFT)  { key_left = true; }
-			
-			if ((char)wparam == VK_SPACE)   { key_space = true; }
-			if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
-			
-			if (wparam == VK_TAB) { key_tab = true; }
-			
-			
-			// NOTE(ziv): Implemented currently as alt+enter combination
-			// which is the windows default for toggling to fullscreen
-			if (wparam == VK_RETURN && (lparam & (1<<29))) {
-				Win32ToggleFullScreen(window); 
-			}
-			
-		} break;
-		
-		case WM_KEYUP:
-		{
-			key_w = (char)wparam == 'W' ? false : key_w;
-			key_s = (char)wparam == 'S' ? false : key_s;
-			key_a = (char)wparam == 'A' ? false : key_a;
-			key_d = (char)wparam == 'D' ? false : key_d;
-			
-			key_up    = (char)wparam == VK_UP ? false : key_up;
-			key_down  = (char)wparam == VK_DOWN ? false : key_down;
-			key_right = (char)wparam == VK_RIGHT ? false : key_right;
-			key_left  = (char)wparam == VK_LEFT ? false : key_left;
-			
-			key_space  = (char)wparam == VK_SPACE ? false : key_space;
-			key_ctrl   = (char)wparam == VK_CONTROL ? false : key_ctrl;
-			key_tab    = (wparam == VK_TAB) ? false : key_tab;
-			
-			if (wparam == VK_TAB && (lparam & (1<<24)) == 0) {
-				key_tab_pressed = true;
-			}
-			
-		} break;
-		 */
-
+        /* 		
+                case WM_KEYDOWN:
+                {
+                    if ((char)wparam == 'W') { key_w = true; }
+                    if ((char)wparam == 'S') { key_s = true; }
+                    if ((char)wparam == 'A') { key_a = true; }
+                    if ((char)wparam == 'D') { key_d = true; }
+                    
+                    if ((char)wparam == VK_UP)    { key_up = true; }
+                    if ((char)wparam == VK_DOWN)  { key_down = true; }
+                    if ((char)wparam == VK_RIGHT) { key_right = true; }
+                    if ((char)wparam == VK_LEFT)  { key_left = true; }
+                    
+                    if ((char)wparam == VK_SPACE)   { key_space = true; }
+                    if ((char)wparam == VK_CONTROL) { key_ctrl = true; }
+                    
+                    if (wparam == VK_TAB) { key_tab = true; }
+                    
+                    
+                    // NOTE(ziv): Implemented currently as alt+enter combination
+                    // which is the windows default for toggling to fullscreen
+                    if (wparam == VK_RETURN && (lparam & (1<<29))) {
+                        Win32ToggleFullScreen(window); 
+                    }
+                    
+                } break;
+                
+                case WM_KEYUP:
+                {
+                    key_w = (char)wparam == 'W' ? false : key_w;
+                    key_s = (char)wparam == 'S' ? false : key_s;
+                    key_a = (char)wparam == 'A' ? false : key_a;
+                    key_d = (char)wparam == 'D' ? false : key_d;
+                    
+                    key_up    = (char)wparam == VK_UP ? false : key_up;
+                    key_down  = (char)wparam == VK_DOWN ? false : key_down;
+                    key_right = (char)wparam == VK_RIGHT ? false : key_right;
+                    key_left  = (char)wparam == VK_LEFT ? false : key_left;
+                    
+                    key_space  = (char)wparam == VK_SPACE ? false : key_space;
+                    key_ctrl   = (char)wparam == VK_CONTROL ? false : key_ctrl;
+                    key_tab    = (wparam == VK_TAB) ? false : key_tab;
+                    
+                    if (wparam == VK_TAB && (lparam & (1<<24)) == 0) {
+                        key_tab_pressed = true;
+                    }
+                    
+                } break;
+                 */
+        
 		//
 		// Rawinput
 		//
@@ -1770,7 +1772,7 @@ r_create_buffer(R_D3D11Context *r, R_Buffer_Desc *desc) {
 			d3d11_desc.ByteWidth = (desc->element_size * desc->element_count);
 		}
 		else {
-		d3d11_desc.ByteWidth = (desc->element_size * desc->element_count) + 0xf & 0xfffffff0; // constant buffers must be aligned to 16 boundry
+            d3d11_desc.ByteWidth = (desc->element_size * desc->element_count) + 0xf & 0xfffffff0; // constant buffers must be aligned to 16 boundry
 		}
 		
 		d3d11_desc.Usage = desc->usage ? (D3D11_USAGE)g_renderer_to_d3d11_buffer_flags[desc->usage] : D3D11_USAGE_DEFAULT;
@@ -2019,12 +2021,12 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 	}
 	
 	if (sampler_count) {
-	
+        
 		ID3D11SamplerState **samplers_to_bind = push_array(temp.arena, ID3D11SamplerState *, sampler_count);
-	for (int i = 0; i < sampler_count; i++)
-		samplers_to_bind[i] = desc->samplers[i].sampler;
-	r->context->PSSetSamplers(0, sampler_count, samplers_to_bind);
-}
+        for (int i = 0; i < sampler_count; i++)
+            samplers_to_bind[i] = desc->samplers[i].sampler;
+        r->context->PSSetSamplers(0, sampler_count, samplers_to_bind);
+    }
 	
 	int texture_count = 0;
 	for (int i = 0; i < 0x10; i++) {
@@ -2034,11 +2036,11 @@ r_switch_pipline(R_D3D11Context *r, R_Pipline_Desc *desc) {
 	
 	// set textures
 	if (texture_count) {
-	
+        
 		ID3D11ShaderResourceView **textures_to_bind = push_array(temp.arena, ID3D11ShaderResourceView *, texture_count);
-	for (int i = 0; i < texture_count; i++)
-		textures_to_bind[i] = desc->textures[i].srv;
-	r->context->PSSetShaderResources(0, texture_count, textures_to_bind);
+        for (int i = 0; i < texture_count; i++)
+            textures_to_bind[i] = desc->textures[i].srv;
+        r->context->PSSetShaderResources(0, texture_count, textures_to_bind);
 	}
 	
 	m_temp_end(temp);
@@ -2103,25 +2105,25 @@ r_update_gpu_buffer(R_D3D11Context *r, R_Buffer buffer, void *data, int size) {
 
 static R_Texture2D *
 r_get_display(R_D3D11Context *r, int width, int height) {
-
-
+    
+    
 	// Create D3D11 Swap Chain
 	IDXGISwapChain1* swap_chain;
 	{
-
+        
 		IDXGIDevice1* dxgiDevice;
 		r->device->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
-
+        
 		IDXGIAdapter* dxgiAdapter;
 		dxgiDevice->GetAdapter(&dxgiAdapter);
 		dxgiDevice->Release();
-
+        
 		IDXGIFactory2* dxgiFactory;
 		dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void **)&dxgiFactory);
 		dxgiAdapter->Release();
-
+        
 		//
-
+        
 		DXGI_SWAP_CHAIN_DESC1 swap_chain_desc;
 		swap_chain_desc.Width              = 0; // use window width
 		swap_chain_desc.Height             = 0; // use window height
@@ -2135,29 +2137,29 @@ r_get_display(R_D3D11Context *r, int width, int height) {
 		swap_chain_desc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
 		swap_chain_desc.AlphaMode          = DXGI_ALPHA_MODE_UNSPECIFIED;
 		swap_chain_desc.Flags              = 0;
-
+        
 		dxgiFactory->CreateSwapChainForHwnd(r->device, r->window, &swap_chain_desc, NULL, NULL, &swap_chain);
 		dxgiFactory->Release();
 	}
-
+    
 	// Create a Target View
 	ID3D11RenderTargetView *frame_buffer_view;
 	{
 		ID3D11Texture2D* frame_buffer;
 		swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&frame_buffer);
-
+        
 		D3D11_RENDER_TARGET_VIEW_DESC frame_buffer_desc = {};
 		frame_buffer_desc.Format        = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // ... so do this to get _SRGB swapchain (rendertarget view)
 		frame_buffer_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-
+        
 		r->device->CreateRenderTargetView(frame_buffer, &frame_buffer_desc, &frame_buffer_view);
 		frame_buffer->Release();
 	}
-
+    
 	//
 	// Zbuffer and BackFace Culling are provided by default and disabled/enabled by the user
 	//
-
+    
 	// Create Depth Sentcil
 	ID3D11DepthStencilState* depth_stencil_state;
 	{
@@ -2165,16 +2167,16 @@ r_get_display(R_D3D11Context *r, int width, int height) {
 		depth_stencil_desc.DepthEnable    = TRUE;
 		depth_stencil_desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 		depth_stencil_desc.DepthFunc      = D3D11_COMPARISON_LESS;
-
+        
 		r->device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 	}
-
+    
 	// Create Z-Buffer
 	ID3D11DepthStencilView *zbuffer;
 	ID3D11Texture2D *zbuffer_texture;
 	{
 		D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
-
+        
 		depth_buffer_desc.Width = window_height;
 		depth_buffer_desc.Height = window_width;
 		depth_buffer_desc.MipLevels = 1;
@@ -2185,14 +2187,14 @@ r_get_display(R_D3D11Context *r, int width, int height) {
 		depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 		depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		r->device->CreateTexture2D(&depth_buffer_desc, NULL, &zbuffer_texture);
-
+        
 		D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc = {};
 		depth_stencil_view_desc.Format = DXGI_FORMAT_D32_FLOAT;
 		depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 		depth_stencil_view_desc.Texture2D.MipSlice = 0;
 		r->device->CreateDepthStencilView(zbuffer_texture, &depth_stencil_view_desc, &zbuffer);
 	}
-
+    
 	r->swap_chain = swap_chain;
 	r->frame_buffer_view = frame_buffer_view;
 	r->depth_stencil_state = depth_stencil_state;
@@ -2210,7 +2212,7 @@ r_get_display(R_D3D11Context *r, int width, int height) {
 
 static void
 r_begin(R_D3D11Context *r) {
-
+    
 	// Handle window resize
 	RECT rect;
 	GetClientRect(r->window, &rect);
@@ -2221,8 +2223,8 @@ r_begin(R_D3D11Context *r) {
 		RendererD3D11Resize(r, width, height);
 		r->screen->rtv = r->frame_buffer_view;
 	}
-
-
+    
+    
 }
 
 static void
@@ -2786,7 +2788,7 @@ UICoreLayoutFinalRect(UI_Context *ui, UI_Widget *head) {
 				final.b = lerp(background.b, hot.b, head->hot_t);
 				final.a = 1;
 			}
-							
+            
 			
 			
 			// draw the quad to the screen
@@ -3908,7 +3910,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 {
 	os_init();
 	m_thread_context_init();
-
+    
 	HWND window = Win32CreateWindow(APP_TITLE, "d3d11 example!!!");
 	
 	
@@ -3928,7 +3930,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
         if (RegisterRawInputDevices(Rid, ArrayLength(Rid), sizeof(Rid[0])) == FALSE) {
 			if (GetLastError() != ERROR_SUCCESS) {
-            FatalError("Rawinput couldn't register\n");
+                FatalError("Rawinput couldn't register\n");
 			}
 		}
 		
@@ -3937,11 +3939,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	Win32ShowWindow(window);
 	
 	while (running) {
-	
-	MSG msg;
-	while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+        
+        MSG msg;
+        while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&msg);
-		DispatchMessageA(&msg);
+            DispatchMessageA(&msg);
 		}
 		
 		if (g_raw_input_state.mouse.buttons & MouseLeftButton) {
@@ -3957,7 +3959,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		ZeroMemory(&g_raw_input_state, sizeof(g_raw_input_state));
-		}
+    }
 	
 	
 	// Rawinput
@@ -4030,7 +4032,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			R_CPU_ACCESS_WRITE, 
 		};
 		screen_info_constant_buffer = r_create_buffer(r, &constant_buffer_desc);
-	
+        
 		R_Texture2D_Desc atlas_desc = {
 			(void *)atlas, ATLAS_WIDTH, ATLAS_HEIGHT, 
 			R_FORMAT_B8G8R8A8_UNORM_SRGB, 
@@ -4078,39 +4080,39 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	{
 		bool success = ObjLoadFile("../resources/cube.obj", NULL, &verticies_count, NULL, &indicies_count);
 		Assert(success && "Failed extracting buffer sizes for vertex and index buffers");
-
+        
 		Vertex *verticies = (Vertex *)malloc(verticies_count*sizeof(Vertex));
 		unsigned short *indicies = (unsigned short *)malloc(indicies_count*sizeof(unsigned short));
 		success = ObjLoadFile("../resources/cube.obj", verticies, &verticies_count, indicies, &indicies_count);
 		Assert(success && "Failed extracting model data");
-
+        
 		R_Buffer_Desc vdesc = { 
 			verticies, (int)verticies_count, sizeof(Vertex),
 			R_USAGE_IMMUTABLE, R_BIND_VERTEX_BUFFER, 
 		};
 		cube_vbuf = r_create_buffer(r, &vdesc); 
-
+        
 		R_Buffer_Desc idesc = { 
 			indicies, (int)indicies_count, sizeof(u16),
 			R_USAGE_IMMUTABLE, R_BIND_INDEX_BUFFER,
 		};
 		cube_ibuf = r_create_buffer(r, &idesc); 
-
+        
 		free(verticies); free(indicies); 
 	}
-
+    
 	struct VSConstantBuffer {
 		matrix transform;
 		matrix projection;
 		matrix normal_transform;
 		float3 lightposition;
 	};
-
+    
 	struct PSConstantBuffer {
 		float3 point_light_position;
 		float3 sun_light_direction;
 	};
-
+    
 	// Create Constant buffers
 	R_Buffer vs_constant_buffer, ps_constant_buffer;
 	{
@@ -4119,15 +4121,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			R_USAGE_DYNAMIC, R_BIND_CONSTANT_BUFFER, R_CPU_ACCESS_WRITE
 		};
 		vs_constant_buffer = r_create_buffer(r, &desc);
-
+        
 		desc.element_size = sizeof(PSConstantBuffer);
 		ps_constant_buffer = r_create_buffer(r, &desc);
 	}
-
+    
 	// Create The Image To Sample From
 	R_Texture2D image;
 	{
-
+        
 		// Load Image
 		int tex_w, tex_h, tex_num_channels;
 		unsigned char* bytes = stbi_load("../resources/test.png", &tex_w, &tex_h, &tex_num_channels, 4);
@@ -4157,7 +4159,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		};
 		cube_shdr = r_create_shaders(r, &desc);
 	}
-
+    
 	Win32ShowWindow(window);
 	
 #if 0 
@@ -4183,24 +4185,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	
 	
 	// Game State
-
+    
 	Camera c = {0};
 	CameraInit(&c);
 	c.aspect_ratio = (float)window_width/(float)window_height;
 	c.pos.z -= 5;
 	c.yaw = 3.14f/2;
 	c.off = {0, 0, 0}; 
-
+    
 	// projection matrix variables
 	float3 model_rotation    = { 0.0f, 0.0f, 0.0f };
 	float3 model_scale       = { 1, 1, 1 }; // { 1.5f, 1.5f, 1.5f };
 	float3 model_translation = { 0.0f, 0.0f, 4.0f };
-
+    
 	// global directional light
 	float3 sun_direction = { 0, 0, 1 };
 	// point light
 	float3 lightposition = {  0, 0, 2 };
-
+    
 	// more things that I need I guess...
 	float start_frame, end_frame, dt;
 	start_frame = (float)os_time();
@@ -4228,7 +4230,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	// 
 	
 	while (running) {
-
+        
 		// Handle input
 		// event loop
 		events = OSProcessEvents();
@@ -4409,7 +4411,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		
 		
 		// TODO(ziv): move this into another location
-		#if 0
+#if 0
 		b32 intersecting = false;
 		matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale);
 		for (int i = 0; i < indicies_count; i += 3) {
@@ -4428,7 +4430,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 		}
 		
 		collided_with_character = intersecting;
-		#endif
+#endif
 		
 		// 
 		// Drawing/Rendering
@@ -4443,17 +4445,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			
 			float3 translate_vector = { -c.view.m[3][0], -c.view.m[3][1], -c.view.m[3][2] };
 			matrix model_view_matrix = get_model_view_matrix(model_rotation, model_translation, model_scale) * c.view;
-
+            
 			// update data in the cpu
 			VSConstantBuffer vs_cbuf;
 			vs_cbuf.transform        = model_view_matrix;
 			vs_cbuf.projection       = c.proj;
 			vs_cbuf.normal_transform = matrix_inverse_transpose(model_view_matrix);
-
+            
 			PSConstantBuffer ps_cbuf;
 			ps_cbuf.point_light_position = lightposition - translate_vector;
 			ps_cbuf.sun_light_direction = sun_direction;
-
+            
 			// upload to gpu
 			r_update_gpu_buffer(r, vs_constant_buffer, &vs_cbuf, sizeof(vs_cbuf));
 			r_update_gpu_buffer(r, ps_constant_buffer, &ps_cbuf, sizeof(ps_cbuf));
@@ -4466,7 +4468,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 				{ image },
 				{ point_sampler } 
 			};
-
+            
 			float color[4] = { 0.025f, 0.025f, 0.025f, 1.0f }; 
 			r_fill_texture(r, screen, color);
 			r_switch_pipline(r, &pipline_desc);
@@ -4485,7 +4487,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r_update_gpu_buffer(r, widgets_buffer, ui->quads.data, ui->quads.idx*sizeof(R_QuadInst)); 
 			r_update_gpu_buffer(r, sprite_buffer, ui->font.data, ui->font.idx*sizeof(R_SpriteInst));
 			
-		// Draw Widgets
+            // Draw Widgets
 			R_Pipline_Desc widget_pipline_desc = {
 				R_TOPOLOGY_TRIANGLESTRIP, 
 				widgets_shader, 
@@ -4495,23 +4497,23 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 			r_set_cull_mode(r, R_CULL_MODE_NULL);  
 			r_draw_instanced(r, screen, 4, ui->quads.idx, 0, 0); 
 			ui->quads.idx = 0;
-		
-		// Draw Font
-			R_Pipline_Desc font_pipline_desc = {
-				R_TOPOLOGY_TRIANGLESTRIP,
-				font_shader,// shaders
-				{ sprite_buffer, screen_info_constant_buffer}, // vs_bindings 
-				{  }, // ps_bindings
-				{ atlas_texture },
-				{ point_sampler } 
-			};
-			r_switch_pipline(r, &font_pipline_desc);
-			r_draw_instanced(r, screen, 4, ui->font.idx, 0, 0); 
-			ui->font.idx = 0;
-		}
-		
-		r_end(r);
-		
+            
+			// Draw Font
+            R_Pipline_Desc font_pipline_desc = {
+                R_TOPOLOGY_TRIANGLESTRIP,
+                font_shader,// shaders
+                { sprite_buffer, screen_info_constant_buffer}, // vs_bindings 
+                {  }, // ps_bindings
+                { atlas_texture },
+                { point_sampler } 
+            };
+            r_switch_pipline(r, &font_pipline_desc);
+            r_draw_instanced(r, screen, 4, ui->font.idx, 0, 0); 
+            ui->font.idx = 0;
+        }
+        
+        r_end(r);
+        
 		dt = ((end_frame = (float)os_time()) - start_frame);
 		start_frame = end_frame; // update time for dt calc
 	}
@@ -4522,6 +4524,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previouse, LPSTR CmdLine, int S
 	RendererDeInit(r);
 	
 	// more things to deinitialize ...
-	 // like buffers and textures and shaders and more.
+    // like buffers and textures and shaders and more.
 	return 0; 
 }

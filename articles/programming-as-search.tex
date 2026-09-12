@@ -299,7 +299,7 @@ void compare(int *a, int len_a, int *b, int len_b) {
       while (*a == *b && (*a != 0 && *b != 0)) { 
         a++; b++;
       }
-      if (*a == *b) { 
+      if (*a != *b) { 
         return *a - *b;
       }
     }
