@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "6d639f1e840486d2",
+        "id": "19580b5235624e0f",
         "type": "tabs",
         "children": [
           {
-            "id": "4c532eaa8513062e",
+            "id": "ceae9e5f5e564399",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
+                "file": "Zettelkasten/Code-Reuse.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "The Core Of Program Will define How It Will Evolve"
+              "title": "Code-Reuse"
             }
           }
         ]
@@ -169,6 +169,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
@@ -177,27 +178,29 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "4c532eaa8513062e",
+  "active": "ceae9e5f5e564399",
   "lastOpenFiles": [
+    "Zettelkasten/Avoiding Unnecessary Complexity.md",
+    "Zettelkasten/Abstraction.md",
     "Zettelkasten/Understanding The Problem.md",
     "Zettelkasten/The Promise Of AI.md",
     "Zettelkasten/The Core Of Program Will define How It Will Evolve.md",
     "Zettelkasten/Notes On War.md",
+    "Zettelkasten/Cutting Weed.md",
+    "Zettelkasten/Degeneracy And Redundancy.md",
     "Zettelkasten/Memory Management Trade-Offs.md",
-    "Zettelkasten/Avoiding Unnecessary Complexity.md",
     "Zettelkasten/Meaning.md",
     "Zettelkasten/Links To Use.md",
     "Zettelkasten/Kraft-McMillan inequality.md",
+    "Zettelkasten/Human over-optimization and Goodhart's law.md",
+    "Zettelkasten/Untitled 1.base",
+    "Zettelkasten/Untitled.base",
     "Zettelkasten/Investment.md",
     "Zettelkasten/Information Theory.md",
-    "Zettelkasten/Human over-optimization and Goodhart's law.md",
     "Zettelkasten/GZAR Reflections.md",
-    "Zettelkasten/Degeneracy And Redundancy.md",
-    "Zettelkasten/Cutting Weed.md",
     "Zettelkasten/Complexity.md",
     "Zettelkasten/Combat-Aircrafts-Are-Scary.md",
     "Zettelkasten/Code-Reuse.md",
-    "Zettelkasten/Abstraction.md",
     "Zettelkasten/software-design.md",
     "Zettelkasten/Meaning.md~",
     "Zettelkasten/2024-05-11.md",
