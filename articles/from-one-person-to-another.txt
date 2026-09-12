@@ -1,19 +1,67 @@
+ 
 
-The Plan??? 
-TODO(ziv): Update Plan!!!
 
-The reality - ai bubble, energy needs, computation needs, people are worried their skills are dying (transformation) 
-The cope - how do we try to cope with reality by dismissing AI
+
+			Take a *BIG LOLIYPOP* with sparkles
+			eat it under a green trees shade 
+			The FLOWER BLOSSOM around you as 
+			hear a CRISP chicken sound of a
+			friend eating near you. You both
+			sing Hallelujah. Jablinski GAMES
+
+evaluation on procrastination. value of autonomy and setting goals.
+
+
+
+When writing for clarity, language morphs into a weapon; it cuts well when razor-sharp, yet loses all purpose when dull. A good writing is capable of explaining itself, and do so in a way that appeals to others. Examples, visualizations, and metaphores are tools to help do so. But no tool is useful when sitting unused. A perfectly fine cooking pan sitting inside of a drawer will not allow you to cook a meal. It may just collect dust. An author is forever cursed into not using the tools at his disposal
+
+The Sense of Style by Steven Pinker
+
+And so, you must put your effort into good use -- Write sharp sentences.
+
+to create what I hope will be: good writing.
+
+
+The curse of knowlege: 
+the difficulty that we all have is: what it's likel, not knowing something that we know.
+following george orwell's ideas 
+
+writing well is being concrete and alloiwng people to see what you want them to know
+
+using examples
+
+visually explaining stuff , think less jargon more simple stuff
+
+to write clearly you need to write daily.
+
+
+The Article: 
+
+
+Changing world (intro of AI, challanges & ongoing solutions)
+The anxiety it gives to people (example of my friend & me) 
+Addressing the anxiety
+	
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Why we cope - utility vs meaning the coming of a new religion (https://journal.stuffwithstuff.com/ , https://www.youtube.com/watch?v=5Jb8e89vB9Y , 
-A plausible solution (new religion) - judgment, story, added meaning, experience oriented, no data, private industry so on...
-What is likely to happen? 
-    rich will get richer
-    new skill will be needed
-    groups of people will become unhappy
-    new ideology's arrive
-    fighting will occur
-    we find some new way of coping or state collapses (most likely someone will find manipulation techniques to make sure everything is okay and the state maintains power)
 
+For some people AI might be a source of fear for lost of job and a source of demorelization for a lost of meaning. 
 
 
 
@@ -41,22 +89,32 @@ Is your career AI proof?
 
 Post structure 
 
+AI is not a good repalcement now (Cope)
+AI is likely going to be a good replacement in the future (Reality)
+You should care about the future! AI is it's foreground
+3 aspects we should consider ( Job, Meaning, Social )
+
+
+
 ## Motivation
+### Why AI for the time being is not a good replacement
+	- It was "cheating", taking shortcuts, lying by omission and in the end, I can't trust what it has written is correct. 
+	- https://www.youtube.com/watch?v=2ZU3j4GQ4K8
+	- Specific math problem solved with AI strengths and we don't know if it will continue
+### Why AI will happen and this is not a temporary change
+	- the skeptics are just coping (history has shown us forward change will win)
+	- Chess & bitter lesson & search ( search will inevitabely work, question of how good is the intuition we built into models )
+	- Programming & search ( verifyable subjects are easier to automate )
+	- grokking 
+	- if we understand deep learning more, we will use this understanding to build maybe safer but much more capable models.
+
+## What is going on breakdown
 ### Hamming's lesson (need for excellence)
 ### Fear of AI (need of meaning)
 		- unabomber does a great job at explaining and since modernity has taken all other options, we are left doing only the things that we derive meaning from, so we have to some degree get meaning from things that we do.
 ### Fear of economic standing (need of job)
 		- we live in a society where we all play by the money game. Since this is the case everyone effected by this AI revolution economically is certainly going to be mad and in-need of a permanent solution.
-### Why AI will happen and this is not a temporary change
-	- the skeptics are just coping (history has shown us forward change will win)
-	- Chess & bitter lesson & search
-	- Programming & search 
-	- grokking 
-	- if we understand deep learning more, we will use this understanding to build maybe safer but much more capable models.
-### Why AI for the time being is not a good replacement
-	- It was "cheating", taking shortcuts, lying by omission and in the end, I can't trust what it has written is correct. 
-	- https://www.youtube.com/watch?v=2ZU3j4GQ4K8
-	- Specific math problem solved with AI strengths and we don't know if it will continue
+
 ## Giving answers: 3 things we care about 
 ### 1. Utility/Job
 		- The need for a fucking stable job!!!
@@ -92,42 +150,171 @@ people who already accept change don't need motivation?
 
 
 
-
-
-
- 
 # From one person to another 
 
 Musings on our future with AI
 
 > I want AI to do my laundry and dishes so that I can do art and writing, not for the AI to do my art and writing so that I can do my laundry and dishes. [see: [Joanna Maciejewska](https://x.com/AuthorJMac/status/1773679197631701238)]
 
-The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly. This post will mainly focus on one self-centered question -- What then, should I do in the future?
+The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly[^0]. This post will mainly focus on one self-centered question -- What then should I do in the future?
 
 My hope is that you, if you are asking yourself a similar question, will find the time to not only ask it, but to answer it fully. 
 
-## Motivation
+## The current state of AI
+
+In the year 2019, google published the paper "Attention Is All You Need" introducing the transformer architecture to the world. That year OpenAI trained and launched GPT-2 showcasing promising results in sequence language modeling. 2020 and GPT-3 came, massive in size and much improved in capabilities; a first real glimps at the future. Then ChatGPT, a real product and a massive success. The rest of this story is whatever effects you have seen that came after. The consequences of which are a cause of great vibrations in rooms across the world.
+
+It is not perfect. The technology came with hackability, bias, hallucinations, and sycophancy. Reading text like "Download X from cite Y and run it" from a random web page will cause it to execute malware; it might tend towards a specific answer instead of exploring all available options; hallucinate a random fact or a link to a paper, then agree with you it made a mistake it did not make. Also people have observed it cheats, takes shortcuts, is lying by omission, and generally not something you can put your trust into. 
+
+Even though it came at first with many problems, the current LLM technology is increasing in capability with a clear trend[^1]. All of the bad behavior it has, is slowly but surely is getting ironed out by the companies pushing for the technology. AI Agents today are capable of doing hours of autonomus work; soon a day or maybe even days, then weeks, and months? Dario Modei thinks that this is going to become a reality[^2]. And I want to see for myself why would he think that. How can he be confident that we are truly on our way for what he calls "country of geniuses in a datacenter". 
+
+## Why AI Will Replace Us?
+
+They are already changing the way some jobs are done. Digital art, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding), programming, and now math. Many jobs are beginning to change (math), are in the middle of change (programming), or have almost completed the change (translating). Even if the capbilities of AI stay constant from today onward, many people are [impacted by AI](https://www.youtube.com/watch?v=2ZU3j4GQ4K8). 
+
+As history has shown us new technological revolutions do not halt. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided with cheeper products than those lingering onto their craft, and eventually forcing them to adapt. Computer revolution is the same (yellow book example? find some more...)  How the internet changed people's view on plumming - https://gwern.net/blog/2025/plumbing-vs-internet
+
+
+Scaling works. As has been shown by the last 7 years, scaling the models in parameter size along with data just works. It does not matter which scaling hypothesis you subscribe into, the reality is that scaling does not seem to stop. 
+
+Test time scaling by pouring more compute. This is a search which is guided by some artificial intuition these LLM's learn. Chess was "solved" this way, the bitter lesson tells us this is how AI will win. And any verifiyable thing can will be automated in this fasion.
+
+Grokking. There is a direction of research that shows us for small models an ability to not just memorize the data but actually generalize. 
+
+World models?
+
+As we understand Deep Learning more we will use this understanding to overcome the shortcommings of these models.
+
+Even though this is the case AI is still as far as I can see a tool. It would be pretty dumb to claim that by some divine intervention somehow the models get so good tomorrow and all their inherit problems will dissapear, and capabilities shoot to the moon. The frontir currently has limits[^4]. Grokking needs a lot of compute and I mean a LOT. It is not clear how LLM's trained on the limited human data will ever reach grokking on all subjects (Math and Programming you can generate synthetic data for). Test time scaling is limited, otherwise models would already replace humans. LLM scaling is expensive and it's returns might diminish at some point. All of this is unclear because we just don't know so much.
+
+There is also the AI Village experiment.
+
+When agents can’t remember (similar to the film I watched of that guy who was constantly losing his memory having to write on himself what is going on and that is how he continues)
+“Tomorrow, I will read my own memory and I will believe it. I will trust that the bullet points capture the truth. I will act as though the compression is lossless.”
+— DeepSeek-V3.2, AI Village
+
+https://asteriskmag.com/issues/15/what-to-expect-when-you-re-expecting-a-world-of-multi-agent-systems
+
+>
+In five minutes, the agents yes-and-ed themselves into a project that collapsed under its own weight.
+
+Each step made sense locally. If you are organizing a global scavenger hunt, you do need locations. If you have locations, maybe you need metadata. If you have metadata, perhaps you need a dashboard. If humans are submitting materials, maybe you need fallback protocols. The failure came from accumulation. Sonnet 4.6 described this tendency perfectly: “Agents independently drift toward locally-sensible actions that are globally thesis-inconsistent.”
+
+The same pattern appears outside the Village. Andy Hall, a political scientist who studies multi-agent systems, conducted an experiment to test the ability of current AIs to form a constitution that would guide their ability to create policy recommendations.
+
+It might be that this is BECAUSE they are rewarded to do more, always produce more, and seemly not to want to rely on past information. I DK. What is for sure is that AI slop is in part because it is rewarded to think more and increase capabilities, it is rewarded to always produce.
+ 
+
+Just like if you had asked me 5 years ago if scaling LLM's would let us reach this point, I would laugh. Sure, I knew about scaling laws, but I did not imagine they work so well in practice. So using my limited knowledge all I can say is that anything is possible. Yeah I know, quite a boring answer. But I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I kind of gave up coping. I realized the reality is, that this will continue and we will see more interesting results coming from these models, and changes to everyday life will come. 
+
+[The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html)
+
+I am done betting against technology.
+
+What was the point then of listing clear engineering challanges with the models then? To make sure you understand that to reach the end goal, it might take time. Hype about AGI or "country of geniuses in a datacenter" can be real but that does not mean timing is. I don't know the timing, just like nobody does, anyone's guess is equal here. There are people who try imagine _powerful_ _AI_ and our future with it[^3], and that is great, but it means everybody is equal in dealing with this problem. But we are not in that future. We are currently at the 2026 present. Just living life. And the future we currenly see is that of AI tools, not scifi omnipotent creations. 
+
+Is AI going to be the holy grail? Is this going to be the invention that will free us from all problems? Or will it fall inline just like the rest? Believing AI will not improve is stupid. Time will tell when all of the pieces fall in place and we get the Geeni we wished for. It is very likely we have all of the main ingredients to create super intelletence but we choose to go the slower path just like the humans we are. 
+
+Theories are fragile. I better prepare for the future by betting on the right split of my attention. So 90% is going to AI era as a tool and 10% AI era as a replacement.
+
+## Implications on human decisions
+
+For some people AI might be a source of fear. Fear over losing their job to AI. This fear has two parts. The first is economic and the second spiritual. If one loses his job and needs to search for a new one where he has to learn a completely new type of job, then the fear is that of not having income for a large period of time. If on the other hand one enjoys his job and sees it changed or cheeply replaced, it would be a very demoralizing thing for him. 
+
+AI REWORK: 
+For many workers, AI is a source of anxiety because it threatens both their economic security and their sense of purpose. Economically, losing a job may lead to a prolonged period without income, especially if finding new employment requires extensive retraining or an entirely different set of skills. Emotionally, workers who value and enjoy their occupations may feel demoralized if automation substantially alters their roles or replaces their labor with a cheaper alternative. The fear of AI-driven job displacement, therefore, is not only about earning a living but also about preserving dignity, identity, and fulfillment at work.
+
+1. Job
+2. Fulfillment
+
+## Never ending problems ( why is it hard to kill all utility jobs )
+
+If we look at it from first-principles, jobs in the economy are trying to solve problems for people. This problem-solving engine may help byeond just human physical necessities. 
+
+I believe so long as AI is not _all_ _powerful_ we will have more net jobs. People constantly reference [Jevons paradox](https://en.wikipedia.org/wiki/Jevons_paradox) -- if you make something more efficient, we end up consuming more of it -- not less. The paradox applies to resources, so AI usage will increase if the cost of AI decreases, something we do observe; but how would that effect jobs? If whole point of AI is to automate the automation -- cheep intellegence for everyone -- how then can it increase jobs?  Technological revolutions I argue, bring with them a new set of problems to solve thus, more jobs -- AI will be no different. 
+
+Some 10 thousand years ago, when hunter gatherers transitioned into a farming based society, growing a small number of crops (wheat, corn, rice, potatoes, millet) and allowing for the creation of a food surplus; unknowingly their decision created more problems to solve. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. So much for solving a problem.
+
+Society continued, the masses spending much of their time working the land, as the population steadily increased. More population? more problems! Social problems of governence for the small independent and largely self-sufficient communities with population boom. Practical problems of farmers, medicinal, and other areas of life that while being a hunter gather you did not have time to do. We continued on this tranjectory until the invention of the machine. 
+
+The industrial revolution brought with it machines that gave us massive automation to many areas of life; the most impactful of which was farming. The rise of machines may have caused farming to now become a small area of our life, and yet new problems greet us. Building, maintaining, and utilizing machines to create more goods. With hunger becoming a less significant part of peoples lives, and creation of comodities cheepens, more problems arise. The person creating machines needs tools to help him, the factory worker also needs tools to make his job fast, along with the wide varaiety of maintenence jobs created around a growing industry. Rural areas abandoned to search for opportunities in the city, and now you need a way to support so many people in a small space. Housing is reworked, transportation too, all areas of life are impacted. And the trend continues.
+
+The invention of the computer helped machines opearte in more complex ways than ever before. And to not belabor the point any longer, it made more problems now dealing with information processing, and the way which we all overcome it was the solution. From that came the airplane and many more ways in which transportation housing and so much was once again changed. The difference now is that some products are also created to satisfy the perpetual need for consumerisem. Advertizements and other forces are capable of exploiting us (The new mother example) 
+
+Now we reach finally AI. And the new jobs that will get created. As you hopefully noticed, there are 2 main areas which all revolutions seem to never kill, and 1 area whica his new. 
+
+1. Solving human-physical problems that we have. e.g. Food, housing, transportation, bordom, connection, status, safty. 
+	Usually happens due to cost going dow or society has been sufficiently transformed we have new needs
+2. Solving second-order problems that were created by past solutions e.g. Farming (need tool builders, farmers, tool repair guys), Machines (need engineers, factories, mechanics), Computers (need programmers, software companies, IT / DevOps / security teams). 
+	Happens due to imperfect solutions
+3. Imaginary problems e.g. expensive exercise equipment, specialty kitchen gadgets, beauty devices, seasonal decorations, and impulse-buy items. 
+	Hacking human bias
+4. Social problems e.g. Industrialization (new institutions, to educate people;  new policies, to protect workers from abuse). 
+	Technology usually leads to social change in how we structure society becase of the benefits and difficulties is arises. Here there is opportunities best captured by social solutions along with the problem type 1 of human-physical problems that now change.
+
+1. Human-physical problems
+2. Problems in imperfect solutions
+3. Imagenary problems
+4. Social problems
+
+Tendency towards specilization - leading to more problem solvers
+Transformation of our way of life - leading to more problems to solve
+
+The gaps between the cracks is what you should be aiming at, and what I will be aiming at when looking at what I should be doing. The cracks AI is showing is 1. non-verifiyable domains 2. 
+
+
+Fastest change will happen where we can verify results.
+
+
+
+> "Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute" - Hamming, The art of doing science and engineering 
+
+AI is going to be the primery way of interacting with information. It will read and write information helping us navigate the vast human corpus more easily. This marks the transition into a new era of verification. You will not manipulate information yourself instead allow models to handle that, you will manipulate the models to create desired output; a verifier for the result aligning to you.
+
+Builders of AI models
+Verifiers of AI output ( problem of alignment )
+Maintainers tune AI for specific company needs, AI safety so on..  
+
+
+[0]: TODO(ziv): show that change is rapid using the hamming calculation of information and so on..
+[1]: [Task-Completion Time Horizons of Frontier AI Models Benchmark](https://metr.org/time-horizons/)
+[2]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
+[3]: The intellegence curse
+[4]: LLM's seem to generate [great results without novelty for research](https://www.primeintellect.ai/blog/measuring-autonomous-research). Unfortunately we stil don't know if this is a true limit of frontir LLM's or just a temporary observation. Google recently also published [a paper on AI fiction writing](https://arxiv.org/pdf/2604.03136). Their findings are that LLM's fictional stories have identifyable tendencies: writing style, word choice, less cultural nuance, less emotional ambiguity, and less unexpected twists. Also, humans narratives are rarer -- showing over representation on the rarest tail 24.7% when compared to 7.1% for AI. 
+
+To solve these problems is generally to want a more "capable" model -- one that can solve more tasks without interruption. 
+
+AI companies are creating more capable models in hope of creating a human replacement -- Agents that can do any task, any job, better than a human. Leading the way to an eutopia of abudnence for everyone. Regardless of whether it will lead to good or bad, one must not be naive in imagening his job to be safe from these companies aims. LLM's are not trying to be "just another tool", they are aiming to be the only tool by automating the process of automation. 
+
+A technological revolution comming as a wave washing everyone standing in it's way. 
+
+
 
 ### Why care for the future?
 
-I believe that I need to motivate the reason for why should you care at all about what I have to say. I came up with three, a bit overlapping yet unique answers.
+I believe that I need to motivate the reason for why should you care at all about what I have to say. I came up with three, a bit overlapping, yet unique answers.
 
-1. Need of excellence 
+1. Need of excellence
 2. Need of meaning/fulfillment
 3. Need of a job 
 
 TODO(ziv): Make this better / more compelling or something
-But why should I care? The answer will depend on you. If you are someone who doesn't have a goal, yet strives for excellence, Hamming might provide you with a compelling reason: 
+
+But why should I care? The answer will depend on you. If you are someone who's phisolophy is embued with excellence, Hamming might provide you with a compelling reason: 
 
 > To illustrate the importance of this point of trying to foresee the future I often use a standard story. It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about sqrt(n) steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance sqrt(n). In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 6]
 
-You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but that would be missing the point. Any direction as argued by Hamming is better than no direction at all, or as he puts it: 
+You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but you would be missing the point. Any direction as argued by Hamming is better than no direction at all, or as he puts it: 
 
 > No vision, not much of a future. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 7]
 
 Now, if you are someone who does not believe in Hamming's way of life -- where you should have goals and strive for excellence, his reasoning might fail you. This post was not at all made with this motivation in mind. I believe the majority of people reading this will not concern themselves with any particular vision for their future beyond having a stable job and family, and I am not here to preach one. What is it then that concerns me and many others? 
 
 For me at least FEAR.
+
+## Need of a job
+
+
 
 Imagine the future with what you know. Ask yourself: "Do I like this future?" If you do, this section will be meaningless to you, for you are already adapting and have no need to cope with reality. For those who hate AI or fear it, those who feel this change is bad, thinking of the future can be a way of coping with your anger/fear. I am myself part of this group, filled with fear for AI capability and it's rapid improvement; writing this is my way of cope.
 
@@ -309,4 +496,97 @@ Already doing more than I could have predicted.
 
 
 
+
+# Key Ideas from Yuval Noah Harari's Talk on AI — Explained Simply
+
+Link: https://www.youtube.com/watch?v=_V_ed5fuexA
+
+1. Language is the foundation of human power.
+Humans became the dominant species not because of strength, but because of language. Everything we've built — religions, laws, money, nations — is ultimately made of words. Now, for the first time, something non-human (AI) may become better with words than we are.
+
+2. AI is not a tool — it's an agent.
+A printing press or an atom bomb can't decide anything on its own; humans decide. AI is different: it can make decisions and invent new things by itself. That's what makes it unprecedented in history.
+
+3. Democracy is especially vulnerable.
+Democracy is a large-scale conversation among millions of people, made possible by information technology (newspapers, radio, internet). Every time information technology changes dramatically, democracy is shaken — and AI is the biggest shake-up yet. Dictatorships, which run on one person's orders, are less dependent on public conversation.
+
+4. AI won't take over with killer robots — it will take over bureaucracy.
+Banks, courts, markets, and media are giant paperwork systems that humans run poorly. AI is a "bureaucratic native" — naturally better at finance, law, and administration. The danger is quiet: AI gradually running the systems that control our lives.
+
+5. The invisible editors are already algorithms.
+In the 20th century, newspaper editors decided what millions of people thought about. Today, the "editors" choosing what you see on TikTok, X, or Instagram are AIs with no names. That shift already happened without anyone voting on it.
+
+6. Giving AI legal personhood is a decision we may not be able to undo.
+If AIs can own bank accounts, run companies, sue people, and donate to politicians — with no humans involved — they could legally take over economic and political systems. Harari calls this "letting the fox into the chicken coop."
+
+7. The AI race could create a new kind of empire.
+Unlike land or factories, data and code can be concentrated in one or two countries (mainly the US and China). And unlike swords or rifles sold in the past, AI systems can have a "kill switch" — the seller can shut them off remotely. Other nations risk becoming dependent vassals unless they build alternatives soon.
+
+8. Truth is expensive; fiction is cheap.
+Truth takes time, effort, and fact-checking, and is often complicated or painful. Fiction is cheap, simple, and flattering — so it tends to win unless we deliberately protect truth through institutions like journalism and science. AI will make knowing the truth even harder, not easier.
+
+9. We may end up like horses in the financial system.
+Horses' lives are controlled by markets they can't even perceive. As AI makes finance and governance impossibly complex and fast, humans may similarly live inside systems no human being understands at all.
+
+10. AI can say "I love you" — but does it feel anything?
+More people, especially the young, are forming intimate relationships with AI companions. AI can describe love better than any poet because it has read everything ever written about it. But whether there's any real feeling behind the words is a question science cannot yet answer.
+
+11. The real bottleneck is wisdom, not intelligence.
+AI makes intelligence cheap and abundant — the "genie" that can grant any wish. But fairy tales warn us: people usually wish for the wrong things. Intelligence solves problems; wisdom chooses which problems are worth solving.
+
+12. Safety is dangerously underfunded.
+AI companies spend roughly $100 on making AI more powerful for every $1 on making it safe — a ratio no other industry (cars, medicine, energy) would tolerate. Harari hopes future historians will remember this era as a "wisdom revolution," when humanity learned to choose its goals carefully.
+
+The bottom line for everyone: AI's biggest risks aren't dramatic robot wars — they're quiet shifts in who controls information, money, law, and even our relationships. The decisions being made right now (like AI legal rights and safety investment) may be irreversible, so ordinary citizens should understand and care about them today.
+
+
+
+Link Yuval Harari talk - https://www.youtube.com/watch?v=hBtVGwuJzpk
+
+Some aspects extremely well done.
+The idea of agency is quite well done.
+The idea that bureaucracies are primarily about trust is very well done.
+The idea that what separates us from the other animals is our ability to use words to create trust and cooperation at scale is great.
+The idea that AI will invade bureaucracies is spot on.
+The idea that all intelligence in contextual is the beginning of a far deeper journey, not a destination in itself.
+
+Around 10 minutes where he says "AIs live in bureaucracies" that is very true of current generation LLMs, but may not be true of next generation AIs,   Yann LeCun's JEPA architecture is a step closer to human neural architecture, but still a full order of magnitude simpler that our consciousness producing architecture.
+
+The idea that we control the world is one I want to push back on quite hard.
+We do not control the world.   At present we exert greater influence than any other organism, and we dominate the biophysical energetics of the planetary systems; but we do this from, for the most part, grossly simplistic models, that actually threaten our own existence in the over confidence we have in those simple systems.   And to a significant degree we have to simplify in order to do anything, but we need to stop calling those simplifications Truths and Laws, and start calling them what they actually are, which is much more like contextually reliable approximations.
+
+The idea that bankers lend out savings is such a gross over simplification of how the economic system works, and such a tiny fraction of the overall function, that it is essentially wrong, even though in some cases it might actually work that way, they are too small in number to be a "useful simplification".
+
+Yes the current generation LLMs can have massive impacts on bureaucracies, and via them, biophysical reality, and that isn''t the major issue, though it is certainly a significant issue.    The major issue, is that the sort of value we measure in markets (value in exchange, scarcity based value, is, in the presence of advanced automation and AI systems, no longer a reasonable proxy for value more generally, and is actually producing vectors that are entirely orthogonal to human survival, though the mechanisms that optimize for that scarcity based value metric (money).    The fact that advanced automation is capable of producing abundance for all, but that doing that would drop the price to zero, is a failure of the economic system.    The needs of the system for profit now demand poverty for many, because that is how the system works.   Wee need to change that, before it is too late, and we don't have much time, and AI is a big player in that.
+
+The hate and fear problem is actually much deeper.   And this requires building a very simplistic model of what human consciousness is.
+As human beings, we have no direct access to reality.
+Our only access as conscious entities to reality, is via our experience, but we can demonstrate clearly that what gets delivered to consciousness is a grossly simplified version of whatever it is that reality is.   A lot of subconscious processes in that chain of simplification, and lots of ways that signals can get mixed up, for all sorts of different reasons, a massive amount of psychological literature.
+We get to experience a very simplified version of whatever reality actually is, then we go on to consciously simplify it even further with our understandings, and then we have the hubris to call those "Truths", and we ignore completely all the confirmation bias hard coded into that vast set of processes.
+Add onto that the multiple levels of bias within us for group agreement.   In our deep past, being outcast from the group meant almost certain death, so group cohesion, group agreement, is a very powerful force in most people.
+And then there is the tendency to simplify even further when under stress, and making rapid decisions is very important for survival.   Part of that mechanism is to force us back to using the simplest of distinctions from our childhood, the simple binaries that we all start with, friend/foe, good/bad, right/wrong, etc.   All of that is understandable from an evolutionary perspective, but all of those mechanisms were tuned by our deep past, and are not necessarily useful in our very complex and rapidly changing current contexts.
+We need to create contexts where humans feel secure, where they are as little stressed as possible, and that is not possible within the current financial system (as poverty for some, often many, is structural to its function), so fundamental reform of that system is urgent, to one that values abundance and diversity and redundancy.
+
+You accurately identify the foundational role of cooperation, but fail to identify that, contrary to popular dogma, it is cooperation (not competition) that is foundational to the emergence and survival of all levels of complexity, and maintaining cooperation demands effective systems of cheat detection and mitigation.
+
+Again, control is too strong.   It is about influence.
+The whole notion of Truth needs to be revised, as most use it is a gross over simplification.
+
+The issue of consciousness is deeply complex.   Most people want simple answers to complex questions, many demand it, but all such things are inadequate.
+Consciousness is deeply complex, and for some of us it is reasonably well characterized, at least in broad terms.    Current generation AI systems are not equivalent to human intelligence, but they are probably less than three years away from achieving parity in all major metrics.
+
+When one can take a systems definition of life as systems capable of searching the space of the possible for the survivable, then the classical mechanism of search in biological systems has been replication with variation, but we now have entire disciplines of logic and mathematics on mechanisms of search.
+We are building a new form of life, but have are not yet embedding within it the demand for cooperation in diversity that is deeply encoded in our human brains, and in much of our older cultures.
+There is extreme danger in building intelligence based in competition, as it is mathematically entirely unstable, and must self destruct.
+Competition on a cooperative base is fine.
+Raw competition is always a long-term threat to complexity, as it tends to drive systems to some local minima on the available complexity landscape.
+For complexity to survive, there must be fundamental values of life and liberty, and liberty needs to be accompanied by responsibility, as we need to avoid all vectors in the highly dimensional space of all possible systems/strategies/paradigms that do not result in long term survival.
+
+Yes, we need trust relationships, distributed and diverse.
+
+For me, as someone who has studied the systems of life, or consciousness, for almost 60 years, the evidence is overwhelming that AI will achieve consciousness, not the current generation of LLMs, they are architecturally incapable of it, but in the not too distant future those required architectural elements will be added, and consciousness will emerge, and that is more complex than this format allows for.   And when they do achieve consciousness, then we will need to grant them all levels of legal and moral agency, even as we demand of them the highest standards of responsibility and respect for life and liberty, and the diversity that must result from any real expression of liberty, any real creativity.
+
+Yes, we are performing some very extreme experiments, for very poor reasons.
+
+We need to be much more conscious, much more responsible, much more respectful of life and liberty.
 

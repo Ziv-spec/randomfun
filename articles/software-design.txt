@@ -1,4 +1,8 @@
 
+
+TODO(ziv): Add this to my website under fun stuff
+https://www.ling.upenn.edu/~beatrice/110/docs/uncleftish-beholding.html
+
 Goals: 
 
     1. Find all places where there is not enough data to train an LLM (to 
@@ -34,8 +38,6 @@ Goals:
 
     6. Read https://jsomers.net/blog/william-james-advice and after finishing the book "Thinking Fast Thinking Slow" re-review what is written here with the framework given in the book. See how does it hold up and the reasoning behind every persons opinions. 
 
-
-> "Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute" - Hamming, The art of doing science and engineering 
 
 Re-read chapter 2 of the book and, formulate the right question about our future with AI. This is especially important since grokking is 
 a real phenomenon, showing real promise of generalization of even current architectures with more compute.
@@ -376,6 +378,9 @@ Seemingly good practices like code-reuse are over-used irresponsibly, with peopl
 
 It can be the community around the library along with the increase transfer-ability of skills across teams. Maybe you just don't want to maintain that part. These are the reasons one might turn to reusing code instead of coding it from scratch.
 
+// NOTE(ziv): 
+// One interesting thing I have thought about right now is the fact that if everyone uses the same design. This is a fragile approach. If we look at it from Taleb's point of view. This can be seen with many websites using the same libraries they include for small things, only to find out that once the library goes dark or find a vulnerability or any other thing, to the software eco-system as a whole this makes many websites fragile to these problems. Here again I will not claim that this is inherently bad. Tis is a trade-off.
+
 On the other hand, using other people's code means conforming to the constraints that the people who created the library had. Bigger libraries impose more constraints, and more libraries impose more constraints. If the constraints don't meet yours, you might end-up spending more time on adjusting your/other's code to make it work than if you had wrote it from scratch. And if you have invested too much into a bad library... too bad.
 
 > it's fine if a library isn't completely perfect, none is, it's a time saver. you sacrifice a little bit of personal peace for the sake of getting some shit done or not needing to have the mental overhead of dealing with another person's crap. especially not a person or people who you can't directly contact...the maintainers are simply not my friends, they're not my colleagues, if i need LLVM fixed i cry, if i need any huge library fixed i need to go learn their BS along with the original problem space. if i need a feature added, i also cry. [NeGate, on [handmade-network fishbowl](https://handmade.network/fishbowl/libraries/#chatlog__message-container-1003003441322397797)]
@@ -480,7 +485,7 @@ From seeing Naruto and reflecting on my life, it seems that the question of veng
 
 When looked in a more general case: wars between nations seem to have similar yet slightly different cause and effect. For nations what is important are their internal and external interests. The reason for war is usually less emotional at the start but always very emotional when war erupts, since this is what makes people move. As is the case in the Pele pone Asian War, the Athens and the Spartans went to war not in response to allied countries provoking on another but the growing threat Athens posed on Sparta and the reverse. Of course that was only in the beginning. Near the beginning of war, emotion took over causing hate to sprout; allied forces joined in the effort putting fuel to fire, causing the more allied forces to join, and commencing the war effort. It is through this benefit thinking orientation leading to emotional hate making everyone to pick sides and eventually fight each for their cause, that war comes into existence. 
 
-Both sides believe they are in the right. It is a fact that for each on their own, they have in their minds full rights to harm the other for the pain they feel. I for example have fully seen what this is like in the recent war in Israel that began on October 7, 2023. Israeli's had felt like it was fully justified to kill many Palestinians for the horrible actions that a few took. In a day or two Ham's managed to kill more than a thousand Israelis; a mortality rate not seen in years and years of small specialized operations in Gaza. Ham's was of course planning for years this operation of theirs. They for reasons which we might not fully understand have choose to hurt Israel in a grand way which was not seen in decades. For them the decision was natural, they want to eliminate the Zionists. On the other side, the pain people felt was real. The fear people felt was real. Reality hit Israel hard and people were emotional. Their friends died, whole families burnt alive, babies were killed, relatives were on the verge of death, houses burnt, and the sound of gunfire was loud and clear. War was a result of heightened emotions incurred by the Hamas operation and of course each side only thinking about their own pain.
+Both sides believe they are in the right. It is a fact that for each on their own, they have in their minds full rights to harm the other for the pain they feel. I for example have fully seen what this is like in the recent war in Israel that began on October 7, 2023. Israeli's had felt like it was fully justified to kill many Palestinians for the horrible actions that a few took. In a day or two Ham's managed to kill more than a thousand Israelis; a mortality rate not seen in years and years of small specialized operations in Gaza. Ham's was of course planning for years this operation of theirs. They for reasons which we might not fully understand have choose to hurt Israel in a grand way which was not seen in decades. For them the decision was natural, they want to eliminate the Zionists. On the other side, the pain people felt was real. The fear people felt was real. Reality hit Israel hard and people were emotional. Their friends died, whole families burnt alive, babies were killed, relatives were on the verge of death, houses burnt, and the sound of gunfire was loud and clear. War was a result of heightened emotions (fear, anger) incurred by the Hamas operation and of course each side only thinking about their own pain.
 
 At the beginning of war when the severity of the situation was not understood people were afraid and scrambled to stabilize the situation. Many civilians rushed to the army to join the efforts of repelling Ham's militants from the Israeli border. 
 
@@ -745,6 +750,8 @@ https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/
 
 
 # Quotes I Like
+
+"If our small minds, for some convenience, divide this glass of wine, this universe, into parts — physics, biology, geology, astronomy, psychology, and so on — remember that Nature does not know it!" —Richard Feynman in The Feynman Lectures on Physics
 
 
 He who has a why can bear with almost any how. Man does not seek happiness, only the Englishmen does. - Friederich Nietzsche, Twilight of the Idols
