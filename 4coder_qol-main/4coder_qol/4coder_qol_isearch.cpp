@@ -18,13 +18,12 @@
 
 
 // TODO(ziv):
-// Delete & control
-// fix shift 
 // restructure code
-// make sure delete & adding a character considers the selection and everything 
 // add autocomplete
-// 
 // add highlighting for search results
+// handle cursor upport
+// copy selection to clipboard ????
+// paste selection to clipboard ???
 // multi cursor support 
 // have support for search in all files and so on.. look into #showcase in discord
 // 
@@ -53,6 +52,7 @@ struct Search_Bar {
 //- Declarations 
 // Used to render improved query bar functionality, and highlight all matches
 // function Rect_f32 SEARCH_render_query_bar(Application_Links *app, Rect_f32 region, View_ID view, Face_ID face_id);
+// Make sure search highlights are rendered with low opacity to not be too overbearing for me
 function void SEARCH_render_search_highlights(View_ID view);
 
 // 
@@ -61,26 +61,6 @@ function void SEARCH_render_search_highlights(View_ID view);
 //- Implementations
 
 // Management of search bar state
-
-function void SEARCH_init(Application_Links *app, View_ID view) {
-    //Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
-    Managed_Scope scope = view_get_managed_scope(app, view);
-    Managed_Object *search_bar = scope_attachment(app, scope, view_search_bar, Managed_Object);
-    
-    // Initialize memory for search_bar
-    Managed_Object search_bar_obj = alloc_managed_memory_in_scope(app, scope, sizeof(Search_Bar), 1);
-    
-    // Set default data to be empty
-    Search_Bar sbar = {
-        string_u8_litexpr(""),
-        string_u8_litexpr(""),
-    };
-    managed_object_store_data(app, search_bar_obj, 0, 1, &sbar);
-    
-    // Attache allocated search bar object to scope_attachement
-    *search_bar = search_bar_obj;
-    
-}
 
 function b32 set_active_search_bar(Application_Links *app, View_ID view, Search_Bar *bar) {
     Managed_Scope scope = view_get_managed_scope(app, view);
@@ -269,48 +249,42 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         
         b32 string_change = false;
         if (string.str != 0 && string.size > 0){
-            // append character and mark 'string_change' to true
+            // insert new characters
             
-            // TODO(ziv): use rhs, lhs terminology (there can be no middle
-            // because the true lhs always stays intact, so I can use lhs, rhs).
             
-            i64 cursor_pos_after_delete_selection = bar.cursor_pos;
-            i64 characters_after_selection = bar.cursor_pos; 
+            // From
+            // uuuuuulllllrrrrrr
+            // To
+            // uuuuuuiiirrrrrr
+            // u- unchanged 
+            // r- rhs (selection to delete), after which I need to insert new chars
+            // l- lhs (characcters to move to relocate)
+            // i- inserted chars
+            
+            i64 lhs = bar.cursor_pos; 
+            i64 rhs = bar.cursor_pos; 
             if (bar.selection_draw_on) {
-                // override selection
-                
                 Range_i64 delete_range = Ii64(bar.cursor_pos, bar.selection_anchor); 
-                //i64 delete_amount = delete_range.end - delete_range.start;
-                
-                cursor_pos_after_delete_selection = delete_range.min;
-                characters_after_selection = delete_range.max;
-                
+                lhs = delete_range.min; 
+                rhs = delete_range.max;
+                bar.selection_draw_on = false;
             }
             
+            String_Const_u8 chars_to_insert = string;
+            i64 rhs_chars_count = (i64)bar.string.size - rhs;
             
-            
-            
-            // Insert into new position
-            // TODO(ziv): add capacity checks to make sure to not overflow
-            // copy old into new pos using intermediate buffer
+            // copy rhs to new position
             char temp[256]; 
-            block_copy(temp,
-                       bar.string.str+characters_after_selection,
-                       (i64)bar.string.size - characters_after_selection);
+            block_copy(temp, bar.string.str + rhs, rhs_chars_count);
+            block_copy(bar.string.str + lhs + chars_to_insert.size,
+                       temp, rhs_chars_count);
             
-            block_copy(bar.string.str+cursor_pos_after_delete_selection+string.size, 
-                       temp, 
-                       (i64)bar.string.size - characters_after_selection);
+            // copy inserted chars into new position
+            block_copy(bar.string.str+lhs, 
+                       chars_to_insert.str, chars_to_insert.size);
             
-            // copy new into pos
-            block_copy(bar.string.str+cursor_pos_after_delete_selection, 
-                       string.str, 
-                       string.size); 
-            bar.string.size += string.size;
-
-            
-            bar.cursor_pos += string.size;
-            
+            bar.string.size = lhs + chars_to_insert.size + rhs_chars_count;
+            bar.cursor_pos = lhs+chars_to_insert.size;
             string_change = true;
         }
         else if (match_key_code(&in, KeyCode_Backspace)){
@@ -318,7 +292,6 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             String_Const_u8 old_string = bar.string;
             b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
             
-
 /*             
             // b32 mod_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
             bar.string = (mod_ctl && !mod_sft ? qol_ctrl_backspace_string(app, bar.string) :
@@ -329,20 +302,19 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             Range_i64 delete_range = (bar.selection_draw_on ? Ii64(bar.cursor_pos, bar.selection_anchor) : 
                                mod_ctl ? Ii64(zk_move_alphaneumeric_boundry(bar.string, bar.cursor_pos, Scan_Backward), bar.cursor_pos) :
                                       Ii64(clamp_bot(0, bar.cursor_pos-1), bar.cursor_pos));
-            // TODO(ziv): Update to make sure I handle utf8 also backspace_utf8(bar.string);
             
+            // TODO(ziv): Update to make sure I handle utf8 also backspace_utf8(bar.string);
             if (delete_range.min != delete_range.max) {
             i64 delete_size = (delete_range.max - delete_range.min);
                 bar.string.size = Max(0, bar.string.size - delete_size);
             
             block_copy(bar.string.str+delete_range.min, 
-                       bar.string.str+delete_range.max, 
-                       bar.string.size-delete_range.min);
+                       bar.string.str+delete_range.max, bar.string.size-delete_range.min);
                 
             bar.cursor_pos = delete_range.min;
             }
             string_change = (bar.string.size < old_string.size);
-            
+            bar.selection_draw_on = false; 
         }
         
         if (string_change) {
@@ -353,7 +325,11 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         // Movement & selection
         //
         
-        if (in.event.kind == InputEventKind_KeyStroke) {
+        if (in.event.kind == InputEventKind_KeyStroke && 
+            (in.event.key.code == KeyCode_Right || 
+            in.event.key.code == KeyCode_Left ||
+            in.event.key.code == KeyCode_Home || 
+             in.event.key.code == KeyCode_End)) {
             b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
             b32 mod_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
             b32 changed = zk_do_selection(&bar, mod_sft); 
