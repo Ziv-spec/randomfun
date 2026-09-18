@@ -169,7 +169,7 @@ qol_setup_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code
     MC_Bind(write_block,                KeyCode_R, KeyCode_Alt);
     MC_Bind(write_todo,                 KeyCode_T, KeyCode_Alt);
     MC_Bind(write_note,                 KeyCode_Y, KeyCode_Alt);
-    Bind(qol_search_identifier,         KeyCode_F, KeyCode_Alt);
+    //Bind(qol_search_identifier,         KeyCode_F, KeyCode_Alt);
     Bind(list_all_locations_of_type_definition,               KeyCode_D, KeyCode_Alt);
     Bind(list_all_locations_of_type_definition_of_identifier, KeyCode_T, KeyCode_Alt, KeyCode_Shift);
     Bind(select_surrounding_scope,         KeyCode_LeftBracket, KeyCode_Alt);
