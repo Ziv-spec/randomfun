@@ -493,6 +493,9 @@ qol_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, Buff
         qol_draw_hex_color(app, view_id, buffer, text_layout_id);
     }
     
+    // @search
+    SEARCH_render_search_highlights(app, view_id, text_layout_id);
+    
     // NOTE(allen): Cursor
     switch (fcoder_mode){
         case FCoderMode_Original:
