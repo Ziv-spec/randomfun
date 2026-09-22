@@ -66,8 +66,8 @@ qol_tick(Application_Links *app, Frame_Info frame_info){
 
   qol_interp(qol_cur_cursor_pos, qol_nxt_cursor_pos, dt, 1e-14f);
   if (!near_zero(qol_cur_cursor_pos - qol_nxt_cursor_pos, 0.5f)){
-    animate_in_n_milliseconds(app, 0);
-  }
+      animate_in_n_milliseconds(app, 0);
+    }
 
   if (qol_try_exit_view != 0){
     view_set_active(app, qol_try_exit_view);
@@ -78,7 +78,8 @@ qol_tick(Application_Links *app, Frame_Info frame_info){
   qol_tick_bview(app, frame_info);
 
   MC_tick_inner(app, frame_info);
-  TAB_tick_inner(app, frame_info);
+    TAB_tick_inner(app, frame_info);
+    SEARCH_tick_inner(app, frame_info); 
 }
 
 BUFFER_HOOK_SIG(qol_file_save){

@@ -55,6 +55,7 @@ CUSTOM_ID(attachment, view_search_multi_cursor_highlights);
 CUSTOM_ID(attachment, view_search_all_matches_highlights);
 
 global String_Const_u8 search_results_name = string_u8_litexpr("*search-results*");
+global float search_bar_blink = 0;
 
 struct Search_Bar {
     String_Const_u8 prompt; 
@@ -64,6 +65,8 @@ struct Search_Bar {
     i64 anchor_pos; // when selecting, this is the position selection
     // is anchord around when the cursor is moving (same as a marker)
     i64 cursor_pos; // cursor position in the search bar buffer utf8
+    
+    View_ID view;
 };
 
 //- Declarations 
@@ -82,9 +85,6 @@ function b32 get_active_search_bar(Application_Links *app, View_ID view, Search_
 inline function Range_i64 get_selection_range(Search_Bar bar);
 
 function String_Const_u8_Array zk_string_split_wildcards(Arena *arena, String_Const_u8 string);
-function i64 zk_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle, u64 *match_size); 
-function i64 zk_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle, u64 *match_size);
-function Range_i64_Array zk_fuzzy_find_matches_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer, String_Const_u8 needle);
 
 function void word_complete_iter_prev_wrapping(Word_Complete_Iterator *it);
 function void zk_search_bar_word_complete(Application_Links *app, Buffer_ID buffer, 
@@ -347,17 +347,39 @@ function void
 SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_ID text_layout_id) {
     ProfileScope(app, "draw search highlights");
     
-    Scratch_Block scratch(app);
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
     Managed_Scope scope = view_get_managed_scope(app, view);
         Range_i64_Array *all_matches = scope_attachment(app, scope, view_search_all_matches_highlights, Range_i64_Array);
-        
+    
+    //local_persist int first_match_in_view = 0; 
+    
+    int first_match = 0; 
+
+/*     
+        int first_match = clamp_bot(first_match_in_view-1, 0);
+    if (first_match_in_view < all_matches->count) {
+        Range_i64 range = all_matches->ranges[first_match]; 
+        if (range_contains(visible_range, range.min)) {
+            first_match = 0;
+        }
+    }
+     */
+
     f32 roundness = 0;
-        for (int i = 0; i < all_matches->count; i++) {
-            Range_i64 match = all_matches->ranges[i]; 
-            if ((visible_range.min+1) < match.min &&  match.max < (visible_range.max-1) ) { 
+    for (int i = first_match; 
+         i < all_matches->count; 
+         ++i) {
+        
+        Range_i64 match = all_matches->ranges[i]; 
+        if ((visible_range.min+1) < match.min ) { 
+            if ( match.max < (visible_range.max-1)) {
             draw_character_block(app, text_layout_id, match, roundness, fcolor_id(defcolor_highlight_cursor_line));
                 // paint_text_color(app, text_layout_id, match,  finalize_color(defcolor_at_highlight, 1));
+            }
+            else {
+                break;
+            }
+            
         }
     }
     
@@ -372,14 +394,22 @@ SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_I
     text_color = text_color | alpha_char;
     
     for_mc(node, mc_context.cursors) {
-                Range_i64 range = Ii64(node->cursor_pos, node->mark_pos);
+            Range_i64 range = Ii64(node->cursor_pos, node->mark_pos);
+            if ((visible_range.min+1) < range.min && range.max < (visible_range.max-1)) {
         draw_character_block(app, text_layout_id, range, 0, back_color);
-        paint_text_color(app, text_layout_id, range, text_color);
+                paint_text_color(app, text_layout_id, range, text_color);
+            }
         }
         
     }
     
     }
+
+function void 
+SEARCH_tick_inner(Application_Links *app, Frame_Info frame_info) {
+    search_bar_blink += frame_info.animation_dt; 
+    search_bar_blink = (search_bar_blink < 4*3.141592653589793) ? search_bar_blink : 0; 
+}
 
 function Rect_f32 
 SEARCH_draw_bar_inner(Application_Links *app, Rect_f32 region, View_ID view, Face_ID face_id) {
@@ -422,8 +452,19 @@ SEARCH_draw_bar_inner(Application_Links *app, Rect_f32 region, View_ID view, Fac
         // Draw text
         p = draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
         
-        // Draw cursor rect
-        draw_rectangle_fcolor(app, Rf32_xy_wh(cursor_x_pos, p.y, 2.f, face_metrics.line_height), 0.f, fcolor_id(defcolor_cursor, 0));
+        
+        b32 is_active_view = search_bar.view == get_active_view(app, Access_Always);
+        if (is_active_view) {
+        if(search_bar_blink < 10.f) {
+            animate_in_n_milliseconds(app, 0); 
+        }
+        
+#define ACTIVE_BLINK(b) (sin_f32(7.f*b) >= 0.f || (b) > 5.f)
+        if (ACTIVE_BLINK(search_bar_blink)) {
+            // Draw cursor rect
+            draw_rectangle_fcolor(app, Rf32_xy_wh(cursor_x_pos, p.y, 2.f, face_metrics.line_height), 0.f, fcolor_id(defcolor_cursor, 0));
+        }
+        }
         
         region = pair.min;
     }
@@ -452,21 +493,16 @@ zk_string_split_wildcards(Arena *arena, String_Const_u8 string)
     return(array);
 }
 
-function i64
-zk_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle, u64 *match_size)
-{
-    i64 buffer_size = buffer_get_size(app, buffer);
-    i64 result = buffer_size;
+function String_Match_List
+zk_fuzzy_find_matches_forward_in_range(Application_Links *app, Buffer_ID buffer, Arena *arena, String_Const_u8 needle, String_Const_u8_Array splits, i64 begin, i64 end, i64 *match_count) {
+    String_Match_List list = {}; 
     
-    Scratch_Block temp(app);
-    String_Const_u8_Array splits = zk_string_split_wildcards(temp, needle);
-    if ( !splits.count ) { return result; }
-    
-    while( pos < buffer_size )
-    {
-        i64 original_pos = pos;
+    i64 pos = begin;
+    while (pos < end) {
+        
         String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
         if ( !first_match.buffer ) break;
+        if ( end < first_match.range.min ) break; 
         
         i64 match_start = first_match.range.min;
         i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
@@ -493,143 +529,57 @@ zk_fuzzy_search_forward(Application_Links *app, Buffer_ID buffer, i64 pos, Strin
             }
             else
             {
-                *match_size = first_match.range.max - first_match.range.min;
-                return result;
-            }
-        }
-        if ( matched )
-        {
-            *match_size = pos+1 - match_start;
-            result = match_start;
-            break;
-        }
-        
-        if (!(pos > original_pos)) 
-            return buffer_size;; 
-    }
-    
-    return result;
-}
-
-function i64
-zk_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, String_Const_u8 needle, u64 *match_size)
-{
-    i64 buffer_size = buffer_get_size(app, buffer); buffer_size;
-    i64 result = -1;
-    
-    Scratch_Block temp(app);
-    String_Const_u8_Array splits = zk_string_split_wildcards(temp, needle);
-    if ( !splits.count ) { return result; }
-    
-    while( pos > -1 )
-    {
-        i64 original_pos = pos;
-        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Backward, pos);
-        if( !first_match.buffer ) break;
-        
-        i64 match_start = first_match.range.max;
-        i64 line_start   = get_line_start_pos_from_pos(app, buffer, first_match.range.min);
-        pos = first_match.range.start;
-        b32 matched = true;
-        for (i64 index = 1;
-             index < splits.count;
-             index++)
-        {
-            String_Const_u8 substring = splits.strings[index];
-            String_Match match = buffer_seek_string(app, buffer, substring, Scan_Backward, pos);
-            if ( match.buffer)
-            {
-                if ( match.range.min >= line_start )
-                {
-                    pos = match.range.start;
-                }
-                else
-                {
-                    pos = get_line_end_pos_from_pos(app, buffer, match.range.start);
-                    matched = false;
-                    break;
-                }
-            }
-            else
-            {
-                // at the end of what it can find backwards
-                return result;
-            }
-        }
-        if ( matched )
-        {
-            *match_size = match_start - pos;
-            result = pos;
-            break;
-        }
-        
-        if (!(pos < original_pos))
-            return result;
-    }
-    
-    return result;
-}
-
-function Range_i64_Array
-zk_fuzzy_find_matches_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer, String_Const_u8 needle) {
-    String_Const_u8_Array splits = zk_string_split_wildcards(arena, needle);
-    if ( !splits.count ) { return Range_i64_Array{0}; }
-    
-    Range_i64 *range_array = push_array(arena, Range_i64, 1); 
-    
-    i32 matches_count = 0; 
-    i64 pos = 0;
-    i64 buffer_size = buffer_get_size(app, buffer);
-    while (pos < buffer_size) {
-        
-        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Forward, pos);
-        if ( !first_match.buffer ) break;
-        
-        i64 match_start = first_match.range.min;
-        i64 line_end    = get_line_end_pos_from_pos(app, buffer, match_start);
-        pos = first_match.range.end - 1;
-        b32 matched = true;
-        for (i64 index = 1;
-             index < splits.count;
-             index++)
-        {
-            String_Const_u8 substring = splits.strings[index];
-            String_Match match = buffer_seek_string(app, buffer, substring, Scan_Forward, pos);
-            if ( match.buffer )
-            {
-                if ( match.range.max <= line_end )
-                {
-                    pos = match.range.end - 1;
-                }
-                else
-                {
-                    pos = get_line_start_pos_from_pos(app, buffer, match.range.start) - 1;
-                    matched = false;
-                    break;
-                }
-            }
-            else
-            {
-                Range_i64 *match_range = push_array(arena, Range_i64, 1); 
-                *match_range = first_match.range;
-                matches_count++;
+                String_Match *match_node = push_array(arena, String_Match, 1);
+                match_node->range = first_match.range; 
+                sll_queue_push(list.first, list.last, match_node); 
+                match_count[0]++;
                 matched = false;
                 break;
             }
         }
         if ( matched )
         {
-            Range_i64 *match_range = push_array(arena, Range_i64, 1); 
-            *match_range = Ii64(match_start, pos+1);
-            matches_count++;
+            String_Match *match_node= push_array(arena, String_Match, 1);
+            match_node->range = Ii64(match_start, pos+1); 
+            sll_queue_push(list.first, list.last, match_node); 
+            match_count[0]++;
         }
     }
     
+    
+    return list;
+}
+
+function Range_i64_Array
+zk_fuzzy_find_matches_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer, String_Const_u8 needle, i64 pos, i64 *forward_match_idx) {
+    ProfileScope(app, "[ZK] fuzzy find all matches in buffer");
+    
+    String_Const_u8_Array splits = zk_string_split_wildcards(arena, needle);
+    if ( !splits.count ) { return Range_i64_Array{0}; }
+    
+    i64 buffer_size = buffer_get_size(app, buffer); 
+    
+    i64 match_count_pre = 0,  match_count_post = 0;
+    String_Match_List matches_pre  = zk_fuzzy_find_matches_forward_in_range(app, buffer, arena, needle, splits, 0, pos, &match_count_pre);
+    String_Match_List matches_post = zk_fuzzy_find_matches_forward_in_range(app, buffer, arena, needle, splits, pos, buffer_size, &match_count_post);
+    
+    int i = 0; 
+    Range_i64 *ranges_array = push_array(arena, Range_i64, match_count_pre+match_count_post); 
+    for (String_Match *node = matches_pre.first; node != 0; node = node->next) {
+        ranges_array[i++] = node->range;
+    }
+    for (String_Match *node = matches_post.first; node != 0; node = node->next) {
+        ranges_array[i++] = node->range;
+    }
+    
     Range_i64_Array result = {
-        range_array+1,
-        matches_count
+        ranges_array,
+        (i32)(match_count_pre+match_count_post)
     };
     
+    Assert(forward_match_idx); 
+    *forward_match_idx = match_count_pre; 
+
     return result;
 }
 
@@ -835,6 +785,16 @@ zk_view_disable_highlight_range(Application_Links *app, View_ID view) {
     all_matches->count = 0; 
 }
 
+function void
+zk_view_set_highlight_range(Application_Links *app, View_ID view, Range_i64_Array matches_to_highlight) {
+    
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    Range_i64_Array *all_matches_to_highlight = scope_attachment(app, scope, view_search_all_matches_highlights, Range_i64_Array);
+    *all_matches_to_highlight = matches_to_highlight;
+    
+    
+}
+
 
 //- Main search function
 
@@ -848,6 +808,7 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
     if (!buffer_exists(app, buffer)){ return; }
     
     Search_Bar bar = {};
+    bar.view = view; 
     if (!set_active_search_bar(app, view, &bar)) return; 
     
     Vec2_f32 old_margin = {};
@@ -860,34 +821,30 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
     u8 bar_string_space[256];
     bar.string = SCu8(bar_string_space, query_init.size);
     block_copy(bar.string.str, query_init.str, query_init.size);
-    u64 match_size = bar.string.size;
-    i64 pos = first_pos;
     
-    if (match_size != 0) {
+    i64 match_idx = 0;
+    Range_i64 match_range = { first_pos, first_pos+(i64)bar.string.size }; 
+    Range_i64_Array all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string, match_range.min-1, &match_idx);
+    zk_view_set_highlight_range(app, view, all_matches); 
+    
         bar.anchor_pos = 0; 
         bar.cursor_pos = bar.string.size;
         bar.is_selection_active = true;
-    }
     
     Range_i64 range = buffer_range(app, buffer);
     b32 is_last_action_autocomplete = false;
     
     MC_end(app); 
     
+    
     User_Input in = {};
     for (;;){
         bar.prompt = (scan == Scan_Forward ?
                       string_u8_litexpr("I-Search: ") :
                       string_u8_litexpr("Reverse-I-Search: "));
-         isearch__update_highlight(app, view, Ii64_size(pos, match_size));
-
-/*         
-        zk_view_set_highlights(app, scratch, view, 
-                               Ii64_size(pos, match_size), 
-                               all_matches_ranges,  
-                               all_matches_ranges_count); 
-         */
-
+         isearch__update_highlight(app, view, match_range);
+        zk_view_set_highlight_range(app, view, all_matches); 
+        
         in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
         if (in.abort){
             break;
@@ -909,7 +866,7 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             // I do this to avoid having MC cursor and the actual cursor
             // on the same spot, casuing doubling of input on one spot
             {
-            i64 current_cursor_pos = pos+match_size;
+            i64 current_cursor_pos = match_range.max;
             MC_remove(app, current_cursor_pos);
             view_set_cursor(app, view, seek_pos(current_cursor_pos));
                 
@@ -1063,51 +1020,48 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         //
         
         if (string_change || do_scan_action) {
+            search_bar_blink = 0;
             
-            b32 mode_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
-            if (mode_sft) {
-                b32 duplicate = false; 
-                i64 cursor_pos = pos+match_size;
-                for_mc(node, mc_context.cursors) {
-                    if (node->cursor_pos == cursor_pos) {
-                        duplicate = true; 
-                        break;
+            if (string_change) {
+                MC_end(app);
+                end_temp(temp); // NOTE(ziv): trick for 'zk_fuzzy_find_matches_buffer' 
+                // to clear memory right before the function allocates 
+                
+                all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string, match_range.min-1, &match_idx);
+                
+                if (all_matches.count ) {
+                    if (0 <= match_idx && match_idx <= all_matches.count) {
+                match_range = all_matches.ranges[match_idx]; 
+                }
+                }
+                
+            }
+            else if (all_matches.count) {
+                
+                b32 mode_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
+                if (mode_sft) {
+                    b32 duplicate = false; 
+                    for_mc(node, mc_context.cursors) {
+                        if (node->cursor_pos == match_range.max) {
+                            duplicate = true; 
+                            break;
+                        }
+                    }
+                    
+                    if (duplicate) {
+                        MC_remove(app, match_range.max);
+                    }
+                    else { 
+                        MC_insert(app, match_range.max, match_range.min);
                     }
                 }
                 
-                if (duplicate) {
-                    MC_remove(app, cursor_pos);
-                }
-                else { 
-                    MC_insert(app, cursor_pos, pos);
-                }
-            }
-            
-            i64 new_pos = (scan == Scan_Forward) ? 
-                zk_fuzzy_search_forward(app, buffer, pos-string_change, bar.string, &match_size) : 
-            zk_fuzzy_search_backward(app, buffer, pos + string_change, bar.string, &match_size);
-            if (range_contains(range, new_pos)){
-                pos = new_pos;
-            }
-            
-            
-            if (string_change) {
-            
-                // Since 'zk_fuzzy_find_matches_buffer' allocates memory, a trick I do here is just 
-                // to use a temporary memory where I clear the memory right before doing another 
-                // allocation. I also clear the memory before exiting the search command (just look 
-                // a bit down)
-            
-            MC_end(app);
-                end_temp(temp);
+                match_idx = (scan == Scan_Forward) ? 
+                    clamp_top(match_idx+1, all_matches.count-1) : 
+                match_idx = clamp_bot(match_idx-1, 0);
                 
-            Range_i64_Array all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string);
-            
-            Managed_Scope scope = view_get_managed_scope(app, view);
-            Range_i64_Array *all_matches_to_highlight = scope_attachment(app, scope, view_search_all_matches_highlights, Range_i64_Array);
-            *all_matches_to_highlight = all_matches;
+                      match_range = all_matches.ranges[match_idx]; 
             }
-            
             
         }
         else if (do_scroll_wheel){
@@ -1119,11 +1073,13 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
     zk_view_disable_highlight_range(app, view);
     
     if (in.abort){
+        MC_end(app); 
+        
         u64 size = bar.string.size;
         size = clamp_top(size, sizeof(previous_isearch_query) - 1);
         block_copy(previous_isearch_query, bar.string.str, size);
         previous_isearch_query[size] = 0;
-         view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
+        view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
     }
     set_active_search_bar(app, view, NULL);
     
