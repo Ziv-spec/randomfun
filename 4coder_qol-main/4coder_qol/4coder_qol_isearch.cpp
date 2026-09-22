@@ -35,16 +35,20 @@
 //
 // Multi-Cursor Select/Unselect Down    Shift+Down
 // Multi-Cursor Select/Unselect Up      Shift+Up
-// Multi-Cursor Begin                   Alt+Return
+// Multi-Cursor Begin                   Return
 //
 
 // TODO(ziv): list_all_locations
 // [x] Make new search buffer
 // [x] make the function and handle jumping
-// [ ] handle rendering highlights
 // [x] handle multi-cursor
-// [ ] fix fuzzy search backwards (to be the same as forwards but you know... backwards) 
+// [x] handle rendering highlights
+// [ ] In search bar, for words that don't exits, color the extra characters in red
+// [ ] Intergrate search & new search buffer format (*BIG* think about how to break it down)
 
+#ifndef MC_Bind 
+#error "This file uses the multi-cursor plugin by BYP in a non-optional manner.\nPlease use it in your custom layer first"
+#endif
 
 CUSTOM_ID(attachment, view_search_bar);
 CUSTOM_ID(attachment, view_search_multi_cursor_highlights);
@@ -61,7 +65,6 @@ struct Search_Bar {
     // is anchord around when the cursor is moving (same as a marker)
     i64 cursor_pos; // cursor position in the search bar buffer utf8
 };
-
 
 //- Declarations 
 // inner Hook functions, call from your own custom hooks
@@ -521,16 +524,16 @@ zk_fuzzy_search_backward(Application_Links *app, Buffer_ID buffer, i64 pos, Stri
     while( pos > -1 )
     {
         i64 original_pos = pos;
-        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[splits.count-1], Scan_Backward, pos);
+        String_Match first_match = buffer_seek_string(app, buffer, splits.strings[0], Scan_Backward, pos);
         if( !first_match.buffer ) break;
         
         i64 match_start = first_match.range.max;
-        i64 line_start   = get_line_start_pos_from_pos(app, buffer, match_start);
+        i64 line_start   = get_line_start_pos_from_pos(app, buffer, first_match.range.min);
         pos = first_match.range.start;
         b32 matched = true;
-        for (i64 index = splits.count-2;
-             index >= 0;
-             index--)
+        for (i64 index = 1;
+             index < splits.count;
+             index++)
         {
             String_Const_u8 substring = splits.strings[index];
             String_Match match = buffer_seek_string(app, buffer, substring, Scan_Backward, pos);
@@ -571,10 +574,6 @@ function Range_i64_Array
 zk_fuzzy_find_matches_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer, String_Const_u8 needle) {
     String_Const_u8_Array splits = zk_string_split_wildcards(arena, needle);
     if ( !splits.count ) { return Range_i64_Array{0}; }
-    
-    // NOTE(ziv): I take advantage of the fact that I use a linear allocator here.
-    // I can just push 1 element at a time then use the first element's address 
-    // as the base adress for my array and it all works out.
     
     Range_i64 *range_array = push_array(arena, Range_i64, 1); 
     
@@ -709,7 +708,6 @@ zk_move_alphaneumeric_boundry(String_Const_u8 string, u64 pos, Scan_Direction di
         } while (i > 0 && character_is_alpha_numeric_unicode(string.str[i]));
         }
     
-    // clamp to valid range
     return (u64)clamp(0, i, (i64)string.size);
 }
 
@@ -864,9 +862,6 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
     block_copy(bar.string.str, query_init.str, query_init.size);
     u64 match_size = bar.string.size;
     i64 pos = first_pos;
-    
-    i64 old_pos = first_pos;
-    i64 old_match_size = match_size;
     
     if (match_size != 0) {
         bar.anchor_pos = 0; 
@@ -1047,60 +1042,57 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         // Do scan
         // 
         
+        b32 do_scan_action = false;
         b32 do_scroll_wheel = false;
         if (!string_change){
             if (match_key_code(&in, KeyCode_Down) || match_key_code(&in, KeyCode_PageDown)){
-                
-                old_pos = pos; old_match_size = match_size;
-                i64 new_pos = zk_fuzzy_search_forward(app, buffer, 
-                                                      pos-string_change, bar.string, 
-                                                      &match_size);
-                if (range_contains(range, new_pos)){
-                    pos = new_pos;
-                }
-                
-                CHANGE_THE_MC_POSITION: 
-                
-                b32 mode_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
-                if (mode_sft) {
-                    b32 duplicate = false; 
-                    i64 cursor_pos = old_pos+old_match_size;
-                    for_mc(node, mc_context.cursors) {
-                        if (node->cursor_pos == cursor_pos) {
-                            duplicate = true; 
-                            break;
-                        }
-                    }
-                    
-                    if (duplicate) {
-                            MC_remove(app, cursor_pos);
-                    }
-                    else { 
-                        MC_insert(app, cursor_pos, old_pos);
-                    }
-                    
-                }
-                
+                scan = Scan_Forward; 
+                do_scan_action = true; 
             }
             else if (match_key_code(&in, KeyCode_Up) || match_key_code(&in, KeyCode_PageUp)){
-                old_pos = pos; old_match_size = match_size;
-                i64 new_pos = zk_fuzzy_search_backward(app, buffer, pos + string_change, bar.string, &match_size);
-                if (range_contains(range, new_pos)){
-                    pos = new_pos;
-                }
-                
-                goto CHANGE_THE_MC_POSITION;
-                
+                scan = Scan_Backward; 
+                do_scan_action = true;
             }
             else{
                 leave_current_input_unhandled(app);
             }
         }
         
+        //
         // Handle string change
+        //
         
-        if (string_change){
+        if (string_change || do_scan_action) {
+            
+            b32 mode_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
+            if (mode_sft) {
+                b32 duplicate = false; 
+                i64 cursor_pos = pos+match_size;
+                for_mc(node, mc_context.cursors) {
+                    if (node->cursor_pos == cursor_pos) {
+                        duplicate = true; 
+                        break;
+                    }
+                }
                 
+                if (duplicate) {
+                    MC_remove(app, cursor_pos);
+                }
+                else { 
+                    MC_insert(app, cursor_pos, pos);
+                }
+            }
+            
+            i64 new_pos = (scan == Scan_Forward) ? 
+                zk_fuzzy_search_forward(app, buffer, pos-string_change, bar.string, &match_size) : 
+            zk_fuzzy_search_backward(app, buffer, pos + string_change, bar.string, &match_size);
+            if (range_contains(range, new_pos)){
+                pos = new_pos;
+            }
+            
+            
+            if (string_change) {
+            
                 // Since 'zk_fuzzy_find_matches_buffer' allocates memory, a trick I do here is just 
                 // to use a temporary memory where I clear the memory right before doing another 
                 // allocation. I also clear the memory before exiting the search command (just look 
@@ -1109,10 +1101,13 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             MC_end(app);
                 end_temp(temp);
                 
+            Range_i64_Array all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string);
+            
             Managed_Scope scope = view_get_managed_scope(app, view);
-            Range_i64_Array *all_matches = scope_attachment(app, scope, view_search_all_matches_highlights, Range_i64_Array);
-                
-                *all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string);
+            Range_i64_Array *all_matches_to_highlight = scope_attachment(app, scope, view_search_all_matches_highlights, Range_i64_Array);
+            *all_matches_to_highlight = all_matches;
+            }
+            
             
         }
         else if (do_scroll_wheel){
@@ -1121,8 +1116,6 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         }
     }
     
-    end_temp(temp); // NOTE(ziv): I believe I don't have to do this, since I think once the 
-    // fuction exists it also clears the memory, but I can't be bothered to check. 
     zk_view_disable_highlight_range(app, view);
     
     if (in.abort){
