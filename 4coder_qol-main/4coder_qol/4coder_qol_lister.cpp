@@ -14,10 +14,15 @@ qol_lister_grid_dim(Application_Links *app, Lister *lister){
         Lister_Node *node = lister->filtered.node_ptrs[i];
         max_size = Max(max_size, node->string.size);
     }
-    
+
+/*     
     f32 f_wid = rect_width(region) / (metrics.normal_advance*f32(max_size + 2));
     i32 wid = clamp(3, i32(f_wid), 5);
     i32 hit = (lister->filtered.count + wid-1) / wid;
+     */
+
+    i32 wid = 1;
+    i32 hit = (lister->filtered.count + wid-1)/wid;
     
     return V2i32(wid, hit);
 }

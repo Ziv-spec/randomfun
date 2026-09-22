@@ -1,19 +1,3 @@
-#if 0
-#include <windows.h> 
-#include <stdio.h>
-// TODO(ziv): REMOVE THIS !!!!!
-void dbg_printf(const char *format, ...) {
-    char buffer[1024];
-    va_list args;
-    
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-    
-    OutputDebugStringA(buffer);
-}
-#endif
-
 #include "4coder_default_include.h"
 
 //#define SNIPPET_EXPANSION "path/to/snippet.inc"
@@ -35,6 +19,8 @@ CUSTOM_ID(colors, defcolor_primitive);
 CUSTOM_ID(colors, defcolor_struct);
 CUSTOM_ID(colors, defcolor_non_text);
 CUSTOM_ID(colors, defcolor_operator);
+
+internal Sticky_Jump_Array zk_parse_buffer_to_jump_array(Application_Links *app, Arena *arena, Buffer_ID buffer);
 
 #include "4coder_default_include.cpp"
 

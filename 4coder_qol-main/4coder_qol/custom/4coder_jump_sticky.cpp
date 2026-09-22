@@ -105,7 +105,7 @@ internal void
 init_marker_list(Application_Links *app, Heap *heap, Buffer_ID buffer, Marker_List *list){
   Scratch_Block scratch(app);
 
-  Sticky_Jump_Array jumps = parse_buffer_to_jump_array(app, scratch, buffer);
+  Sticky_Jump_Array jumps = zk_parse_buffer_to_jump_array(app, scratch, buffer); // @Modification to 4coder_jump_sticky.cpp
   Range_i32_Array buffer_ranges = get_ranges_of_duplicate_keys(scratch, &jumps.jumps->jump_buffer_id, sizeof(*jumps.jumps), jumps.count);
   Sort_Pair_i32 *range_index_buffer_id_pairs = push_array(scratch, Sort_Pair_i32, buffer_ranges.count);
   for (i32 i = 0; i < buffer_ranges.count; i += 1){

@@ -494,7 +494,7 @@ qol_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, Buff
     }
     
     // @search
-    SEARCH_render_search_highlights(app, view_id, text_layout_id);
+    SEARCH_draw_highlights_inner(app, view_id, text_layout_id);
     
     // NOTE(allen): Cursor
     switch (fcoder_mode){
@@ -550,7 +550,7 @@ qol_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id
     
     // NOTE(allen): query bars
     region = qol_draw_query_bars(app, region, view_id, face_id);
-    region = SEARCH_render_search_bar(app, region, view_id, face_id); // @search SEARCH_render_search_bar
+    region = SEARCH_draw_bar_inner(app, region, view_id, face_id); // @search SEARCH_render_search_bar
     
     
     f32 char_count = def_get_config_f32(app, vars_save_string_lit("scroll_margin_x"));
