@@ -45,6 +45,7 @@
 // [x] handle rendering highlights
 // [ ] In search bar, for words that don't exits, color the extra characters in red
 // [ ] Intergrate search & new search buffer format (*BIG* think about how to break it down)
+// [ ] use better defcolor for highlighting all_matches ... 
 
 #ifndef MC_Bind 
 #error "This file uses the multi-cursor plugin by BYP in a non-optional manner.\nPlease use it in your custom layer first"
@@ -55,7 +56,7 @@ CUSTOM_ID(attachment, view_search_multi_cursor_highlights);
 CUSTOM_ID(attachment, view_search_all_matches_highlights);
 
 global String_Const_u8 search_results_name = string_u8_litexpr("*search-results*");
-global float search_bar_blink = 0;
+global float blink_value = 0; 
 
 struct Search_Bar {
     String_Const_u8 prompt; 
@@ -72,7 +73,7 @@ struct Search_Bar {
 //- Declarations 
 // inner Hook functions, call from your own custom hooks
 function void SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_ID text_layout_id);
-function Rect_f32 SEARCH_draw_bar_inner(Application_Links *app, Rect_f32 region, View_ID view, Face_ID face_id);
+function Rect_f32 SEARCH_draw_bar_inner(Application_Links *app, Frame_Info frame_info, Rect_f32 region, View_ID view, Face_ID face_id);
 
 // Functions that modify search buffer format. Look at *search-results*
 internal void              zk_print_string_match_list_to_buffer(Application_Links *app, Buffer_ID out_buffer_id, String_Match_List matches);
@@ -84,7 +85,10 @@ function b32 set_active_search_bar(Application_Links *app, View_ID view, Search_
 function b32 get_active_search_bar(Application_Links *app, View_ID view, Search_Bar *bar);
 inline function Range_i64 get_selection_range(Search_Bar bar);
 
+// Kind of dumb and can be improved but it works!!!
 function String_Const_u8_Array zk_string_split_wildcards(Arena *arena, String_Const_u8 string);
+function String_Match_List zk_fuzzy_find_matches_forward_in_range(Application_Links *app, Buffer_ID buffer, Arena *arena, String_Const_u8 needle, String_Const_u8_Array splits, i64 begin, i64 end, i64 *match_count);
+function Range_i64_Array zk_fuzzy_find_matches_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer, String_Const_u8 needle, i64 pos, i64 *forward_match_idx);
 
 function void word_complete_iter_prev_wrapping(Word_Complete_Iterator *it);
 function void zk_search_bar_word_complete(Application_Links *app, Buffer_ID buffer, 
@@ -374,7 +378,6 @@ SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_I
         if ((visible_range.min+1) < match.min ) { 
             if ( match.max < (visible_range.max-1)) {
             draw_character_block(app, text_layout_id, match, roundness, fcolor_id(defcolor_highlight_cursor_line));
-                // paint_text_color(app, text_layout_id, match,  finalize_color(defcolor_at_highlight, 1));
             }
             else {
                 break;
@@ -384,7 +387,7 @@ SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_I
     }
     
     // Draw all multi-cursor highlights 
-    if (all_matches->count > 0) {
+    if (all_matches->count > 0 && mc_context.cursors) {
     ARGB_Color back_color = fcolor_resolve(fcolor_id(defcolor_highlight));
     ARGB_Color text_color = fcolor_resolve(fcolor_id(defcolor_at_highlight));
     
@@ -405,14 +408,8 @@ SEARCH_draw_highlights_inner(Application_Links *app, View_ID view, Text_Layout_I
     
     }
 
-function void 
-SEARCH_tick_inner(Application_Links *app, Frame_Info frame_info) {
-    search_bar_blink += frame_info.animation_dt; 
-    search_bar_blink = (search_bar_blink < 4*3.141592653589793) ? search_bar_blink : 0; 
-}
-
 function Rect_f32 
-SEARCH_draw_bar_inner(Application_Links *app, Rect_f32 region, View_ID view, Face_ID face_id) {
+SEARCH_draw_bar_inner(Application_Links *app, Frame_Info frame_info, Rect_f32 region, View_ID view, Face_ID face_id) {
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
     
@@ -452,18 +449,17 @@ SEARCH_draw_bar_inner(Application_Links *app, Rect_f32 region, View_ID view, Fac
         // Draw text
         p = draw_fancy_line(app, face_id, fcolor_zero(), &list, p);
         
-        
         b32 is_active_view = search_bar.view == get_active_view(app, Access_Always);
         if (is_active_view) {
-        if(search_bar_blink < 10.f) {
-            animate_in_n_milliseconds(app, 0); 
-        }
-        
-#define ACTIVE_BLINK(b) (sin_f32(7.f*b) >= 0.f || (b) > 5.f)
-        if (ACTIVE_BLINK(search_bar_blink)) {
+                animate_in_n_milliseconds(app, 500);
+            
+            blink_value += frame_info.literal_dt; 
+            f32 value = sin_f32(blink_value * 2 * 3.14159265359f); 
+            if (value < 0.5f+0.016f|| blink_value > 6) {
             // Draw cursor rect
             draw_rectangle_fcolor(app, Rf32_xy_wh(cursor_x_pos, p.y, 2.f, face_metrics.line_height), 0.f, fcolor_id(defcolor_cursor, 0));
-        }
+            }
+            
         }
         
         region = pair.min;
@@ -856,6 +852,7 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         // Special key bindings
         // 
         
+        b32 has_anything_changed = true; 
          b32 string_change = false;
         if (match_key_code(&in, KeyCode_Return)) {
             u64 size = bar.string.size;
@@ -866,11 +863,10 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             // I do this to avoid having MC cursor and the actual cursor
             // on the same spot, casuing doubling of input on one spot
             {
-            i64 current_cursor_pos = match_range.max;
-            MC_remove(app, current_cursor_pos);
-            view_set_cursor(app, view, seek_pos(current_cursor_pos));
-                
+                MC_remove(app, match_range.max);
                 MC_begin(app);
+                // MC_begin resets the mark back to the cursor
+                 set_view_range(app, view, match_range); 
             }
             
             break;
@@ -939,6 +935,7 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         // Movement & selection
         //
         
+        b32 do_scan_action = false;
         if (in.event.kind == InputEventKind_KeyStroke && 
             (in.event.key.code == KeyCode_Right || in.event.key.code == KeyCode_Left ||
             in.event.key.code == KeyCode_Home || in.event.key.code == KeyCode_End)) {
@@ -994,14 +991,9 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             
             
         }
-        
-        // 
-        // Do scan
-        // 
-        
-        b32 do_scan_action = false;
-        b32 do_scroll_wheel = false;
-        if (!string_change){
+        else if (!string_change){
+            has_anything_changed = false; 
+            
             if (match_key_code(&in, KeyCode_Down) || match_key_code(&in, KeyCode_PageDown)){
                 scan = Scan_Forward; 
                 do_scan_action = true; 
@@ -1015,17 +1007,24 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             }
         }
         
+        if (has_anything_changed) {
+            // User is active, reset blink
+            blink_value = -.5;
+        }
+        
         //
         // Handle string change
         //
         
         if (string_change || do_scan_action) {
-            search_bar_blink = 0;
             
             if (string_change) {
                 MC_end(app);
                 end_temp(temp); // NOTE(ziv): trick for 'zk_fuzzy_find_matches_buffer' 
                 // to clear memory right before the function allocates 
+                
+                // @Performance it is likely much better to narrow down the search instead
+                // of constantly generating it anew; unless of-course, you are fuzzy searching
                 
                 all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string, match_range.min-1, &match_idx);
                 
@@ -1058,19 +1057,17 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
                 
                 match_idx = (scan == Scan_Forward) ? 
                     clamp_top(match_idx+1, all_matches.count-1) : 
-                match_idx = clamp_bot(match_idx-1, 0);
+                clamp_bot(match_idx-1, 0);
                 
                       match_range = all_matches.ranges[match_idx]; 
             }
             
         }
-        else if (do_scroll_wheel){
+        else if (true){
             // if mouse movement.... scroll
             mouse_wheel_scroll(app);
         }
     }
-    
-    zk_view_disable_highlight_range(app, view);
     
     if (in.abort){
         MC_end(app); 
@@ -1081,8 +1078,9 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
         previous_isearch_query[size] = 0;
         view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
     }
-    set_active_search_bar(app, view, NULL);
     
+    zk_view_disable_highlight_range(app, view);
+    set_active_search_bar(app, view, NULL);
     view_set_camera_bounds(app, view, old_margin, old_push_in);
 }
 

@@ -493,7 +493,6 @@ qol_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, Buff
         qol_draw_hex_color(app, view_id, buffer, text_layout_id);
     }
     
-    // @search
     SEARCH_draw_highlights_inner(app, view_id, text_layout_id);
     
     // NOTE(allen): Cursor
@@ -535,6 +534,7 @@ qol_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id, Buff
 function void
 qol_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id){
     ProfileScope(app, "qol render caller");
+    
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
     
@@ -550,8 +550,7 @@ qol_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id
     
     // NOTE(allen): query bars
     region = qol_draw_query_bars(app, region, view_id, face_id);
-    region = SEARCH_draw_bar_inner(app, region, view_id, face_id); // @search SEARCH_render_search_bar
-    
+    region = SEARCH_draw_bar_inner(app, frame_info, region, view_id, face_id); // @search SEARCH_render_search_bar
     
     f32 char_count = def_get_config_f32(app, vars_save_string_lit("scroll_margin_x"));
     f32 line_count = def_get_config_f32(app, vars_save_string_lit("scroll_margin_y"));

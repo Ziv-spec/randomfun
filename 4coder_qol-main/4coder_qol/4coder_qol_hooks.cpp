@@ -79,7 +79,6 @@ qol_tick(Application_Links *app, Frame_Info frame_info){
 
   MC_tick_inner(app, frame_info);
     TAB_tick_inner(app, frame_info);
-    SEARCH_tick_inner(app, frame_info); 
 }
 
 BUFFER_HOOK_SIG(qol_file_save){

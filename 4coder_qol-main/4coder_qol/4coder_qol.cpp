@@ -129,8 +129,3 @@ void custom_layer_init(Application_Links *app){
     String_ID code_map_id = vars_save_string_lit("keys_code");
     qol_setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 }
-
-
-
-
-
