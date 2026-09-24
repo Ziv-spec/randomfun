@@ -77,6 +77,8 @@ struct Search_Bar {
     i64 anchor_pos; // same as a marker, but for search bar
     i64 cursor_pos; // cursor position in the search bar buffer utf8
     
+    b32 is_last_action_autocomplete;
+    
     View_ID view;
 };
 
@@ -358,8 +360,8 @@ get_active_search_bar(Application_Links *app, View_ID view, Search_Bar *bar) {
     return true;
 }
 
-inline function Range_i64 get_selection_range(Search_Bar bar) {
-    return Ii64(bar.cursor_pos, bar.anchor_pos);
+inline function Range_i64 get_selection_range(Search_Bar *bar) {
+    return Ii64(bar->cursor_pos, bar->anchor_pos);
 }
 
 function void 
@@ -459,7 +461,7 @@ SEARCH_draw_bar_inner(Application_Links *app, Frame_Info frame_info, Rect_f32 re
             animate_in_n_milliseconds(app, 500);
             
             blink_value += frame_info.literal_dt; 
-            f32 value = sin_f32(blink_value * 2 * 3.14159265359f); 
+            f32 value = sin_f32(blink_value * (3.14159265359f * 2.f)); 
             if (value < 0.5f+0.016f|| blink_value > 6) {
                 // Draw cursor rect
                 draw_rectangle_fcolor(app, Rf32_xy_wh(cursor_x_pos, p.y, 2.f, face_metrics.line_height), 0.f, fcolor_id(defcolor_cursor, 0));
@@ -777,6 +779,135 @@ zk_buffer_get_string_under_cursor(Application_Links *app, Arena *arena, Buffer_I
     return(result);
 }
 
+function b32 
+SEARCH_generic_input_handling(Application_Links *app, Buffer_ID buffer, User_Input *in, Search_Bar *bar) {
+    Range_i64 delete_range;
+    
+    String_Const_u8 string = to_writable(in);
+    
+    b32 string_change = false;
+      if (string.str != 0 && string.size > 0) {
+          zk_insert_string_with_selection(bar, string); 
+          string_change = true; 
+    }
+    else if (in->event.kind == InputEventKind_KeyStroke && 
+        (in->event.key.code == KeyCode_Right || in->event.key.code == KeyCode_Left ||
+         in->event.key.code == KeyCode_Home || in->event.key.code == KeyCode_End)) {
+        b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+        b32 mod_sft = has_modifier(&in->event.key.modifiers, KeyCode_Shift);
+        
+        b32 is_special_case = false;
+        if (mod_sft) {
+            if (!bar->is_selection_active) {
+                bar->anchor_pos = bar->cursor_pos;
+            }
+            bar->is_selection_active = true;
+        }
+        else {
+            
+            // NOTE(ziv): special case - transition from selection, to no selection & direction
+            if (bar->is_selection_active) {
+                is_special_case = true;
+                
+                // set cursor position depending on direction user wants (between anchor and cursor pos) 
+                if (in->event.key.code == KeyCode_Left) {
+                    if (bar->cursor_pos > bar->anchor_pos) {
+                        bar->cursor_pos = bar->anchor_pos;
+                    }
+                }
+                else if (in->event.key.code == KeyCode_Right) {
+                    if (bar->cursor_pos < bar->anchor_pos) {
+                        bar->cursor_pos = bar->anchor_pos;
+                    }
+                }
+            }
+            
+            bar->is_selection_active = false;
+        }
+        
+        if (!is_special_case) {
+            switch (in->event.key.code) {
+                case KeyCode_Left:  { 
+                    bar->cursor_pos = mod_ctl ? 
+                        zk_move_alphaneumeric_boundry(bar->string, bar->cursor_pos, Scan_Backward) : 
+                    zk_cursor_move_one_backward_utf8(bar->string, bar->cursor_pos);
+                    } break;
+                case KeyCode_Right: { 
+                    bar->cursor_pos = mod_ctl ? 
+                        zk_move_alphaneumeric_boundry(bar->string, bar->cursor_pos, Scan_Forward) : 
+                    zk_cursor_move_one_forward_utf8(bar->string, bar->cursor_pos);
+                } break;
+                case KeyCode_Home:  { bar->cursor_pos = 0; } break;
+                case KeyCode_End:   { bar->cursor_pos = bar->string.size; } break;
+                
+                default: {} break;
+            }
+        }
+        
+    }
+    else if (match_key_code(in, KeyCode_C)) {
+        b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+        if (mod_ctl && bar->is_selection_active) {
+            i32 clipboard_index = 0;  
+            String_Const_u8 clipboard_string = string_substring(bar->string,  get_selection_range(bar));
+            clipboard_post(clipboard_index, clipboard_string);
+        }
+    }
+    else  {
+        
+        
+        if (match_key_code(in, KeyCode_V)) {
+            b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+            if (mod_ctl) {
+                String_Const_u8 clipboard_string = get_clipboard_index(&clipboard0, 0); 
+                zk_insert_string_with_selection(bar, clipboard_string); 
+                string_change = true; 
+                }
+        }
+        else if (match_key_code(in, KeyCode_Tab)) {
+            b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+            zk_search_bar_word_complete(app, buffer, bar, !(bar->is_last_action_autocomplete), !mod_ctl);
+            bar->cursor_pos = bar->string.size; 
+            bar->is_last_action_autocomplete = true;
+            string_change = true; 
+        }
+        else if (match_key_code(in, KeyCode_Backspace)) { 
+            b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+            delete_range = (bar->is_selection_active ? get_selection_range(bar) : 
+                            mod_ctl ? Ii64(zk_move_alphaneumeric_boundry(bar->string, bar->cursor_pos, Scan_Backward), bar->cursor_pos) :
+                            Ii64(zk_cursor_move_one_backward_utf8(bar->string, bar->cursor_pos), bar->cursor_pos));
+            
+            DELETE_THE_RANGE:
+            
+            if (delete_range.min != delete_range.max) {
+                zk_delete_selection(bar, delete_range);
+                bar->cursor_pos = delete_range.min;
+            }
+            bar->is_selection_active = false; 
+            
+            string_change = true; 
+        }
+        else if (match_key_code(in, KeyCode_Delete)) {
+            b32 mod_ctl = has_modifier(&in->event.key.modifiers, KeyCode_Control);
+            delete_range = (bar->is_selection_active ? get_selection_range(bar) :
+                            mod_ctl ? Ii64(zk_move_alphaneumeric_boundry(bar->string, bar->cursor_pos, Scan_Forward), bar->cursor_pos) :
+                            Ii64(zk_cursor_move_one_forward_utf8(bar->string, bar->cursor_pos), bar->cursor_pos));
+            
+            goto DELETE_THE_RANGE;
+        }
+        else {
+            // Allow text input events I rely on
+            leave_current_input_unhandled(app);
+        }
+        
+        if (!match_key_code(in, KeyCode_Tab)) {
+            bar->is_last_action_autocomplete = false;
+        }
+    }
+    
+    return string_change;
+}
+
 function void
 zk_view_set_highlight_range(Application_Links *app, View_ID view, Search_Bar_Highlights highlights) {
     
@@ -797,7 +928,7 @@ zk_view_disable_highlight_range(Application_Links *app, View_ID view) {
 function void
 zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Const_u8 query_init) {
     Scratch_Block scratch(app); 
-    Temp_Memory temp = begin_temp(scratch);
+    Temp_Memory restore_point = begin_temp(scratch);
     
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -827,10 +958,8 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
     bar.is_selection_active = true;
     
     Range_i64 range = buffer_range(app, buffer);
-    b32 is_last_action_autocomplete = false;
     
     MC_end(app); 
-    
     
     User_Input in = {};
     for (;;){
@@ -845,14 +974,8 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             break;
         }
         
-        String_Const_u8 string = to_writable(&in);
-        
-        // 
-        // Special key bindings
-        // 
-        
-        b32 has_anything_changed = true; 
         b32 string_change = false;
+        b32 do_scan_action = false;
         if (match_key_code(&in, KeyCode_Return)) {
             u64 size = bar.string.size;
             size = clamp_top(size, sizeof(previous_isearch_query) - 1);
@@ -870,173 +993,35 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
             
             break;
         }
-        else if (match_key_code(&in, KeyCode_Tab)) {
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            zk_search_bar_word_complete(app, buffer, &bar, !is_last_action_autocomplete, !mod_ctl);
-            bar.cursor_pos = bar.string.size; 
-            string_change = true; is_last_action_autocomplete = true;
-        }
-        else if (match_key_code(&in, KeyCode_V)) {
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            if (mod_ctl) {
-                String_Const_u8 clipboard_string = get_clipboard_index(&clipboard0, 0); 
-                zk_insert_string_with_selection(&bar, clipboard_string); 
-                string_change = true; is_last_action_autocomplete = false;
-            }
-        }
-        else if (match_key_code(&in, KeyCode_C)) {
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            if (mod_ctl && bar.is_selection_active) {
-                i32 clipboard_index = 0;  
-                String_Const_u8 clipboard_string = string_substring(bar.string,  get_selection_range(bar));
-                clipboard_post(clipboard_index, clipboard_string);
-                string_change = true;
-            }
-        }
-        
-        //
-        // Add/Delete characters & mark 'string_change'
-        // 
-        
-        Range_i64 delete_range;
-        if (string.str != 0 && string.size > 0 && !string_change){
-            zk_insert_string_with_selection(&bar, string); 
-            string_change = true; 
-            is_last_action_autocomplete = false;
-        }
-        else if (match_key_code(&in, KeyCode_Backspace)) { 
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            delete_range = (bar.is_selection_active ? get_selection_range(bar) : 
-                            mod_ctl ? Ii64(zk_move_alphaneumeric_boundry(bar.string, bar.cursor_pos, Scan_Backward), bar.cursor_pos) :
-                            Ii64(zk_cursor_move_one_backward_utf8(bar.string, bar.cursor_pos), bar.cursor_pos));
-            
-            DELETE_THE_RANGE:
-            
-            if (delete_range.min != delete_range.max) {
-                zk_delete_selection(&bar, delete_range);
-                bar.cursor_pos = delete_range.min;
-                
-                string_change = true; 
-                is_last_action_autocomplete = false;
-            }
-            bar.is_selection_active = false; 
-            
-        }
-        else if (match_key_code(&in, KeyCode_Delete)) {
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            delete_range = (bar.is_selection_active ? get_selection_range(bar) :
-                            mod_ctl ? Ii64(zk_move_alphaneumeric_boundry(bar.string, bar.cursor_pos, Scan_Forward), bar.cursor_pos) :
-                            Ii64(zk_cursor_move_one_forward_utf8(bar.string, bar.cursor_pos), bar.cursor_pos));
-            
-            goto DELETE_THE_RANGE;
-        }
-        
-        //
-        // Movement & selection
-        //
-        
-        b32 do_scan_action = false;
-        if (in.event.kind == InputEventKind_KeyStroke && 
-            (in.event.key.code == KeyCode_Right || in.event.key.code == KeyCode_Left ||
-             in.event.key.code == KeyCode_Home || in.event.key.code == KeyCode_End)) {
-            b32 mod_ctl = has_modifier(&in.event.key.modifiers, KeyCode_Control);
-            b32 mod_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
-            b32 is_special_case = false;
-            
-            if (mod_sft) {
-                if (!bar.is_selection_active) {
-                    bar.anchor_pos = bar.cursor_pos;
-                }
-                bar.is_selection_active = true;
-            }
-            else {
-                
-                // NOTE(ziv): special case - transition from selection, to no selection & direction
-                if (bar.is_selection_active) {
-                    is_special_case = true;
-                    
-                    // set cursor position depending on direction user wants (between anchor and cursor pos) 
-                    if (in.event.key.code == KeyCode_Left) {
-                        if (bar.cursor_pos > bar.anchor_pos) {
-                            bar.cursor_pos = bar.anchor_pos;
-                        }
-                    }
-                    else if (in.event.key.code == KeyCode_Right) {
-                        if (bar.cursor_pos < bar.anchor_pos) {
-                            bar.cursor_pos = bar.anchor_pos;
-                        }
-                    }
-                }
-                
-                bar.is_selection_active = false;
-            }
-            
-            if (!is_special_case) {
-                
-                switch (in.event.key.code) {
-                    case KeyCode_Left:  { 
-                        bar.cursor_pos = mod_ctl ? zk_move_alphaneumeric_boundry(bar.string, bar.cursor_pos, Scan_Backward) : zk_cursor_move_one_backward_utf8(bar.string, bar.cursor_pos);
-                        
-                    } break;
-                    case KeyCode_Right: { 
-                        bar.cursor_pos = mod_ctl ? zk_move_alphaneumeric_boundry(bar.string, bar.cursor_pos, Scan_Forward) : zk_cursor_move_one_forward_utf8(bar.string, bar.cursor_pos);
-                    } break;
-                    case KeyCode_Home:  { bar.cursor_pos = 0; } break;
-                    case KeyCode_End:   { bar.cursor_pos = bar.string.size; } break;
-                    
-                    default: {
-                    } break;
-                }
-            }
-            
-            
-        }
-        else if (!string_change){
-            has_anything_changed = false; 
-            
-            if (match_key_code(&in, KeyCode_Down) || match_key_code(&in, KeyCode_PageDown)){
-                scan = Scan_Forward; 
+        else if (match_key_code(&in, KeyCode_Down) || match_key_code(&in, KeyCode_PageDown)) {
                 do_scan_action = true; 
-            }
+                scan = Scan_Forward; 
+        }
             else if (match_key_code(&in, KeyCode_Up) || match_key_code(&in, KeyCode_PageUp)){
-                scan = Scan_Backward; 
                 do_scan_action = true;
-            }
-            else{
-                leave_current_input_unhandled(app);
-            }
+                scan = Scan_Backward; 
         }
-        
-        if (has_anything_changed) {
-            // User is active, reset blink
-            blink_value = -.5;
-        }
-        
-        //
-        // Handle string change
-        //
-        
-        if (string_change || do_scan_action) {
-            
+        else {
+            string_change = SEARCH_generic_input_handling(app, buffer, &in, &bar);
             if (string_change) {
+                blink_value = -.5; // User is active, reset blink
+            }
+        }
+        
+        
+        if (string_change) {
                 MC_end(app);
-                end_temp(temp); // NOTE(ziv): trick for 'zk_fuzzy_find_matches_buffer' 
-                // to clear memory right before the function allocates 
+            end_temp(restore_point);
                 
                 // @Performance it is likely much better to narrow down the search instead
                 // of constantly generating it anew; unless of-course, you are fuzzy searching
                 
                 all_matches = zk_fuzzy_find_matches_buffer(app, scratch, buffer, bar.string, match_range.min-1, &match_idx);
-                
-                if (all_matches.count ) {
-                    if (0 <= match_idx && match_idx <= all_matches.count) {
+                    if (all_matches.count && 0 <= match_idx && match_idx <= all_matches.count) {
                         match_range = all_matches.ranges[match_idx]; 
-                    }
                 }
-                
             }
-            else if (all_matches.count) {
-                
+            else if (do_scan_action && all_matches.count > 0) {
                 b32 mode_sft = has_modifier(&in.event.key.modifiers, KeyCode_Shift);
                 if (mode_sft) {
                     b32 duplicate = false; 
@@ -1047,12 +1032,10 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
                         }
                     }
                     
-                    if (duplicate) {
+                    if (duplicate) 
                         MC_remove(app, match_range.max);
-                    }
-                    else { 
+                    else
                         MC_insert(app, match_range.max, match_range.min);
-                    }
                 }
                 
                 match_idx = (scan == Scan_Forward) ? 
@@ -1061,13 +1044,13 @@ zk_isearch(Application_Links *app, Scan_Direction scan, i64 first_pos, String_Co
                 
                 match_range = all_matches.ranges[match_idx]; 
             }
-            
-        }
         else if (true){
             // if mouse movement.... scroll
             mouse_wheel_scroll(app);
         }
     }
+    
+    //
     
     if (in.abort){
         MC_end(app); 
