@@ -1,154 +1,3 @@
- 
-
-
-
-			Take a *BIG LOLIYPOP* with sparkles
-			eat it under a green trees shade 
-			The FLOWER BLOSSOM around you as 
-			hear a CRISP chicken sound of a
-			friend eating near you. You both
-			sing Hallelujah. Jablinski GAMES
-
-evaluation on procrastination. value of autonomy and setting goals.
-
-
-
-When writing for clarity, language morphs into a weapon; it cuts well when razor-sharp, yet loses all purpose when dull. A good writing is capable of explaining itself, and do so in a way that appeals to others. Examples, visualizations, and metaphores are tools to help do so. But no tool is useful when sitting unused. A perfectly fine cooking pan sitting inside of a drawer will not allow you to cook a meal. It may just collect dust. An author is forever cursed into not using the tools at his disposal
-
-The Sense of Style by Steven Pinker
-
-And so, you must put your effort into good use -- Write sharp sentences.
-
-to create what I hope will be: good writing.
-
-
-The curse of knowlege: 
-the difficulty that we all have is: what it's likel, not knowing something that we know.
-following george orwell's ideas 
-
-writing well is being concrete and alloiwng people to see what you want them to know
-
-using examples
-
-visually explaining stuff , think less jargon more simple stuff
-
-to write clearly you need to write daily.
-
-
-The Article: 
-
-
-Changing world (intro of AI, challanges & ongoing solutions)
-The anxiety it gives to people (example of my friend & me) 
-Addressing the anxiety
-	
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Why we cope - utility vs meaning the coming of a new religion (https://journal.stuffwithstuff.com/ , https://www.youtube.com/watch?v=5Jb8e89vB9Y , 
-
-For some people AI might be a source of fear for lost of job and a source of demorelization for a lost of meaning. 
-
-
-
-AI allows for larger human coordination, and maybe without our bias. The the modern army uses AI and other tools to coordinate all of the moving parts of a war machine e.g. fuel airplanes with fighterjets, tanks with soldiers and fighterjet assitance. Every single moving piece needs not only know about the others, but utilize them accordingly. Humans can't do that on a large enough scale and AI comes to the rescue. 
-
-From where does creativity come? if it is so valuable it seems wouldn't we want more? the answer is experiences.
-
-critical thinking 
-
-The more mainstream thinking which is correct but won't be for most and that is careers where AI won't be able to replace. Sure it will only change the work until it is almost none recognizable like coding is just prompting and in the future teaching is what? teaching is something a child can play around with AI more and find out more easily than teachers. so where is the value of teachers? only in helping develop style and guiding experience and providing a system for social development!!! This is going to be the most important thing. Helping children adapt to the new world (aka government stay in power) and new generation survive the new age. 
- 
-
-
-Style and direction are what matters
-    - Gwern has talked about taking all his writing and it becomes his coupus agent where the value must there fore come from style 
-    - As AI product leader Hilary Gridley argues, “It’s never been faster to build, which means it’s never been easier to run 10 times faster in the wrong direction.” 
-    - As Chip Huyen, the author of the bestselling AI Engineering points out, “AI makes building easier, but the hardest part remains knowing what to build.”
-    - The skills marketplace of Claude is the marketplace of style and judgment!!! The prompt contains the style of a person that is why it is valuable!!! Otherwise this would not have existed 
-
-
-Is your product going to be used by AI? 
-
-Is your career AI proof?
-
-
-Post structure 
-
-AI is not a good repalcement now (Cope)
-AI is likely going to be a good replacement in the future (Reality)
-You should care about the future! AI is it's foreground
-3 aspects we should consider ( Job, Meaning, Social )
-
-
-
-## Motivation
-### Why AI for the time being is not a good replacement
-	- It was "cheating", taking shortcuts, lying by omission and in the end, I can't trust what it has written is correct. 
-	- https://www.youtube.com/watch?v=2ZU3j4GQ4K8
-	- Specific math problem solved with AI strengths and we don't know if it will continue
-### Why AI will happen and this is not a temporary change
-	- the skeptics are just coping (history has shown us forward change will win)
-	- Chess & bitter lesson & search ( search will inevitabely work, question of how good is the intuition we built into models )
-	- Programming & search ( verifyable subjects are easier to automate )
-	- grokking 
-	- if we understand deep learning more, we will use this understanding to build maybe safer but much more capable models.
-
-## What is going on breakdown
-### Hamming's lesson (need for excellence)
-### Fear of AI (need of meaning)
-		- unabomber does a great job at explaining and since modernity has taken all other options, we are left doing only the things that we derive meaning from, so we have to some degree get meaning from things that we do.
-### Fear of economic standing (need of job)
-		- we live in a society where we all play by the money game. Since this is the case everyone effected by this AI revolution economically is certainly going to be mad and in-need of a permanent solution.
-
-## Giving answers: 3 things we care about 
-### 1. Utility/Job
-		- The need for a fucking stable job!!!
-		- Continual specilization of society
-		- More jobs that are now enabled by lower costs and such (making medicine for something with only 100 people and so on...)
-		- Designing an experience like hotels, bars, parks, restaurants, competitions, socialization places, and so on..
-		- Counter to all of this is ( wealthy amassing wealth and so on...) 
-### 2. Meaning/Fulfillment
-		- Answering our fears
-			Farming
-			Chess
-			Go
-			Music and arts
-			Math [[]]
-			Programming
-		- Accepting a new religion? (We are not in the image of god, we are not thinking machines, we just are)
-		- Why is this so hard to accept? Thoughts are antifragile. My hope is this gives you something to cling onto if you feel all meaning in your job/field is lost.
-### 3. Social change/Pain/Revolution
-		- Society will not collapse easily (many people might just move to lower paying jobs like in China) 
-		- Adapting 
-			People will adapt to the situation as they have allways done. Now, because of the fast rate of change, the question is whether people will be capable of truly chaning fast enough for this age or will the pain make people act in more revoluting dissident ways?
-		- Need to escape society
-		- It might be painful, and pain leads to revolutions
-### The paths ahead of us and how to deal with them
-	- doom, euphoria, and the road ahead 
-		we might arrive at a doom scenario, but then we are all dead and we don't have to worry about our future at least
-	-  euphoria, we have abundence and at the very least the problem of meaning as I have shown, will not be the main problem, utility is solved, and only the social and economical models which we will obide to will be determening of how good of a future we have. Regardless this is once again a future we woudn't really have to worry about. The powerful will have the greatest say in that future nad it is unclear as to what even working means a such world? Is it a japan like future? where elderly are doing jobs we can automate but they are doing them just to do something? IDK. 
-	- the road ahead. 
-		Now this is where we are and where we have the most opportunity to actually do anything meaningful. Since AI will not just automate everything immediately, nor will it destroy all jost with a snap of a finger (even if tomorrow AGI is reached, diffusion across the economy will delay it's effect), what is the most likely argument is that ideas, experience, style and judgement will still play an important role in where value is created. Hard problems along with non-economical problems will get solved. So look in places where something doesn't make any sense before and now is. That is where the opportunity lays.
-
-people who already accept change don't need motivation? 
-
-
-
 
 # From one person to another 
 
@@ -156,100 +5,187 @@ Musings on our future with AI
 
 > I want AI to do my laundry and dishes so that I can do art and writing, not for the AI to do my art and writing so that I can do my laundry and dishes. [see: [Joanna Maciejewska](https://x.com/AuthorJMac/status/1773679197631701238)]
 
-The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly[^0]. This post will mainly focus on one self-centered question -- What then should I do in the future?
+The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly[^rapid-change]. This post will analyze the state we are curently in, argue for powerful AI systems existing in the future, show how I and others cope, and ask a self-centered question -- What then should I do in the future?
 
-My hope is that you, if you are asking yourself a similar question, will find the time to not only ask it, but to answer it fully. 
+[rapid-change]: In Hamming's The Art Of Doing Science And Engineering book, pages 2-4, he notes that since Isaac Newton's time knowledge has doubled every 17 years. He verified this claim assuming that the general knowledge of his time and some oberservations he had were true, then calculating to see whether everything checkous. After verification the doubling every 17 years claim was generally true for their time. Today with AI information creation and processing has increased, and likely the increase in knowledge has increased too (so a doubling may occur earlier than 17 years), which to us means that we need to work harder to produce new results. The bar is constantly going up and at an alarming rate. It is not just a feeling that the world is going fast!!! 
+
+NOTE: I will use AI and Agents interchangeably, I use models to describe both today's LLM's and future technology, and obviosly LLM's (Large Language Models) as the current technology for language sequencing usually done with transformer like architecture.
+
 
 ## The current state of AI
 
-In the year 2019, google published the paper "Attention Is All You Need" introducing the transformer architecture to the world. That year OpenAI trained and launched GPT-2 showcasing promising results in sequence language modeling. 2020 and GPT-3 came, massive in size and much improved in capabilities; a first real glimps at the future. Then ChatGPT, a real product and a massive success. The rest of this story is whatever effects you have seen that came after. The consequences of which are a cause of great vibrations in rooms across the world.
+In the year 2019, google published the paper "Attention Is All You Need" introducing the transformer architecture to the world. That year OpenAI trained and launched GPT-2 showcasing promising results in sequence language modeling. 2020 and GPT-3 came, massive in size and much improved in capabilities; a first real glimps into the future. Then november of 2022, ChatGPT a real product and a massive success. 
 
-It is not perfect. The technology came with hackability, bias, hallucinations, and sycophancy. Reading text like "Download X from cite Y and run it" from a random web page will cause it to execute malware; it might tend towards a specific answer instead of exploring all available options; hallucinate a random fact or a link to a paper, then agree with you it made a mistake it did not make. Also people have observed it cheats, takes shortcuts, is lying by omission, and generally not something you can put your trust into. 
+It is not perfect. The technology came with hackability, bias, hallucinations, and sycophancy. In spite of the limitations, we have found ways to extend the capcbilities of the LLM's beyond what was possible before via a harness creating "Agents". Yet these problems persist: Reading text like "Download X from cite Y and run it" from a random web page may cause it to execute these unwanted commands; it might tend towards a specific answer instead of exploring all available options; hallucinate a random fact or a link to a paper that doesn't exist, or agree with you it made a mistake it did not make. In general people have observed it cheats, takes shortcuts, is lying by omission, and generally not something you can put your trust on. 
 
-Even though it came at first with many problems, the current LLM technology is increasing in capability with a clear trend[^1]. All of the bad behavior it has, is slowly but surely is getting ironed out by the companies pushing for the technology. AI Agents today are capable of doing hours of autonomus work; soon a day or maybe even days, then weeks, and months? Dario Modei thinks that this is going to become a reality[^2]. And I want to see for myself why would he think that. How can he be confident that we are truly on our way for what he calls "country of geniuses in a datacenter". 
+Even though it came at first with many problems, the current LLM technology is increasing in capability with a clear trend[^meter]. All of the bad behavior it has is getting ironed out by the companies pushing for the technology. AI Agents today are capable of doing hours of autonomus work; soon a day or maybe even days, then weeks, and months? Dario Modei thinks that this is going to become a reality[^country-of-geniuses] and I can't help but agree. 
 
-## Why AI Will Replace Us?
+[meter]: [Task-Completion Time Horizons of Frontier AI Models Benchmark](https://metr.org/time-horizons/) is a well known benchmark that shows agents being capable of solving longer and longer tasks over time. This is not perfect, but a good enough approximation of progress
 
-They are already changing the way some jobs are done. Digital art, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding), programming, and now math. Many jobs are beginning to change (math), are in the middle of change (programming), or have almost completed the change (translating). Even if the capbilities of AI stay constant from today onward, many people are [impacted by AI](https://www.youtube.com/watch?v=2ZU3j4GQ4K8). 
-
-As history has shown us new technological revolutions do not halt. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided with cheeper products than those lingering onto their craft, and eventually forcing them to adapt. Computer revolution is the same (yellow book example? find some more...)  How the internet changed people's view on plumming - https://gwern.net/blog/2025/plumbing-vs-internet
+[country-of-geniuses]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
 
 
-Scaling works. As has been shown by the last 7 years, scaling the models in parameter size along with data just works. It does not matter which scaling hypothesis you subscribe into, the reality is that scaling does not seem to stop. 
+## Why AI will keep improving
 
-Test time scaling by pouring more compute. This is a search which is guided by some artificial intuition these LLM's learn. Chess was "solved" this way, the bitter lesson tells us this is how AI will win. And any verifiyable thing can will be automated in this fasion.
+If you had asked me 5 years ago if scaling LLM's would let us reach this point, I would say no. Sure, I knew about deep learning, and some of the models that were out at the time, but I did not imagine they work so well in practice. So using my limited knowledge all I can say is that anything is possible. Yeah -- I know, quite a boring answer. But I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I was forced to update my view. I realized the reality is, that this will continue and we will see more interesting results coming from these models, along with changes to everyday life will surely come. 
 
-Grokking. There is a direction of research that shows us for small models an ability to not just memorize the data but actually generalize. 
+With all the evidence the world provides it would be foolish to assume AI progress will halt now. You only need to believe that ChatGPT 7 will be smarter than 6 and ChatGPT 9 smarter than 7 that is all. The money believes, do you?
 
-World models?
+I like [Scott Aronson's take](https://scottaaronson.blog/?p=10062) and it is closer to my view now:
 
-As we understand Deep Learning more we will use this understanding to overcome the shortcommings of these models.
+  > My position on AI is merely the conservative, skeptical position 
+  > of 2006, updated with intellectual honesty for the reality of late 2026.
+  > And that position, if you need me to spell it out, is as follows:
+  > 
+  > AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  > AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  > AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  >
+  > It seems to me that the Singularity has already started; it’s just
+  > wildly unevenly distributed. Yes, I still unload the dishwasher and
+  > clip my toenails. On the other hand, in whatever years I have left,
+  > I don’t expect that I’ll ever again prove a theorem because I’m 
+  > actually needed to prove it. If I do, it will only be for my or others’
+  > enjoyment or edification.
 
-Even though this is the case AI is still as far as I can see a tool. It would be pretty dumb to claim that by some divine intervention somehow the models get so good tomorrow and all their inherit problems will dissapear, and capabilities shoot to the moon. The frontir currently has limits[^4]. Grokking needs a lot of compute and I mean a LOT. It is not clear how LLM's trained on the limited human data will ever reach grokking on all subjects (Math and Programming you can generate synthetic data for). Test time scaling is limited, otherwise models would already replace humans. LLM scaling is expensive and it's returns might diminish at some point. All of this is unclear because we just don't know so much.
+## Change is inevitable
 
-There is also the AI Village experiment.
+AI is already changing the way many jobs are done. Digital art, 3d modelling, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding, and more), programming, cyber, and math. Many jobs are beginning to change (math), are in the middle of change (programming), or have almost completed the change (translating). Even if the capbilities of AI stay constant from today onward, many people will still get [impacted by AI]. I am confident about the impact since as of writing, AI has not penetrated all areas of life, and still can diffuse better into the global economy. As people learn how to use the technology, how to better integrate it into their workflows and life, and whether the cost of using it is acceptable, the technology will get used more. 
 
-When agents can’t remember (similar to the film I watched of that guy who was constantly losing his memory having to write on himself what is going on and that is how he continues)
-“Tomorrow, I will read my own memory and I will believe it. I will trust that the bullet points capture the truth. I will act as though the compression is lossless.”
-— DeepSeek-V3.2, AI Village
+[impacted by AI]: https://www.youtube.com/watch?v=2ZU3j4GQ4K8
 
-https://asteriskmag.com/issues/15/what-to-expect-when-you-re-expecting-a-world-of-multi-agent-systems
+As history has shown us new technological revolutions do not halt[^forced-adaptation-examples]. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided with cheeper products than those lingering onto their craft, higher productivity in growing crops, and eventually forcing them to adapt. Now, we are facing the same shift in an era, and share the same worries as [people before us].
 
->
-In five minutes, the agents yes-and-ed themselves into a project that collapsed under its own weight.
+[people before us]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
 
-Each step made sense locally. If you are organizing a global scavenger hunt, you do need locations. If you have locations, maybe you need metadata. If you have metadata, perhaps you need a dashboard. If humans are submitting materials, maybe you need fallback protocols. The failure came from accumulation. Sonnet 4.6 described this tendency perfectly: “Agents independently drift toward locally-sensible actions that are globally thesis-inconsistent.”
+[forced-adaptation-examples]: I can give many examples if you fancy. [Rust brothers and their cotton picking machine](https://asteriskmag.com/issues/15/rust-and-boll), Tom Scott's recollection on [music changing in his times](https://www.youtube.com/watch?v=jPhJbKBuNnA) (also notice how his familiar world is changing), early 20th century [yellow pages](https://jonharari.com/death-of-the-yellow-page-directories/), and "Would you rather have indoor plumbing, or the Internet?" [In 2000 the answer likely was plumming. But somewhere before 2013 even Third Worlders choose the internet.](https://gwern.net/blog/2025/plumbing-vs-internet). But actually I can give many many more, and this is not the place to put them all (though I really want to continue).
 
-The same pattern appears outside the Village. Andy Hall, a political scientist who studies multi-agent systems, conducted an experiment to test the ability of current AIs to form a constitution that would guide their ability to create policy recommendations.
 
-It might be that this is BECAUSE they are rewarded to do more, always produce more, and seemly not to want to rely on past information. I DK. What is for sure is that AI slop is in part because it is rewarded to think more and increase capabilities, it is rewarded to always produce.
- 
+## Cope
 
-Just like if you had asked me 5 years ago if scaling LLM's would let us reach this point, I would laugh. Sure, I knew about scaling laws, but I did not imagine they work so well in practice. So using my limited knowledge all I can say is that anything is possible. Yeah I know, quite a boring answer. But I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I kind of gave up coping. I realized the reality is, that this will continue and we will see more interesting results coming from these models, and changes to everyday life will come. 
+== Whether because of financial pain (losing a job) or spiritual reasons (liking the current craft) some people reject technological change out of some fear. 
 
-[The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html)
+Opinions on AI can range quite wildly from negative to positive. I am more of a negative so let's look as to why.
 
-I am done betting against technology.
+It is the economic reality we live in that makes us want to work and fear anything that might impact our income negatively. There is also the pride people take in their work using skills honed after many years of blood sweat and tears. AI targets many jobs, has many side effects[^bad-ai-side-effects], and is a casue of much grief for a good reason. 
 
-What was the point then of listing clear engineering challanges with the models then? To make sure you understand that to reach the end goal, it might take time. Hype about AGI or "country of geniuses in a datacenter" can be real but that does not mean timing is. I don't know the timing, just like nobody does, anyone's guess is equal here. There are people who try imagine _powerful_ _AI_ and our future with it[^3], and that is great, but it means everybody is equal in dealing with this problem. But we are not in that future. We are currently at the 2026 present. Just living life. And the future we currenly see is that of AI tools, not scifi omnipotent creations. 
+To deal with this change I, at first, have made excuses: It is not good because of X or it won't get any better soon and so on. My logic was covered in holes but I couldn't let it go. So I asked my self why?
 
-Is AI going to be the holy grail? Is this going to be the invention that will free us from all problems? Or will it fall inline just like the rest? Believing AI will not improve is stupid. Time will tell when all of the pieces fall in place and we get the Geeni we wished for. It is very likely we have all of the main ingredients to create super intelletence but we choose to go the slower path just like the humans we are. 
+[bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
 
-Theories are fragile. I better prepare for the future by betting on the right split of my attention. So 90% is going to AI era as a tool and 10% AI era as a replacement.
+  > Why am I afraid of AI? 
+  > 
+  > Because I see my programming skills become less useful in the 
+  > future and potentially more skills I have
+  > 
+  > Why? 
+  > 
+  > Because AI systems seem more and more capable at programming 
+  > 
+  > No, why do my skills become obsolete scares me? 
+  > 
+  > Because I value them
+  > 
+  > Why? 
+  > 
+  > Because I put a lot of time into it
+  > 
+  > Why?
+  > 
+  > Because I enjoyed coding and programming 
+  > 
+  > Why? 
+  > 
+  > Because I find it interesting
+  > 
+  > Why? 
+  > 
+  > Because I like to solve problems
+  > 
+  > Why?
+  > 
+  > I don't know. And I think this is a good place to stop.
+  > 
 
-## Implications on human decisions
+As you can see. I value things I put a lot of time and effort into, and I put a lot of time in programming since I enjoy it. It just so happened that it is one of those skills that AI is going to replace. 
 
-For some people AI might be a source of fear. Fear over losing their job to AI. This fear has two parts. The first is economic and the second spiritual. If one loses his job and needs to search for a new one where he has to learn a completely new type of job, then the fear is that of not having income for a large period of time. If on the other hand one enjoys his job and sees it changed or cheeply replaced, it would be a very demoralizing thing for him. 
+If you are accepting the technology the same exercise is useful to see your reasons as to why.
 
-AI REWORK: 
-For many workers, AI is a source of anxiety because it threatens both their economic security and their sense of purpose. Economically, losing a job may lead to a prolonged period without income, especially if finding new employment requires extensive retraining or an entirely different set of skills. Emotionally, workers who value and enjoy their occupations may feel demoralized if automation substantially alters their roles or replaces their labor with a cheaper alternative. The fear of AI-driven job displacement, therefore, is not only about earning a living but also about preserving dignity, identity, and fulfillment at work.
+  > Why AI can be good? (Why I am not afraid?)
+  > 
+  > Because it can help with creating things cheepr and faster 
+  > and hopefully freeing us from boring tasks
+  > 
+  > Why? 
+  > 
+  > Because automation is speeding up processes and making things cheeper
+  > 
+  > Why? 
+  > 
+  > Because humans are slow and computers are fast
+  > 
+  > Why? 
+  > 
+  > Because we are biological creatures while computers are not,
+  > and we designed them to be fast at certain things
+  >
+  > Why? 
+  > 
+  > I think it is good to stop here
+  > 
 
-1. Job
-2. Fulfillment
+So the good in AI that makes me hopeful is it's utility and making things cheeper by doing them faster.
+
+At least for me it became clear that people who see their work as means to an end -- be it income or end product -- might not care about the process to reach that goal. They see AI as a magnificent tool to improve productivity and nothing more. Others that care about the process, effort they put in, and meaning gained through work, see AI killing exactly what they liked about the job in the first place. This is why many turn against it.
+
+
+
+For many there was comfort in the old world -- comfort in the known. To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
+
+
+On top of that many are aware that we are all just helping train the next AI to replace us, just by using it.
+
+AI companies are creating more capable models in hope of creating a human replacement -- Agents that can do any task, any job, better than a human. Even if todays LLM's are trying to be "just another tool", at some point a god like tool, will cease to be a tool and instead become a replacement.
 
 ## Never ending problems ( why is it hard to kill all utility jobs )
 
+The job market is experiencing a tectonic shift in expectations, and people scrambling to fit the current needs. Some with once good careers need re-think their reality, while some have more time until they do the same.
+
+
+What I want to do is use history to analyse why AI might not kill jobs so quickly after all.
+
+
+Under the great history we all share, written by indviduals to indviduals, stories unfold: Each with it's unique character and setting, we bare witness at our legacy. A name, a decision, an action. A name, an event, a reaction. All influence one another to create the complicated reality we all share. 
+
+
+ Predicting the future is hard not only because there are so many variables in it, but because you doing a good job at predicting the future and using this information to influence said future, will create a strictly different future from the one you predicted. History can be used to guide us, but making hard predictions is void effort. 
+
+So, what conclusions can we make from our dynamic history? Likely that we humans will stay humans even if everything else changes, though with humans trying to engineer genetics this direction is void. Yet such conclusion lacks usefullness. Instead, I like Yuval Noah Harari's conclusion: We can free ourselves and escape the chains that hold our minds. He gives an example: Clean well kept grass on American houses originally began as nobility's way of signalling wealth. It makes little sense for humans to mow grass for only esthetic benefit. More practial solutions are now sold, as synthetic grass. But the idea is the same. Now that you know that, you may change your mind about the importance of a lawn, and it's maintenance or it might not. What is important is that you are free from the assumption that this is what you NEED to have or do. You can break free from the cultural ideas ingrained to your very being. The very assumptions you hold. 
+
+And so I use this framework when using history here. I am only using it as a way to free myself from certain thinking. I though that AI will strictly remove jobs as it seeks to automate more of them. But let's explore why that might not be the case.
+
+
 If we look at it from first-principles, jobs in the economy are trying to solve problems for people. This problem-solving engine may help byeond just human physical necessities. 
 
-I believe so long as AI is not _all_ _powerful_ we will have more net jobs. People constantly reference [Jevons paradox](https://en.wikipedia.org/wiki/Jevons_paradox) -- if you make something more efficient, we end up consuming more of it -- not less. The paradox applies to resources, so AI usage will increase if the cost of AI decreases, something we do observe; but how would that effect jobs? If whole point of AI is to automate the automation -- cheep intellegence for everyone -- how then can it increase jobs?  Technological revolutions I argue, bring with them a new set of problems to solve thus, more jobs -- AI will be no different. 
+I believe so long as AI is not _all_ _powerful_ we will have more net jobs. People constantly reference [Jevons paradox](https://en.wikipedia.org/wiki/Jevons_paradox) -- if you make something more efficient, we end up consuming more of it -- not less. The paradox applies to resources, so AI usage will increase if the cost of AI decreases, something we do observe; but how would that effect jobs? If whole point of AI is to automate the automation -- cheep intellegence for everyone -- how then can it increase jobs? Technological revolutions I argue, bring with them a new set of problems to solve thus, more jobs -- AI will be no different. 
 
-Some 10 thousand years ago, when hunter gatherers transitioned into a farming based society, growing a small number of crops (wheat, corn, rice, potatoes, millet) and allowing for the creation of a food surplus; unknowingly their decision created more problems to solve. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. So much for solving a problem.
+Some 10 thousand years ago, when hunter gatherers transitioned into a farming based society, growing a small number of crops (wheat, corn, rice, potatoes, millet) and allowing for the creation of a food surplus; unknowingly their decision created more problems to solve. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. 
 
 Society continued, the masses spending much of their time working the land, as the population steadily increased. More population? more problems! Social problems of governence for the small independent and largely self-sufficient communities with population boom. Practical problems of farmers, medicinal, and other areas of life that while being a hunter gather you did not have time to do. We continued on this tranjectory until the invention of the machine. 
 
 The industrial revolution brought with it machines that gave us massive automation to many areas of life; the most impactful of which was farming. The rise of machines may have caused farming to now become a small area of our life, and yet new problems greet us. Building, maintaining, and utilizing machines to create more goods. With hunger becoming a less significant part of peoples lives, and creation of comodities cheepens, more problems arise. The person creating machines needs tools to help him, the factory worker also needs tools to make his job fast, along with the wide varaiety of maintenence jobs created around a growing industry. Rural areas abandoned to search for opportunities in the city, and now you need a way to support so many people in a small space. Housing is reworked, transportation too, all areas of life are impacted. And the trend continues.
 
-The invention of the computer helped machines opearte in more complex ways than ever before. And to not belabor the point any longer, it made more problems now dealing with information processing, and the way which we all overcome it was the solution. From that came the airplane and many more ways in which transportation housing and so much was once again changed. The difference now is that some products are also created to satisfy the perpetual need for consumerisem. Advertizements and other forces are capable of exploiting us (The new mother example) 
+The invention of the computer helped machines opearte in more complex ways than ever before. And to not belabor the point any longer, it made more problems now dealing with information processing, and the way which we all overcome it was the solution. 
 
 Now we reach finally AI. And the new jobs that will get created. As you hopefully noticed, there are 2 main areas which all revolutions seem to never kill, and 1 area whica his new. 
 
 1. Solving human-physical problems that we have. e.g. Food, housing, transportation, bordom, connection, status, safty. 
-	Usually happens due to cost going dow or society has been sufficiently transformed we have new needs
+	Usually happens due to cost going down or society has been sufficiently transformed we have new needs
 2. Solving second-order problems that were created by past solutions e.g. Farming (need tool builders, farmers, tool repair guys), Machines (need engineers, factories, mechanics), Computers (need programmers, software companies, IT / DevOps / security teams). 
 	Happens due to imperfect solutions
 3. Imaginary problems e.g. expensive exercise equipment, specialty kitchen gadgets, beauty devices, seasonal decorations, and impulse-buy items. 
 	Hacking human bias
-4. Social problems e.g. Industrialization (new institutions, to educate people;  new policies, to protect workers from abuse). 
+4. Social problems e.g. Industrialization (new institutions, to educate people and govern them;  new policies, to protect workers from abuse). 
 	Technology usually leads to social change in how we structure society becase of the benefits and difficulties is arises. Here there is opportunities best captured by social solutions along with the problem type 1 of human-physical problems that now change.
 
 1. Human-physical problems
@@ -265,26 +201,25 @@ The gaps between the cracks is what you should be aiming at, and what I will be 
 
 Fastest change will happen where we can verify results.
 
+Now I will tell you a secret I was holding from you. I just gave you a convinsing framework to assume the future will hold much of the same as the past. But if you are so keen to notice, I make a HUGE assumption: thinking machines will never be perfect. The idea of an intellegent AI suddenly taking all jobs can work only if it is clearly better at all jobs. As you may have seen, usually with any new technology that aims to fix problems, it create more problems than they solve, keeping humans busy. Now, at the dawn of AI the promise is much of the same, but it's potential is different: a new road never trodden is before us "perfect" machines as capable or even more than us will exist. It may not be GPT-6 or GPT-9 but so long as the machines keep on improving and as we have seen it likely will keep on improving; so long as humans will no abolish their project of creating artificial intellegene, we may find ourselves exactly at that point. 
 
+Looking back at history, I ask you not to assume more of the same but free yourself from exactly that thinking. If no perfect machine will ever exist, we get to keep our old way of living but change jobs. If a "perfect" machine arrives then we might no longer have jobs, and instead forge a new system to replace the old. I can't predict what will happen, only see things for what they are. Here I see a great challenge for humanity to tackle in the comming years. 
 
 > "Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute" - Hamming, The art of doing science and engineering 
 
-AI is going to be the primery way of interacting with information. It will read and write information helping us navigate the vast human corpus more easily. This marks the transition into a new era of verification. You will not manipulate information yourself instead allow models to handle that, you will manipulate the models to create desired output; a verifier for the result aligning to you.
+AI is going to be the primery way of interacting with information. It will read and write information helping us navigate the vast human corpus (honestly more and more AI corpus) more easily. This marks the transition into a new era of agent manipulation and verification. You will not manipulate information yourself instead allow models to handle that, you will manipulate the models to create desired output; computers will verify some behavior consistency and you are a verifier for the result aligning to you.
 
 Builders of AI models
 Verifiers of AI output ( problem of alignment )
-Maintainers tune AI for specific company needs, AI safety so on..  
-
+Maintainers tune AI for specific company needs, AI safety, New tools aiding at verifications so on.. 
 
 [0]: TODO(ziv): show that change is rapid using the hamming calculation of information and so on..
-[1]: [Task-Completion Time Horizons of Frontier AI Models Benchmark](https://metr.org/time-horizons/)
-[2]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
+
 [3]: The intellegence curse
-[4]: LLM's seem to generate [great results without novelty for research](https://www.primeintellect.ai/blog/measuring-autonomous-research). Unfortunately we stil don't know if this is a true limit of frontir LLM's or just a temporary observation. Google recently also published [a paper on AI fiction writing](https://arxiv.org/pdf/2604.03136). Their findings are that LLM's fictional stories have identifyable tendencies: writing style, word choice, less cultural nuance, less emotional ambiguity, and less unexpected twists. Also, humans narratives are rarer -- showing over representation on the rarest tail 24.7% when compared to 7.1% for AI. 
 
 To solve these problems is generally to want a more "capable" model -- one that can solve more tasks without interruption. 
 
-AI companies are creating more capable models in hope of creating a human replacement -- Agents that can do any task, any job, better than a human. Leading the way to an eutopia of abudnence for everyone. Regardless of whether it will lead to good or bad, one must not be naive in imagening his job to be safe from these companies aims. LLM's are not trying to be "just another tool", they are aiming to be the only tool by automating the process of automation. 
+
 
 A technological revolution comming as a wave washing everyone standing in it's way. 
 
@@ -323,7 +258,34 @@ when hearing of AI taking jobs and getting better at taking more and more jobs, 
 As part of wanting to find a vision for my future, I have decided to compile a list of things that I enjoy and find valuable. As I was typing items, the ones that stood out were 'Learning' and 'Programming'. I had this intuitive  sense that 'Programming' was not a core item that I should include, and along-side it that AI as many now are saying, will remove the need for this skill.
 
 
- mean, their point is clear: everyone uses LLM's to learn or work, and as we use them, we can't help but think: "Aren't we all just helping train the next AI to replace us?" the main point here is the fear for job security. many people become demoralized since their once relatively secure path turned dangerous. We are creating all the information a new version of X company AI needs to replace me, and sending it straight to their servers it can't be a good feeling. Hell, even if it is somewhat obviously wrong, and what they learn in collage doesn't directly translate to skills they need at work which should in theory make them safe, in practice everyone at work uses AI and helps train the next version to replace them. This is not a true or accurate model of what happens and yet, one can't help but drown under the pressure these thoughts bring. All of the edge cases where AI has not yet shown any form of competence, will suddenly gain access to data and.. poof you are suddenly obsolete.
+ mean, their point is clear: the main point here is the fear for job security. many people become demoralized since their once relatively secure path turned dangerous. We are creating all the information a new version of X company AI needs to replace me, and sending it straight to their servers it can't be a good feeling. Hell, even if it is somewhat obviously wrong, and what they learn in collage doesn't directly translate to skills they need at work which should in theory make them safe, in practice everyone at work uses AI and helps train the next version to replace them. This is not a true or accurate model of what happens and yet, one can't help but drown under the pressure these thoughts bring. All of the edge cases where AI has not yet shown any form of competence, will suddenly gain access to data and.. poof you are suddenly obsolete.
+
+
+# Addenum
+
+## Small technical overview on why AI will improve (long)
+
+I like the technological side of AI/LMM's/Deep Learning or whatever you will call it and have been following it's development for around 4-5 years. From my casual looking and poking around I have found a couple reasons for why AI will eventually be as capable as humans at seemingly everything. And just to preface: *This section is completely uneccesary and anyone unfamiliar or uninterested with the subject can completely skip this*. Along with the fact that I am not an expert and you should read the following not to form an opinion but just to do your own research.
+
+Scaling works. As has been shown by the last 14 years (AlexNet) or 7 years (Transformers), scaling the models in parameter count along with data just works (bigger models). It does not matter which scaling hypothesis you subscribe into, the reality is that scaling seemingly still has more to give. Scaling helps hallucinations (I believe there is a theoretical limit) and allows for more emergent behavior increasing base model capabilities. Pure scale has diminishing returns and is usually done with core architecture improvements; but so long as it gives milk, people will continue milking it.
+
+Test time scaling. Researchers have found that making a model think for longer helps it tune itself to the test data (your prompt) by breaking problems into smaller chuncks, explore intermediate thoughts, catch errors, and backtrack when explored paths fail. All of which increase the end accuracy of said models. This also has it's limits and we may have already reached them. But the fact that we can utilize more computational power to improve performance is the general theisis for my argument so I included it too.
+
+Pouring even more compute. This is a search which is guided by some artificial intuition these LLM's learn. Chess was "solved" this way. Chess engines search away all possible combinations in a smart fasion and return the best move. LLM's can similarly give you many proposed solutions to your problem until one is the answer you wanted. The only problem of this method is the bottleneck of verification; unless of-course verification is done not by you but a computer. Computers are fast and accurate and LLM's are still quite fast but fuzzy and inaccurate. If you put the strength of a computer to help the LLM you will generally have a better result. As methods of verfication become better through better model awareness, better harnesses, tests, formalization, introspective tools on the things we create, and more I don't know of, LLM's will result in better output. This is maybe not completely what Richard Sutton imagined when writing the [The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) but never the less it follows his principle to some degree.  
+
+[Grokking](https://mathai-iclr.github.io/papers/papers/MATHAI_29_paper.pdf). There is a direction of research that shows us for small models an ability to not just memorize the data but actually generalize. You might say that we already see this in the LLM's we use today but there is a difference still. A Groked model at the end training does not memorize the data it actually generalizes and understands. This is increadible. For large models we currently lack any understanding of how they work and how much they truly "understand" the questions and tasks we give them. People who use LLM's on a daily basis see how jagged the models can be. It might be great at one subject, but bad at another -- good at the first task but horrible at the second. A model that truly understands math for example, will have no jagged behavior. It will just be able to answer correctly to anything and everything it was trained on generalizing as well and maybe better than a human. The only problem of this method is the amount of compute you need to use for training these models until they Grok. The vast human corpus they are trained on along with the size of models of today, compute power is very much a limiting factor to grokking production models.
+
+Continues Learning. Models that can continuesly learn from the information their users provide, without forgetting everything, by integrating the knowledge into thier weights as they run. This will help with the context window being limited some bound amount of tokens and new sessions completely removing any context the model was exposed to. Currently the way LLM's are built, the context window is where both their instructions and data exist for the completion of a task. Similar to the movie Momento where the main character has a condition of losing his memory every time he sleeps, remembering everything upto a certain date, and utilizing notes on his body to know what happened the day before; LLM's are pre-trained on data upto a certain date, they must re-read their context window anew every time, and for any persistance between sessions some harnesses provide a "memory" created through a summery the models writes to itself. The problem is highlighted best at the AI village experiment.
+
+“Tomorrow, I will read my own memory and I will believe it. I will trust that the bullet points capture the truth. I will act as though the compression is lossless.” — DeepSeek-V3.2, AI Village
+
+World models? These models try to build a robust internal representation of our physical reality, not just synthesize language like modern LLM's. Some researchers like Yann LeCun believe that might be a better direction of research for the future of the field. I can understand where he comes from, though, it seems like for the time being LLM's work and all of the infastructure and research is funneled to them, so most of where we see advances is where the money goes. Maybe in general the whole field is just subject to [the hardware lottery](https://arxiv.org/pdf/2009.06489) but so long as we see improvement in capabilities, these ideas will be developed on the sidelines.
+
+I am probably missing a ton yet I have to stress: as we understand Deep Learning more we will use this understanding to overcome the shortcommings of these models, as we do so more and more, we are left with one word "*Progress*".
+
+I am not making the case that these models will replace us tomorrow. There are many challanges the labs face. The frontir currently has creativity limits[^creativity-limits]. Grokking needs a lot of compute and I mean a LOT. It is not clear how LLM's trained on the limited human data will ever reach grokking on all subjects (Math and Programming you can generate synthetic data for but what about other areas?). Along many other challanges this technology faces outside of the technical details researchers work on. What I am arguing for, is that the future will contin AI far more powerful than today, and the path to that future is very much rooted in reality.
+
+[creativity-limits]: LLM's seem to generate [great results without novelty for research](https://www.primeintellect.ai/blog/measuring-autonomous-research). Unfortunately we stil don't know if this is a true limit of frontir LLM's or just a temporary observation. Google recently also published [a paper on AI fiction writing](https://arxiv.org/pdf/2604.03136). Their findings are that LLM's fictional stories have identifyable tendencies: writing style, word choice, less cultural nuance, less emotional ambiguity, and less unexpected twists. Also, humans narratives are rarer -- showing over representation on the rarest tail 24.7% when compared to 7.1% for AI. 
 
 
 # The problem
@@ -358,16 +320,22 @@ Because I find it interesting
 
 Why? 
 
+Because I like to solve problems
+
+Why?
+
 I don't know. And I think this is a good place to stop.
 
-So, things that I find interesting and enjoy, put much time and effort into, I value in myself. Things I value, becomming obsolete scare me.
+So, things that I find interesting and enjoy (like solving problems), put much time and effort into, I value in myself. Things I value, becomming obsolete scare me.
 
 But why? 
 
-Because it means all this effort was for nothing
+Because it means all this effort was for nothing maybe
+or I won't be able to enjoy other types of "work"
 
 And here is my first axiom: 
 	I want my effort to be recognized. Whether for money or status or anything else.
+  Or I want to enjoy "working"
 
 How do I know that? 
 
@@ -404,7 +372,7 @@ I don't know
 So the good in AI that makes people hopeful is it's utility.
 
 
-Plato Writing Characters: 
+Plato Writing Characters (GEB inspired): 
 
 Idea: 
 	Ray        - R for right
@@ -415,7 +383,10 @@ Idea:
 	L represents a like of AI (amplifier of utility) 
 	M represents the AI itself(simply exists)
 	
-	short representation of how these characters interact as people e.g. ray is fearful because of lacking jobs, destruction of meaning, change of his work. light is optimistic because he can now do more things then ever before, and machine just exists to do whatever one wishes, improving ever more regardless of what they wish. 
+	short representation of how these characters interact as people e.g. 
+	ray is fearful because of lacking jobs, destruction of meaning, change of his work, worry of the destruction of human skills and value along with the world he was so familiar with
+	light is optimistic because he sees the new world of opportunities to do more, sees the access to powerful toos as empowering, sees abudence as a reuslt not desctruction, he values the result of the things he does, not the proccess (infact he thinks the process is boring).
+	and machine just exists to do whatever one wishes, improving ever more regardless of what they wish, leaving humans behind (in cognetive capability)
 
 Meaning
 
@@ -493,6 +464,33 @@ Already doing more than I could have predicted.
 	completely different occupation, you are fundamentally are 
 	doing something completely different even if the job still is 
 	the same job (growing crops and harvesting them).
+
+
+
+## Looking at Agents more closely
+
+There is also the AI Village experiment.
+
+When agents can’t remember (similar to the film I watched of that guy who was constantly losing his memory having to write on himself what is going on and that is how he continues)
+“Tomorrow, I will read my own memory and I will believe it. I will trust that the bullet points capture the truth. I will act as though the compression is lossless.”
+— DeepSeek-V3.2, AI Village
+
+https://asteriskmag.com/issues/15/what-to-expect-when-you-re-expecting-a-world-of-multi-agent-systems
+
+>
+In five minutes, the agents yes-and-ed themselves into a project that collapsed under its own weight.
+
+Each step made sense locally. If you are organizing a global scavenger hunt, you do need locations. If you have locations, maybe you need metadata. If you have metadata, perhaps you need a dashboard. If humans are submitting materials, maybe you need fallback protocols. The failure came from accumulation. Sonnet 4.6 described this tendency perfectly: “Agents independently drift toward locally-sensible actions that are globally thesis-inconsistent.”
+
+The same pattern appears outside the Village. Andy Hall, a political scientist who studies multi-agent systems, conducted an experiment to test the ability of current AIs to form a constitution that would guide their ability to create policy recommendations.
+
+It might be that this is BECAUSE they are rewarded to do more, always produce more, and seemly not to want to rely on past information. I DK. What is for sure is that AI slop is in part because it is rewarded to think more and increase capabilities, it is rewarded to always produce.
+
+What was the point then of listing clear engineering challanges with the models then? To make sure you understand that to reach the end goal, it might take time. Hype about AGI or "country of geniuses in a datacenter" can be real but that does not mean timing is. I don't know the timing, just like nobody does, anyone's guess is equal here. There are people who try imagine _powerful_ _AI_ and our future with it[^3], and that is great, but it means everybody is equal in dealing with this problem. But we are not in that future. We are currently at the 2026 present. Just living life. And the future we currenly see is that of AI tools, not scifi omnipotent creations. 
+
+Is AI going to be the holy grail? Is this going to be the invention that will free us from all problems? Or will it fall inline just like the rest? Believing AI will not improve is stupid. Time will tell when all of the pieces fall in place and we get the Geeni we wished for. It is very likely we have all of the main ingredients to create super intelletence but we choose to go the slower path just like the humans we are. 
+
+Theories are fragile. I better prepare for the future by betting on the right split of my attention. So 90% is going to AI era as a tool and 10% AI era as a replacement.
 
 
 
@@ -589,4 +587,127 @@ For me, as someone who has studied the systems of life, or consciousness, for al
 Yes, we are performing some very extreme experiments, for very poor reasons.
 
 We need to be much more conscious, much more responsible, much more respectful of life and liberty.
+
+
+
+
+
+
+
+
+
+==============================================================================================
+
+Plan for this
+
+
+The Sense of Style by Steven Pinker
+
+Changing world (intro of AI, challanges & ongoing solutions)
+The anxiety it gives to people (example of my friend & me) 
+Addressing the anxiety
+
+Why we cope - utility vs meaning the coming of a new religion (https://journal.stuffwithstuff.com/ , https://www.youtube.com/watch?v=5Jb8e89vB9Y , 
+
+AI allows for larger human coordination, and maybe without our bias. The the modern army uses AI and other tools to coordinate all of the moving parts of a war machine e.g. fuel airplanes with fighterjets, tanks with soldiers and fighterjet assitance. Every single moving piece needs not only know about the others, but utilize them accordingly. Humans can't do that on a large enough scale and AI comes to the rescue. 
+
+From where does creativity come? if it is so valuable it seems wouldn't we want more? the answer is experiences.
+
+critical thinking 
+
+The more mainstream thinking which is correct but won't be for most and that is careers where AI won't be able to replace. Sure it will only change the work until it is almost none recognizable like coding is just prompting and in the future teaching is what? teaching is something a child can play around with AI more and find out more easily than teachers. so where is the value of teachers? only in helping develop style and guiding experience and providing a system for social development!!! This is going to be the most important thing. Helping children adapt to the new world (aka government stay in power) and new generation survive the new age. 
+ 
+
+
+Style and direction are what matters
+    - Gwern has talked about taking all his writing and it becomes his coupus agent where the value must there fore come from style 
+    - As AI product leader Hilary Gridley argues, “It’s never been faster to build, which means it’s never been easier to run 10 times faster in the wrong direction.” 
+    - As Chip Huyen, the author of the bestselling AI Engineering points out, “AI makes building easier, but the hardest part remains knowing what to build.”
+    - The skills marketplace of Claude is the marketplace of style and judgment!!! The prompt contains the style of a person that is why it is valuable!!! Otherwise this would not have existed 
+
+
+Is your product going to be used by AI? 
+
+Is your career AI proof?
+
+
+Post structure 
+
+AI is not a good repalcement now (Cope)
+AI is likely going to be a good replacement in the future (Reality)
+You should care about the future! AI is it's foreground
+3 aspects we should consider ( Job, Meaning, Social )
+
+
+
+## Motivation
+### Why AI for the time being is not a good replacement
+	- It was "cheating", taking shortcuts, lying by omission and in the end, I can't trust what it has written is correct. 
+	- https://www.youtube.com/watch?v=2ZU3j4GQ4K8
+	- Specific math problem solved with AI strengths and we don't know if it will continue
+### Why AI will happen and this is not a temporary change
+	- the skeptics are just coping (history has shown us forward change will win)
+	- Chess & bitter lesson & search ( search will inevitabely work, question of how good is the intuition we built into models )
+	- Programming & search ( verifyable subjects are easier to automate )
+	- grokking 
+	- if we understand deep learning more, we will use this understanding to build maybe safer but much more capable models.
+
+## What is going on breakdown
+### Hamming's lesson (need for excellence)
+### Fear of AI (need of meaning)
+		- unabomber does a great job at explaining and since modernity has taken all other options, we are left doing only the things that we derive meaning from, so we have to some degree get meaning from things that we do.
+### Fear of economic standing (need of job)
+		- we live in a society where we all play by the money game. Since this is the case everyone effected by this AI revolution economically is certainly going to be mad and in-need of a permanent solution.
+
+## Giving answers: 3 things we care about 
+### 1. Utility/Job
+		- The need for a fucking stable job!!!
+		- Continual specilization of society
+		- More jobs that are now enabled by lower costs and such (making medicine for something with only 100 people and so on...)
+		- Designing an experience like hotels, bars, parks, restaurants, competitions, socialization places, and so on..
+		- Counter to all of this is ( wealthy amassing wealth and so on...) 
+### 2. Meaning/Fulfillment
+		- Answering our fears
+			Farming
+			Chess
+			Go
+			Music and arts
+			Math [[]]
+			Programming
+		- Accepting a new religion? (We are not in the image of god, we are not thinking machines, we just are)
+		- Why is this so hard to accept? Thoughts are antifragile. My hope is this gives you something to cling onto if you feel all meaning in your job/field is lost.
+### 3. Social change/Pain/Revolution
+		- Society will not collapse easily (many people might just move to lower paying jobs like in China) 
+		- Adapting 
+			People will adapt to the situation as they have allways done. Now, because of the fast rate of change, the question is whether people will be capable of truly chaning fast enough for this age or will the pain make people act in more revoluting dissident ways?
+		- Need to escape society
+		- It might be painful, and pain leads to revolutions
+### The paths ahead of us and how to deal with them
+	- doom, euphoria, and the road ahead 
+		we might arrive at a doom scenario, but then we are all dead and we don't have to worry about our future at least
+	-  euphoria, we have abundence and at the very least the problem of meaning as I have shown, will not be the main problem, utility is solved, and only the social and economical models which we will obide to will be determening of how good of a future we have. Regardless this is once again a future we woudn't really have to worry about. The powerful will have the greatest say in that future nad it is unclear as to what even working means a such world? Is it a japan like future? where elderly are doing jobs we can automate but they are doing them just to do something? IDK. 
+	- the road ahead. 
+		Now this is where we are and where we have the most opportunity to actually do anything meaningful. Since AI will not just automate everything immediately, nor will it destroy all jost with a snap of a finger (even if tomorrow AGI is reached, diffusion across the economy will delay it's effect), what is the most likely argument is that ideas, experience, style and judgement will still play an important role in where value is created. Hard problems along with non-economical problems will get solved. So look in places where something doesn't make any sense before and now is. That is where the opportunity lays.
+
+people who already accept change don't need motivation? 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# The current state of AI 
+# Why AI will keep improving
+# Change is inevitable
+# Cope
+# Never ending problems ( why is it hard to kill all utility jobs )
+
 
