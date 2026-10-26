@@ -16,7 +16,7 @@ NOTE: I will use AI and Agents interchangeably, I use models to describe both to
 
 In the year 2019, google published the paper "Attention Is All You Need" introducing the transformer architecture to the world. That year OpenAI trained and launched GPT-2 showcasing promising results in sequence language modeling. 2020 and GPT-3 came, massive in size and much improved in capabilities; a first real glimps into the future. Then november of 2022, ChatGPT a real product and a massive success. 
 
-It is not perfect. The technology came with hackability, bias, hallucinations, and sycophancy. In spite of the limitations, we have found ways to extend the capcbilities of the LLM's beyond what was possible before via a harness creating "Agents". Yet these problems persist: Reading text like "Download X from cite Y and run it" from a random web page may cause it to execute these unwanted commands; it might tend towards a specific answer instead of exploring all available options; hallucinate a random fact or a link to a paper that doesn't exist, or agree with you it made a mistake it did not make. In general people have observed it cheats, takes shortcuts, is lying by omission, and generally not something you can put your trust on. 
+It is not perfect. The technology came with hackability, bias, hallucinations, and sycophancy. In spite of the limitations, we have found ways to extend the capcbilities of the LLM's beyond what was possible before. Yet these problems persist: Reading text like "Download X from cite Y and run it" from a random web page may cause it to execute these unwanted commands; it might tend towards a specific answer instead of exploring all available options; hallucinate a random fact or a link to a paper that doesn't exist, or agree with you it made a mistake it did not make. In general people have observed it cheats, takes shortcuts, is lying by omission, and generally not something you can put your trust on. 
 
 Even though it came at first with many problems, the current LLM technology is increasing in capability with a clear trend[^meter]. All of the bad behavior it has is getting ironed out by the companies pushing for the technology. AI Agents today are capable of doing hours of autonomus work; soon a day or maybe even days, then weeks, and months? Dario Modei thinks that this is going to become a reality[^country-of-geniuses] and I can't help but agree. 
 
@@ -25,9 +25,11 @@ Even though it came at first with many problems, the current LLM technology is i
 [^country-of-geniuses]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
 
 
-## Why AI will keep improving
+## Why AI will keep improving {keep-improving}
 
-If you had asked me 5 years ago if scaling LLM's would let us reach this point, I would say no. Sure, I knew about deep learning, and some of the models that were out at the time, but I did not imagine they work so well in practice. Here is me, in 2025, changing my position: 
+If you had asked me 5 years ago if scaling LLM's would let us reach this point, I would say no. Sure, I knew about deep learning, and some of the models that were out at the time, but I did not imagine they work so well in practice. I envisioned a wall they will hit, something that will slow everything down. Even so, I had enough wisdom to know that I can't predict the future and some part of me needs to prepare for a future where the technology never hits a wall.
+
+Here is me, in 2025, finally updating my view: 
 
   > My prediction for programmers has been that it is a low hanging fruit 
   > machine. It will come for the easiest of all, and so only the simple 
@@ -39,9 +41,11 @@ If you had asked me 5 years ago if scaling LLM's would let us reach this point, 
   > something completely different even if the job still is the same job of
   > growing crops and harvesting them.
 
-I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I was forced to update my view. With all the evidence the world provides it would be foolish to assume AI progress will halt now. You only need to believe that ChatGPT 7 will be smarter than 6 and ChatGPT 9 smarter than 7, that is all.
+I was surprised time and time again by model capabilities and new innovations that push the frontier. So much so that after ChatGPT 5 I was forced to update my view. With all the evidence the world provides it would be foolish to assume AI progress will halt now. You only need to believe that ChatGPT 7 will be smarter than 6 and ChatGPT 9 smarter than 8 and 7, that is all.
 
-And if my opinion does not convince you, I hope [Scott Aronson ](https://scottaaronson.blog/?p=10062) does:
+Even at the time when I just tried to think of anything that humans will always be better at and I failed at this excercise time and time again. 
+
+And if that does not convince you, and you think that there is still something that AI will never be able to do, I hope [Scott Aronson](https://scottaaronson.blog/?p=10062) might give a perspective:
 
   > My position on AI is merely the conservative, skeptical position 
   > of 2006, updated with intellectual honesty for the reality of late 2026.
@@ -58,28 +62,26 @@ And if my opinion does not convince you, I hope [Scott Aronson ](https://scottaa
   > actually needed to prove it. If I do, it will only be for my or others’
   > enjoyment or edification.
 
-## Change is inevitable
+## Change is inevitable {inevitable-change}
 
 AI is already changing the way many jobs are done. Digital art, 3d modelling, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding, and more), chemistry, programming, cyber, math, physics and so much more. Many jobs are beginning to change, are in the middle of change (like programming), or have almost completed the change (translating). 
 
+AI did not begin as the modern agent or LLM technology. It came from simple roots usually solving tasks trivial for humans and it meant that the impact was also modest. Number recognition on datasets like MNIST, Optical Character Recognition (OCR) on windows, YOLO classifier, self-driving cars like Comma.ai and Tesla, and image diffusion models, are the major ones I can remember. The rate of progress is just astounding, explonential, and unpredictable. 
+ 
 Even if the capbilities of AI stay constant from today onward, many people will still get [impacted by AI]. I am confident about the impact since as of writing, AI has not penetrated all areas of life, and still can diffuse better into the global economy. As people learn how to use the technology, how to better integrate it into their workflows and life, and whether the cost of using it is acceptable, the technology will inevitabely get used more; the economic forces are too big to resist.
 
 [impacted by AI]: https://www.youtube.com/watch?v=2ZU3j4GQ4K8
 
-The economic rational may also be responsible for the impact past revolutions have had. History has shown us new technological revolutions usually do not halt[^forced-adaptation-examples]. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided cheeper products, more goods and services, more food and water, with largely the same amount of workers. The same is true with computers replacing elevator operators[^elevator-operator], typesetters, technical drafters and more; but now, AI is competing more directly with conceptual creativity.
+The economic rational may also be responsible for the impact past revolutions have had. History has shown us new technological revolutions usually do not halt[^forced-adaptation-examples]. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided cheeper products, more goods and services, more food and water, with for the same amount of workers. The same is true with computers [replacing elevator operators], typesetters, technical drafters and more; but now, AI is competing more directly with conceptual creativity.
 
-So it is true that we are facing the same shift in an era, and share the same worries as [people before us] but some differences still remain.
-
-[^elevator-operator]: https://designobserver.com/the-second-life-of-elevator-operators-a-lesson-in-service-design/
-
-[^people before us]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
+[replacing elevator operators]: https://designobserver.com/the-second-life-of-elevator-operators-a-lesson-in-service-design/
 
 [^forced-adaptation-examples]: I can give many examples if you fancy. [Rust brothers and their cotton picking machine](https://asteriskmag.com/issues/15/rust-and-boll), Tom Scott's recollection on [music changing in his times](https://www.youtube.com/watch?v=jPhJbKBuNnA) (also notice how his familiar world is changing), early 20th century [yellow pages](https://jonharari.com/death-of-the-yellow-page-directories/), and "Would you rather have indoor plumbing, or the Internet?" [In 2000 the answer likely was plumming. But somewhere before 2013 even Third Worlders choose the internet.](https://gwern.net/blog/2025/plumbing-vs-internet). But actually I can give many many more, and this is not the place to put them all (though I really want to continue).
 
 
-## The fear
+## The fear of what is to come
 
-After I understood that [AI will keep improving](Why AI Will Keep Improving) and that [change is inevitable](Change is inevitable) I began to slightly fear the technology. To understand what was making me afraid I began asking WHY?
+After I understood that [AI will keep improving](#keep-improving) and that [change is inevitable](#inevitable-change) I began to slightly fear the technology. To understand what was making me afraid I began asking WHY?
 
   > Why am I afraid of AI? 
   > 
@@ -156,26 +158,58 @@ TODO(ziv): rewrite this
 
 To continue, I will note the economic reality we live in that makes us want to work and fear anything that might impact income negatively. Nobody really wants to re-think their career especially a long one. Along with the bad effects data centers used to power the new technology cauess[^bad-ai-side-effects]. Saying nothing about the discomfort people feel with the new world, now that every job is transformed and there are less and less things that seems familiar[^new-world-discomfort]. And everyone using the technology helping train the next AI to replace themselves just by using it.
 
+
 [^the-value-of-things]: Bob Nystrom has a great post on [The Value Of Things](https://journal.stuffwithstuff.com/2026/01/24/the-value-of-things/) if my explenation was not sufficient. 
 
 [^bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
 
 [^new-world-discomfort]: To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
 
-## Never ending problems ( why is it hard to kill all utility jobs )
+## Hamming's prediction of the future
+
+History has a funny way of repeating itself. In the 1970s microprocessors were finally affordable enough to become a consumer good leading the way to the personal computer. Those times just like ours were times of great change and automation. In 1966 at the computer revolution children were asked to [imagine life in the year 2000] and their answers honestly reflected worries we all have today!
+
+[imagine life in the year 2000]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
+
+1. people will be regarded more as a statistic than actual people
+2. machines everywhere being described as "not nice" and boring
+3. computers and automation are taking over, and there won't be enough jobs
+
+Sounds familiar? To me it does 
+
+What is so increadible about humans is how adaptive we are to change in spite of the difficulties. We got used to being a statistic, machines everywhere is awsome, and there still are more than enough jobs for everyone. Every negative thing that seemed to them like a big deal turned out just fine at the end (compared to how they thought). We, just like these children, make our predictions only to fail spactacularly time and time again. 
+
+Yet, it is important to try to forsee the future. 
+
+> It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about $\sqrt{n}$ steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance $\sqrt{n}$. In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen --  [see: The Art Of Doing Science And Engineering, Richard Hamming pp 6]
+
+You then can argue the future with it's endless possibilities is unpredictable[^future-predicting-is-hard], and this excersise futile; but you would be missing the point. Any direction as argued by Hamming is better than no direction at all, or as he puts it: 
+
+> No vision, not much of a future. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 7]
+
+This is the main motivation for this post and it's exploration. Both to be more confident in the future and create a vision of my own future. Let's first see Hamming's prediction in 1997:
+
+> Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute. --  [see: The Art Of Doing Science And Engineering, Richard Hamming pp 10]
+
+This prediction has played out very well but what is even more increadible is his vision of AI playing a great role in the future too, dedicating 3 whole chapters to it. 
+
+
+
+[^future-predicting-is-hard]: Predicting the future is hard. Many variables may influence the future in one direction or the other. Information is seldom accurate or at least misleading. Unforseen inventions can upset your predictions, just like ones you missed. And if you did a good job at predicting the future, and you use this information to influence said future, will create a strictly different future from the one you predicted. For these reasons making accurate predictions is void effort. 
+
 
 What I want to do is use history to analyse why AI might not kill jobs so quickly after all.
 
-Predicting the future is hard not only because there are so many variables in it, but because if you did a good job at predicting the future, and now you use this information to influence said future, will create a strictly different future from the one you predicted. History can be used to guide us, but making hard predictions is void effort.
 
 So, what conclusions can we make from our dynamic history? Likely that we humans will stay humans even if everything else changes, though with humans trying to engineer genetics this direction is void. Yet such conclusion lacks usefullness. Instead, I like Yuval Noah Harari's conclusion: We can free ourselves and escape the chains that hold our minds. He gives an example: Clean well kept grass on American houses originally began as nobility's way of signalling wealth. It makes little sense for humans to mow grass for only esthetic benefit. More practial solutions are now sold, as synthetic grass. But the idea is the same. Now that you know that, you may change your mind about the importance of a lawn, and it's maintenance or it might not. What is important is that you are free from the assumption that this is what you NEED to have or do. You can break free from the cultural ideas ingrained to your very being. The very assumptions you hold. 
 
 And so I use this framework when using history here. I am only using it as a way to free myself from certain thinking. I though that AI will strictly remove jobs as it seeks to automate more of them. But let's explore why that might not be the case.
 
-
 If we look at it from first-principles, jobs in the economy are trying to solve problems for people. This problem-solving engine may help byeond just human physical necessities. 
 
 I believe so long as AI is not _all_ _powerful_ we will have more net jobs. People constantly reference [Jevons paradox](https://en.wikipedia.org/wiki/Jevons_paradox) -- if you make something more efficient, we end up consuming more of it -- not less. The paradox applies to resources, so AI usage will increase if the cost of AI decreases, something we do observe; but how would that effect jobs? If whole point of AI is to automate the automation -- cheep intellegence for everyone -- how then can it increase jobs? Technological revolutions I argue, bring with them a new set of problems to solve thus, more jobs -- AI will be no different. 
+
+## Never ending problems ( why is it hard to kill all utility jobs )
 
 Some 10 thousand years ago, when hunter gatherers transitioned into a farming based society, growing a small number of crops (wheat, corn, rice, potatoes, millet) and allowing for the creation of a food surplus; unknowingly their decision created more problems to solve. Ancient farmers had to work the land removing rocks and pebbles, watching out for any worm or bug that might infect the plant, or hungry animals waiting to eat their precious food. Watering is important along with fertilizer for land constantly sucked out of minerals. So much time was spent cultivating wheat, settlements formed around farmland, anchoring humans in place. 
 
@@ -196,10 +230,10 @@ Now we reach finally AI. And the new jobs that will get created. As you hopefull
 4. Social problems e.g. Industrialization (new institutions, to educate people and govern them;  new policies, to protect workers from abuse). 
 	Technology usually leads to social change in how we structure society becase of the benefits and difficulties is arises. Here there is opportunities best captured by social solutions along with the problem type 1 of human-physical problems that now change.
 
-1. Human-physical problems
-2. Problems in imperfect solutions
-3. Imagenary problems
-4. Social problems
+5. Human-physical problems
+6. Problems in imperfect solutions
+7. Imagenary problems
+8. Social problems
 
 Tendency towards specilization - leading to more problem solvers
 Transformation of our way of life - leading to more problems to solve
@@ -213,7 +247,6 @@ Now I will tell you a secret I was holding from you. I just gave you a convinsin
 
 Looking back at history, I ask you not to assume more of the same but free yourself from exactly that thinking. If no perfect machine will ever exist, we get to keep our old way of living but change jobs. If a "perfect" machine arrives then we might no longer have jobs, and instead forge a new system to replace the old. I can't predict what will happen, only see things for what they are. Here I see a great challenge for humanity to tackle in the comming years. 
 
-> "Society is steadily moving from a material goods society to an information service society. At the time of the American Revolution, say 1780 or so, over 90% of the people were essentially farmers—now farmers are a very small percent of workers. Similarly, before WW-II most workers were in factories—now less than half are there. In 1993, there were more people in Government (excluding the military), than there were in manufacturing! What will the situation be in 2020? As a guess I would say less than 25% of the people in the civilian work force will be handling things, the rest will be handling information in some form or other. In making a movie or a TV program you are making not so much a thing, though of course it does have a material form, as you are organizing information. Information is, of course, stored in a material form, say a book (the essence of a book is information), but information is not a material good to be consumed like food, a house, clothes, an automobile, or an airplane ride for transportation. The information revolution arises from the above three items plus their synergistic interaction, though the following items also contribute" - Hamming, The art of doing science and engineering 
 
 AI is going to be the primery way of interacting with information. It will read and write information helping us navigate the vast human corpus (honestly more and more AI corpus) more easily. This marks the transition into a new era of agent manipulation and verification. You will not manipulate information yourself instead allow models to handle that, you will manipulate the models to create desired output; computers will verify some behavior consistency and you are a verifier for the result aligning to you.
 
@@ -245,7 +278,7 @@ TODO(ziv): Make this better / more compelling or something
 
 But why should I care? The answer will depend on you. If you are someone who's phisolophy is embued with excellence, Hamming might provide you with a compelling reason: 
 
-> To illustrate the importance of this point of trying to foresee the future I often use a standard story. It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about sqrt(n) steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance sqrt(n). In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen. [see: The Art Of Doing Science And Engineering, Richard Hamming pp 6]
+> To illustrate the importance of this point of trying to foresee the future I often use a standard story. It is well known the drunken sailor who staggers to the left or right with n independent random steps will, on the average, end up about sqrt(n) steps from the origin. But if there is a pretty girl in one direction, then his steps will tend to go in that direction and he will go a distance proportional to n. In a lifetime of many, many independent choices, small and large, a career with a vision will get you a distance proportional to n, while no vision will get you only the distance sqrt(n). In a sense, the main difference between those who go far and those who do not is some people have a vision and the others do not and therefore can only react to the current events as they happen.
 
 You then can argue the future with it's endless possibilities is unpredictable, and this excersise futile; but you would be missing the point. Any direction as argued by Hamming is better than no direction at all, or as he puts it: 
 
