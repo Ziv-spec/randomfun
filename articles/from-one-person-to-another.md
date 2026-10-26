@@ -7,7 +7,7 @@ Musings on our future with AI
 
 The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly[^rapid-change]. This post will analyze the state we are curently in, argue for powerful AI systems existing in the future, show how I and others cope, and ask a self-centered question -- What then should I do in the future?
 
-[rapid-change]: In Hamming's The Art Of Doing Science And Engineering book, pages 2-4, he notes that since Isaac Newton's time knowledge has doubled every 17 years. He verified this claim assuming that the general knowledge of his time and some oberservations he had were true, then calculating to see whether everything checkous. After verification the doubling every 17 years claim was generally true for their time. Today with AI information creation and processing has increased, and likely the increase in knowledge has increased too (so a doubling may occur earlier than 17 years), which to us means that we need to work harder to produce new results. The bar is constantly going up and at an alarming rate. It is not just a feeling that the world is going fast!!! 
+[rapid-change]: In Hamming's The Art Of Doing Science And Engineering book, pages 2-4, he notes that since Isaac Newton's time knowledge has doubled every 17 years. He verified this claim assuming that the general knowledge of his time and some observations he had were true, then calculating to see whether everything checks-out. After verification the doubling every 17 years claim was generally true for their time. Today with AI information creation and processing has increased, and likely the increase in knowledge has increased too (so a doubling may occur earlier than 17 years), which to us means that we need to work harder to produce new results. The bar is constantly going up and at an alarming rate. It is not just a feeling that the world is going fast!!! The world infact is going faster.
 
 NOTE: I will use AI and Agents interchangeably, I use models to describe both today's LLM's and future technology, and obviosly LLM's (Large Language Models) as the current technology for language sequencing usually done with transformer like architecture.
 
@@ -27,11 +27,21 @@ Even though it came at first with many problems, the current LLM technology is i
 
 ## Why AI will keep improving
 
-If you had asked me 5 years ago if scaling LLM's would let us reach this point, I would say no. Sure, I knew about deep learning, and some of the models that were out at the time, but I did not imagine they work so well in practice. So using my limited knowledge all I can say is that anything is possible. Yeah -- I know, quite a boring answer. But I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I was forced to update my view. I realized the reality is, that this will continue and we will see more interesting results coming from these models, along with changes to everyday life will surely come. 
+If you had asked me 5 years ago if scaling LLM's would let us reach this point, I would say no. Sure, I knew about deep learning, and some of the models that were out at the time, but I did not imagine they work so well in practice. Here is me, in 2025, changing my position: 
 
-With all the evidence the world provides it would be foolish to assume AI progress will halt now. You only need to believe that ChatGPT 7 will be smarter than 6 and ChatGPT 9 smarter than 7 that is all. The money believes, do you?
+  > My prediction for programmers has been that it is a low hanging fruit 
+  > machine. It will come for the easiest of all, and so only the simple 
+  > things will get replaced while hard to do things will still be made by
+  > humans. But now I question how much hard stuff is there really? 
+  > Just like farming [...] the job they do is also completely different: 
+  > instead of doing things by hand, you operate machines. To some, this 
+  > is a completely different occupation, you are fundamentally doing 
+  > something completely different even if the job still is the same job of
+  > growing crops and harvesting them.
 
-I like [Scott Aronson's take](https://scottaaronson.blog/?p=10062) and it is closer to my view now:
+I was surprised time and time again by model capabilities and new innovations that push the frontier, that after ChatGPT 5 I was forced to update my view. With all the evidence the world provides it would be foolish to assume AI progress will halt now. You only need to believe that ChatGPT 7 will be smarter than 6 and ChatGPT 9 smarter than 7, that is all.
+
+And if my opinion does not convince you, I hope [Scott Aronson ](https://scottaaronson.blog/?p=10062) does:
 
   > My position on AI is merely the conservative, skeptical position 
   > of 2006, updated with intellectual honesty for the reality of late 2026.
@@ -50,28 +60,26 @@ I like [Scott Aronson's take](https://scottaaronson.blog/?p=10062) and it is clo
 
 ## Change is inevitable
 
-AI is already changing the way many jobs are done. Digital art, 3d modelling, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding, and more), programming, cyber, and math. Many jobs are beginning to change (math), are in the middle of change (programming), or have almost completed the change (translating). Even if the capbilities of AI stay constant from today onward, many people will still get [impacted by AI]. I am confident about the impact since as of writing, AI has not penetrated all areas of life, and still can diffuse better into the global economy. As people learn how to use the technology, how to better integrate it into their workflows and life, and whether the cost of using it is acceptable, the technology will get used more. 
+AI is already changing the way many jobs are done. Digital art, 3d modelling, video creation, writing, translating, customer service, driving, research analyst, bio-research (protein folding, and more), chemistry, programming, cyber, math, physics and so much more. Many jobs are beginning to change, are in the middle of change (like programming), or have almost completed the change (translating). 
+
+Even if the capbilities of AI stay constant from today onward, many people will still get [impacted by AI]. I am confident about the impact since as of writing, AI has not penetrated all areas of life, and still can diffuse better into the global economy. As people learn how to use the technology, how to better integrate it into their workflows and life, and whether the cost of using it is acceptable, the technology will inevitabely get used more; the economic forces are too big to resist.
 
 [impacted by AI]: https://www.youtube.com/watch?v=2ZU3j4GQ4K8
 
-As history has shown us new technological revolutions do not halt[^forced-adaptation-examples]. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided with cheeper products than those lingering onto their craft, higher productivity in growing crops, and eventually forcing them to adapt. Now, we are facing the same shift in an era, and share the same worries as [people before us].
+The economic rational may also be responsible for the impact past revolutions have had. History has shown us new technological revolutions usually do not halt[^forced-adaptation-examples]. The industrial revolution did not care for farmers losing their jobs, or artisans no longer practicing their craft. It just provided cheeper products, more goods and services, more food and water, with largely the same amount of workers. The same is true with computers replacing elevator operators[^elevator-operator], typesetters, technical drafters and more; but now, AI is competing more directly with conceptual creativity.
+
+So it is true that we are facing the same shift in an era, and share the same worries as [people before us] but some differences still remain.
+
+[elevator-operator]: https://designobserver.com/the-second-life-of-elevator-operators-a-lesson-in-service-design/
 
 [people before us]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
 
 [forced-adaptation-examples]: I can give many examples if you fancy. [Rust brothers and their cotton picking machine](https://asteriskmag.com/issues/15/rust-and-boll), Tom Scott's recollection on [music changing in his times](https://www.youtube.com/watch?v=jPhJbKBuNnA) (also notice how his familiar world is changing), early 20th century [yellow pages](https://jonharari.com/death-of-the-yellow-page-directories/), and "Would you rather have indoor plumbing, or the Internet?" [In 2000 the answer likely was plumming. But somewhere before 2013 even Third Worlders choose the internet.](https://gwern.net/blog/2025/plumbing-vs-internet). But actually I can give many many more, and this is not the place to put them all (though I really want to continue).
 
 
-## Cope
+## The fear
 
-== Whether because of financial pain (losing a job) or spiritual reasons (liking the current craft) some people reject technological change out of some fear. 
-
-Opinions on AI can range quite wildly from negative to positive. I am more of a negative so let's look as to why.
-
-It is the economic reality we live in that makes us want to work and fear anything that might impact our income negatively. There is also the pride people take in their work using skills honed after many years of blood sweat and tears. AI targets many jobs, has many side effects[^bad-ai-side-effects], and is a casue of much grief for a good reason. 
-
-To deal with this change I, at first, have made excuses: It is not good because of X or it won't get any better soon and so on. My logic was covered in holes but I couldn't let it go. So I asked my self why?
-
-[bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
+After I understood that [AI will keep improving](Why AI Will Keep Improving) and that [change is inevitable](Change is inevitable) I began to slightly fear the technology. To understand what was making me afraid I began asking WHY?
 
   > Why am I afraid of AI? 
   > 
@@ -107,9 +115,9 @@ To deal with this change I, at first, have made excuses: It is not good because 
   > I don't know. And I think this is a good place to stop.
   > 
 
-As you can see. I value things I put a lot of time and effort into, and I put a lot of time in programming since I enjoy it. It just so happened that it is one of those skills that AI is going to replace. 
+As you can see, I value things I put a lot of time and effort into, and I put a lot of time in programming since I enjoy it. It just so happened that it is one of those skills that AI is going to replace, which was why it was hard for me to get excited about the technology.
 
-If you are accepting the technology the same exercise is useful to see your reasons as to why.
+The same exercise was useful to see the opposite:
 
   > Why AI can be good? (Why I am not afraid?)
   > 
@@ -134,31 +142,31 @@ If you are accepting the technology the same exercise is useful to see your reas
   > I think it is good to stop here
   > 
 
-So the good in AI that makes me hopeful is it's utility and making things cheeper by doing them faster.
+So the good in AI that makes me hopeful is it's utility and making things cheeper by doing them faster. 
 
-At least for me it became clear that people who see their work as means to an end -- be it income or end product -- might not care about the process to reach that goal. They see AI as a magnificent tool to improve productivity and nothing more. Others that care about the process, effort they put in, and meaning gained through work, see AI killing exactly what they liked about the job in the first place. This is why many turn against it.
+The question at heart then is that of *value*.
 
+When someone gives you a knife to slice a tomato for a salad, it is easy to see how the utility of a knife brings value. After all it makes it possible to cut vegetables. On the other hand finding value in the meaning something brings, sounds a bit odd. Does a hand crafted knife matter more than a knife you buy at the store? Well... to some degree yes. 
 
+If your friend buys you a knife from the store and gifts it to you, the value you find in it is the utility the knife has, plus the nice gesture. A nice gift but one that has limited value. On the other hand take the same friend, but now he hand crafted the knife for days, even showing you some of the work of perfecting the edge, allowing you to contribute, then gifting it to you. I believe you can intuitively[the-value-of-things] see how the meaning the knife brings generates more value. The friend sacrificed his time for this gesture, effort to create a good knife -- that has value.
 
-For many there was comfort in the old world -- comfort in the known. To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
+At least for me, it became clear that peoples reaction to AI is just a reflection of where they see the value at. People who see their work as means to an end -- be it income or end product -- might not care about the process to reach that goal. AI enthusiasts are excited about this new tool they can use to create more. They see AI as a magnificent tool to improve productivity, and make utilities they want. Others that care about the process, effort they put in, and meaning gained through work see AI killing exactly what they liked about the job in the first place, replacing it with cold hearted efficiency.
 
+TODO(ziv): rewrite this
 
-On top of that many are aware that we are all just helping train the next AI to replace us, just by using it.
+To continue, I will note the economic reality we live in that makes us want to work and fear anything that might impact income negatively. Nobody really wants to re-think their career especially a long one. Along with the bad effects data centers used to power the new technology cauess[^bad-ai-side-effects]. Saying nothing about the discomfort people feel with the new world, now that every job is transformed and there are less and less things that seems familiar[^new-world-discomfort]. And everyone using the technology helping train the next AI to replace themselves just by using it.
 
-AI companies are creating more capable models in hope of creating a human replacement -- Agents that can do any task, any job, better than a human. Even if todays LLM's are trying to be "just another tool", at some point a god like tool, will cease to be a tool and instead become a replacement.
+[the-value-of-things]: Bob Nystrom has a great post on [The Value Of Things](https://journal.stuffwithstuff.com/2026/01/24/the-value-of-things/) if my explenation was not sufficient. 
+
+[bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
+
+[new-world-discomfort]: To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
 
 ## Never ending problems ( why is it hard to kill all utility jobs )
 
-The job market is experiencing a tectonic shift in expectations, and people scrambling to fit the current needs. Some with once good careers need re-think their reality, while some have more time until they do the same.
-
-
 What I want to do is use history to analyse why AI might not kill jobs so quickly after all.
 
-
-Under the great history we all share, written by indviduals to indviduals, stories unfold: Each with it's unique character and setting, we bare witness at our legacy. A name, a decision, an action. A name, an event, a reaction. All influence one another to create the complicated reality we all share. 
-
-
- Predicting the future is hard not only because there are so many variables in it, but because you doing a good job at predicting the future and using this information to influence said future, will create a strictly different future from the one you predicted. History can be used to guide us, but making hard predictions is void effort. 
+Predicting the future is hard not only because there are so many variables in it, but because if you did a good job at predicting the future, and now you use this information to influence said future, will create a strictly different future from the one you predicted. History can be used to guide us, but making hard predictions is void effort.
 
 So, what conclusions can we make from our dynamic history? Likely that we humans will stay humans even if everything else changes, though with humans trying to engineer genetics this direction is void. Yet such conclusion lacks usefullness. Instead, I like Yuval Noah Harari's conclusion: We can free ourselves and escape the chains that hold our minds. He gives an example: Clean well kept grass on American houses originally began as nobility's way of signalling wealth. It makes little sense for humans to mow grass for only esthetic benefit. More practial solutions are now sold, as synthetic grass. But the idea is the same. Now that you know that, you may change your mind about the importance of a lawn, and it's maintenance or it might not. What is important is that you are free from the assumption that this is what you NEED to have or do. You can break free from the cultural ideas ingrained to your very being. The very assumptions you hold. 
 

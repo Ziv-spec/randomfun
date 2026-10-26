@@ -1,4 +1,5 @@
 
+Under the great history we all share, written by indviduals to indviduals, stories unfold: Each with it's unique character and setting, we bare witness at our legacy. A name, a decision, an action. A name, an event, a reaction. All influence one another to create the complicated reality we all share. 
 
 TODO(ziv): Add this to my website under fun stuff
 https://www.ling.upenn.edu/~beatrice/110/docs/uncleftish-beholding.html

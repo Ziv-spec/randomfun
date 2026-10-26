@@ -538,4 +538,3 @@ This distinction is VERY important.
 
 TODO(ziv): semaphore check what is it!!!!! 
 
-TODO(ziv): Look at he default behavior of VSCODE for search and try to implemenet it in 4coder
