@@ -7,7 +7,7 @@ Musings on our future with AI
 
 The year is 2026, as I am writing these words many people are fearful of the coming age. Some of my friends are worried they are wasting their time on higher-education, and I 22, I need to choose the path of my future in the time where everything seems to change so rapidly[^rapid-change]. This post will analyze the state we are curently in, argue for powerful AI systems existing in the future, show how I and others cope, and ask a self-centered question -- What then should I do in the future?
 
-[rapid-change]: In Hamming's The Art Of Doing Science And Engineering book, pages 2-4, he notes that since Isaac Newton's time knowledge has doubled every 17 years. He verified this claim assuming that the general knowledge of his time and some observations he had were true, then calculating to see whether everything checks-out. After verification the doubling every 17 years claim was generally true for their time. Today with AI information creation and processing has increased, and likely the increase in knowledge has increased too (so a doubling may occur earlier than 17 years), which to us means that we need to work harder to produce new results. The bar is constantly going up and at an alarming rate. It is not just a feeling that the world is going fast!!! The world infact is going faster.
+[^rapid-change]: In Hamming's The Art Of Doing Science And Engineering book, pages 2-4, he notes that since Isaac Newton's time knowledge has doubled every 17 years. He verified this claim assuming that the general knowledge of his time and some observations he had were true, then calculating to see whether everything checks-out. After verification the doubling every 17 years claim was generally true for their time. Today with AI information creation and processing has increased, and likely the increase in knowledge has increased too (so a doubling may occur earlier than 17 years), which to us means that we need to work harder to produce new results. The bar is constantly going up and at an alarming rate. It is not just a feeling that the world is going fast!!! The world infact is going faster.
 
 NOTE: I will use AI and Agents interchangeably, I use models to describe both today's LLM's and future technology, and obviosly LLM's (Large Language Models) as the current technology for language sequencing usually done with transformer like architecture.
 
@@ -20,9 +20,9 @@ It is not perfect. The technology came with hackability, bias, hallucinations, a
 
 Even though it came at first with many problems, the current LLM technology is increasing in capability with a clear trend[^meter]. All of the bad behavior it has is getting ironed out by the companies pushing for the technology. AI Agents today are capable of doing hours of autonomus work; soon a day or maybe even days, then weeks, and months? Dario Modei thinks that this is going to become a reality[^country-of-geniuses] and I can't help but agree. 
 
-[meter]: [Task-Completion Time Horizons of Frontier AI Models Benchmark](https://metr.org/time-horizons/) is a well known benchmark that shows agents being capable of solving longer and longer tasks over time. This is not perfect, but a good enough approximation of progress
+[^meter]: [Task-Completion Time Horizons of Frontier AI Models Benchmark](https://metr.org/time-horizons/) is a well known benchmark that shows agents being capable of solving longer and longer tasks over time. This is not perfect, but a good enough approximation of progress
 
-[country-of-geniuses]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
+[^country-of-geniuses]: In the [Machines Of Loving Grace](https://darioamodei.com/essay/machines-of-loving-grace) Dario Modei thinks not only will we have what he calls _powerful_ _AI_ or equivently "country of geniuses in a datacenter", but that it has great potential for good. 
 
 
 ## Why AI will keep improving
@@ -70,11 +70,11 @@ The economic rational may also be responsible for the impact past revolutions ha
 
 So it is true that we are facing the same shift in an era, and share the same worries as [people before us] but some differences still remain.
 
-[elevator-operator]: https://designobserver.com/the-second-life-of-elevator-operators-a-lesson-in-service-design/
+[^elevator-operator]: https://designobserver.com/the-second-life-of-elevator-operators-a-lesson-in-service-design/
 
-[people before us]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
+[^people before us]: https://www.linkedin.com/posts/evolving-ai_you-need-to-watch-this-in-1966-children-activity-7308149588606046208-c3lh
 
-[forced-adaptation-examples]: I can give many examples if you fancy. [Rust brothers and their cotton picking machine](https://asteriskmag.com/issues/15/rust-and-boll), Tom Scott's recollection on [music changing in his times](https://www.youtube.com/watch?v=jPhJbKBuNnA) (also notice how his familiar world is changing), early 20th century [yellow pages](https://jonharari.com/death-of-the-yellow-page-directories/), and "Would you rather have indoor plumbing, or the Internet?" [In 2000 the answer likely was plumming. But somewhere before 2013 even Third Worlders choose the internet.](https://gwern.net/blog/2025/plumbing-vs-internet). But actually I can give many many more, and this is not the place to put them all (though I really want to continue).
+[^forced-adaptation-examples]: I can give many examples if you fancy. [Rust brothers and their cotton picking machine](https://asteriskmag.com/issues/15/rust-and-boll), Tom Scott's recollection on [music changing in his times](https://www.youtube.com/watch?v=jPhJbKBuNnA) (also notice how his familiar world is changing), early 20th century [yellow pages](https://jonharari.com/death-of-the-yellow-page-directories/), and "Would you rather have indoor plumbing, or the Internet?" [In 2000 the answer likely was plumming. But somewhere before 2013 even Third Worlders choose the internet.](https://gwern.net/blog/2025/plumbing-vs-internet). But actually I can give many many more, and this is not the place to put them all (though I really want to continue).
 
 
 ## The fear
@@ -156,11 +156,11 @@ TODO(ziv): rewrite this
 
 To continue, I will note the economic reality we live in that makes us want to work and fear anything that might impact income negatively. Nobody really wants to re-think their career especially a long one. Along with the bad effects data centers used to power the new technology cauess[^bad-ai-side-effects]. Saying nothing about the discomfort people feel with the new world, now that every job is transformed and there are less and less things that seems familiar[^new-world-discomfort]. And everyone using the technology helping train the next AI to replace themselves just by using it.
 
-[the-value-of-things]: Bob Nystrom has a great post on [The Value Of Things](https://journal.stuffwithstuff.com/2026/01/24/the-value-of-things/) if my explenation was not sufficient. 
+[^the-value-of-things]: Bob Nystrom has a great post on [The Value Of Things](https://journal.stuffwithstuff.com/2026/01/24/the-value-of-things/) if my explenation was not sufficient. 
 
-[bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
+[^bad-ai-side-effects]: Of course this not the whole picture and some people just face bad side effects of the technology which inevitabely causes valid hate. The bad side effects can be a topic on it's own; and for me at least less of a problem. So I want to focus more on the financial and spiritual aspects of this revolution. That said some of the bad side effects are: Data centers pollute the air, make loud noises, and use a lot of electricity; AI is somewhat addictive for some people like phones, bugs in software that you can point to AI, new legal problems since AI is built on stolen data along with it now decompiling all software, bad behavior of offloading cognative effort, and probably a bajilion more reasons I can't think off the top of my head.
 
-[new-world-discomfort]: To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
+[^new-world-discomfort]: To the people born into this world now, everything will seem famliar like the back of their hand; the same is true for old people of tomorrow just like the old people of today, they are familiar with this current world and accept it. It is we that get to experience this increadible era of change and find ways to deal with it, but man, change sure is not easy. 
 
 ## Never ending problems ( why is it hard to kill all utility jobs )
 
